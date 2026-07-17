@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOT A NAP : 오늘도 안 잠</title>
+<style>
+  :root{
+    --bg:#0b0d20; --panel:#171930; --panel2:#20233f; --line:#31355c;
+    --text:#eeecf6; --dim:#9092b8; --accent:#ffb86b; --accent2:#8fd0ff;
+    --bad:#ff8296; --good:#93e9ac; --moon:#ffe9b0;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background:
+      radial-gradient(900px 520px at 80% -10%, #242a5e 0%, transparent 60%),
+      radial-gradient(700px 500px at 0% 110%, #1e1740 0%, transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Apple SD Gothic Neo','Pretendard','Noto Sans KR',sans-serif;
+    display:flex; justify-content:center; min-height:100%;
+  }
+  #app{width:100%; max-width:500px; padding:14px; display:flex; flex-direction:column; gap:12px;}
+  .screen{display:none; flex-direction:column; gap:12px; animation:fade .4s ease;}
+  .screen.active{display:flex;}
+  @keyframes fade{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
+
+  h1{font-size:34px; letter-spacing:2px; text-align:center; margin-top:26px;
+     background:linear-gradient(180deg,#fff, #ffd9a0); -webkit-background-clip:text; background-clip:text; color:transparent;
+     text-shadow:0 0 40px #ffb86b33;}
+  h1 small{display:block; font-size:14px; color:var(--dim); font-weight:normal; margin-top:8px; letter-spacing:4px;
+     background:none; background-clip:border-box; -webkit-text-fill-color:var(--dim);}
+  .tagline{text-align:center; color:var(--dim); font-size:13px; line-height:1.8;}
+  .moon{font-size:56px; text-align:center; margin-top:34px; filter:drop-shadow(0 0 24px #ffe9b066);
+     animation:moonfloat 5s ease-in-out infinite;}
+  @keyframes moonfloat{50%{transform:translateY(-6px);}}
+
+  .btn{
+    background:var(--panel2); border:1px solid var(--line); color:var(--text);
+    border-radius:14px; padding:13px 14px; font-size:15px; cursor:pointer;
+    transition:all .15s ease; font-family:inherit; width:100%;
+    box-shadow:0 2px 8px #00000040;
+  }
+  .btn:hover:not(:disabled){border-color:var(--accent); transform:translateY(-2px); box-shadow:0 6px 16px #00000060;}
+  .btn:active:not(:disabled){transform:translateY(0);}
+  .btn:disabled{opacity:.32; cursor:default; box-shadow:none;}
+  .btn.primary{background:linear-gradient(135deg,#ffc98a,#ff9d5c); color:#3a2410; font-weight:800; border:none; letter-spacing:.5px;}
+  .btn.grandma{background:linear-gradient(135deg,#f6d365,#fda085); color:#3a2410; font-weight:700; border:none;}
+
+  .card{background:linear-gradient(180deg,var(--panel),#14162b); border:1px solid var(--line); border-radius:16px; padding:14px;
+    box-shadow:0 4px 14px #00000038;}
+  .card h3{font-size:13px; color:var(--accent); margin-bottom:9px; letter-spacing:1px;}
+
+  /* top bar */
+  #topbar{display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--dim); padding:0 4px;}
+  #topbar b{color:var(--text); font-size:15px;}
+  #clock{font-variant-numeric:tabular-nums; font-size:22px; color:var(--moon); font-weight:800;
+    text-shadow:0 0 16px #ffe9b055; letter-spacing:1px;}
+
+  /* ── 침실 씬 ── */
+  #nursery{position:relative; border:1px solid var(--line); border-radius:20px; height:250px; overflow:hidden;
+    background:
+      radial-gradient(220px 130px at 82% 6%, #3a4184aa 0%, transparent 70%),
+      radial-gradient(260px 160px at 8% 100%, #4a3a2a66 0%, transparent 70%),
+      linear-gradient(180deg,#181b40 0%,#1a1d3e 58%,#242046 100%);
+    box-shadow:inset 0 0 60px #00000055, 0 4px 14px #00000038;}
+  #nursery::after{content:""; position:absolute; left:0; right:0; bottom:0; height:44px;
+    background:linear-gradient(180deg,transparent,#12102bcc);}
+  .star{position:absolute; color:#cfd6ff; font-size:9px; animation:twinkle 3s ease-in-out infinite; opacity:.7;}
+  .star.s1{top:16px; left:10%;} .star.s2{top:36px; left:28%; animation-delay:.7s; font-size:7px;}
+  .star.s3{top:12px; left:52%; animation-delay:1.4s;} .star.s4{top:44px; left:66%; animation-delay:2.1s; font-size:7px;}
+  .star.s5{top:24px; left:88%; animation-delay:1s; font-size:8px;}
+  @keyframes twinkle{50%{opacity:.15; transform:scale(.8);}}
+  #moonball{position:absolute; top:16px; right:22px; width:46px; height:46px; border-radius:50%;
+    background:radial-gradient(circle at 35% 32%, #fff6dd, #ffe9b0 55%, #f2cd7e);
+    box-shadow:0 0 34px #ffe9b077, 0 0 90px #ffe9b033;}
+  #moonball::after{content:""; position:absolute; top:10px; left:22px; width:8px; height:8px; border-radius:50%;
+    background:#eccf95aa; box-shadow:-10px 12px 0 -2px #eccf9588;}
+  #statusword{position:absolute; top:14px; left:14px; z-index:5; font-size:12.5px; color:var(--accent2);
+    background:#0d0f22d9; border:1px solid var(--line); padding:5px 12px; border-radius:20px;
+    backdrop-filter:blur(4px); box-shadow:0 2px 8px #00000055;}
+
+  /* 침대 / 바운서 */
+  #crib{position:absolute; left:50%; transform:translateX(-50%); bottom:2px; width:232px; z-index:1;}
+  #rocker{position:absolute; left:50%; transform:translateX(-50%); bottom:10px; width:148px; height:26px; z-index:1;
+    border:4px solid #7a5c44; border-top:none; border-radius:0 0 90px 90px; display:none;
+    animation:rock 2.6s ease-in-out infinite; transform-origin:center top;}
+  @keyframes rock{25%{transform:translateX(-50%) rotate(2deg);}75%{transform:translateX(-50%) rotate(-2deg);}}
+
+  /* 아기 */
+  #babywrap{position:absolute; left:50%; bottom:14px; transform:translateX(-50%); text-align:center;
+    transition:bottom .4s ease; z-index:3;}
+  #babySvg{width:128px; height:128px; filter:drop-shadow(0 6px 10px #00000066);}
+  #babyplace{display:inline-block; font-size:11px; color:#d8d4ea; margin-top:1px; background:#0d0f22c9;
+    border:1px solid var(--line); border-radius:14px; padding:3px 10px;}
+  .st-deep #babySvg, .st-shallow #babySvg{animation:breathe 3.2s ease-in-out infinite;}
+  .st-drowsy #babySvg{animation:bob 4.5s ease-in-out infinite;}
+  .st-cry #babySvg{animation:wail .38s ease-in-out infinite;}
+  .st-fussy #babySvg{animation:fuss 1.6s ease-in-out infinite;}
+  @keyframes breathe{50%{transform:scale(1.03) translateY(-2px);}}
+  @keyframes bob{50%{transform:translateY(-4px) rotate(1deg);}}
+  @keyframes wail{25%{transform:rotate(-3deg) scale(1.02);}75%{transform:rotate(3deg) scale(1.02);}}
+  @keyframes fuss{50%{transform:translateX(3px);}}
+  #tears .t1{animation:drip 1.1s ease-in infinite;}
+  #tears .t2{animation:drip 1.1s ease-in .55s infinite;}
+  @keyframes drip{0%{opacity:0; transform:translateY(0);}25%{opacity:1;}100%{opacity:0; transform:translateY(12px);}}
+  #zzz{position:absolute; right:-14px; top:-10px; display:none; text-align:left;}
+  .st-deep #zzz, .st-shallow #zzz{display:block;}
+  #zzz span{display:block; color:#aab6ff; font-weight:800; text-shadow:0 0 10px #aab6ff55;
+    animation:floatz 2.6s ease-out infinite; line-height:1;}
+  #zzz span:nth-child(1){font-size:12px; margin-left:2px;}
+  #zzz span:nth-child(2){font-size:16px; animation-delay:.5s; margin-left:9px;}
+  #zzz span:nth-child(3){font-size:11px; animation-delay:1s;}
+  @keyframes floatz{0%{opacity:0; transform:translateY(6px);}30%{opacity:1;}100%{opacity:0; transform:translateY(-14px);}}
+
+  /* 보호자 HUD */
+  #parentbar{display:flex; align-items:center; gap:12px; background:linear-gradient(180deg,var(--panel),#14162b);
+    border:1px solid var(--line); border-radius:16px; padding:10px 14px; box-shadow:0 4px 14px #00000038;}
+  #parentface{font-size:27px; filter:drop-shadow(0 2px 4px #00000055);}
+  .pb-top{display:flex; justify-content:space-between; font-size:12px; color:var(--dim); margin-bottom:5px;}
+  .pb-top b{color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px;}
+  .gauge.big{height:13px; border-radius:8px;}
+
+  /* 인벤토리 슬롯 */
+  .slot{width:82px; background:linear-gradient(180deg,var(--panel2),#1a1d36); border:1.5px solid var(--line);
+    border-radius:15px; padding:10px 4px 7px; text-align:center; cursor:pointer; font-family:inherit;
+    color:var(--text); position:relative; transition:all .15s; box-shadow:0 2px 8px #00000040;}
+  .slot .em{font-size:27px; display:block; line-height:1.2;}
+  .slot .nm{font-size:10.5px; color:var(--dim); display:block; margin-top:4px;}
+  .slot .badge{position:absolute; top:-8px; right:-4px; font-size:10px; background:#3a3e68; color:var(--text);
+    border-radius:10px; padding:2px 8px; font-weight:700; box-shadow:0 2px 6px #00000055;}
+  .slot.on{border-color:var(--accent2); box-shadow:0 0 14px #8fd0ff2e;}
+  .slot.on .badge{background:var(--accent2); color:#0b2233;}
+  .slot.on .nm{color:var(--accent2);}
+  .slot:disabled{opacity:.35; cursor:default;}
+  .slot:hover:not(:disabled){transform:translateY(-3px); border-color:var(--accent);}
+
+  /* monitor gauges */
+  #monitor{display:flex; flex-direction:column; gap:6px; font-size:12px;}
+  .gaugerow{display:flex; align-items:center; gap:8px;}
+  .gaugerow span.lbl{width:52px; color:var(--dim);}
+  .gauge{flex:1; height:8px; background:#0d0f22; border-radius:5px; overflow:hidden;}
+  .gauge i{display:block; height:100%; border-radius:5px; transition:width .35s;}
+  .gauge .calm{background:var(--good);}
+  .gauge .sleep{background:var(--accent2);}
+  .gauge .hunger{background:var(--bad);}
+  .gauge .stamina{background:var(--accent);}
+  .fuzzy{color:var(--dim); font-size:12px; line-height:1.8;}
+
+  /* actions */
+  #actions{display:grid; grid-template-columns:repeat(4,1fr); gap:8px;}
+  #actions .btn{font-size:13px; padding:10px 4px; text-align:center;}
+  #itembar{display:flex; gap:12px; justify-content:center; padding-top:4px;}
+  .chip{background:var(--panel2); border:1px solid var(--line); border-radius:20px; padding:7px 12px;
+    font-size:12px; cursor:pointer; color:var(--text); font-family:inherit;}
+  .chip.on{border-color:var(--accent2); color:var(--accent2); box-shadow:0 0 0 1px var(--accent2) inset;}
+  .chip:disabled{opacity:.35; cursor:default;}
+
+  /* log */
+  #log{height:110px; overflow-y:auto; font-size:12.5px; line-height:1.75; color:#c9c7dd;}
+  #log .sys{color:var(--dim);}
+  #log .baby{color:var(--accent);}
+  #log .warn{color:var(--bad);}
+  #log .good{color:var(--good);}
+
+  /* item select */
+  .pickgrid{display:flex; flex-direction:column; gap:8px;}
+  .pick{display:flex; align-items:flex-start; gap:10px; background:var(--panel); border:1px solid var(--line);
+    border-radius:12px; padding:12px; cursor:pointer; transition:all .12s;}
+  .pick.on{border-color:var(--accent); background:#231d33;}
+  .pick .em{font-size:24px;}
+  .pick b{font-size:14px;}
+  .pick p{font-size:12px; color:var(--dim); margin-top:3px; line-height:1.5;}
+  .pick .side{font-size:11px; color:var(--bad); margin-top:2px;}
+
+  /* night end */
+  .diary{background:#fdf6e3; color:#4a3b2a; border-radius:12px; padding:16px; font-size:13.5px;
+    line-height:1.9; font-style:normal; white-space:pre-line; position:relative;}
+  .diary::before{content:"👶 아기의 일지"; display:block; font-size:11px; color:#a08a63; margin-bottom:8px; letter-spacing:1px;}
+  .memlist{display:flex; flex-direction:column; gap:8px;}
+  .memitem{background:var(--panel2); border-left:3px solid var(--accent2); border-radius:8px; padding:10px 12px; font-size:13px; line-height:1.6;}
+  .memitem.neg{border-left-color:var(--bad);}
+  .memitem.pos{border-left-color:var(--good);}
+  .memitem small{display:block; color:var(--dim); font-size:11px; margin-top:3px;}
+  .bigresult{text-align:center; font-size:20px; font-weight:700; margin:8px 0;}
+  .statrow{display:flex; justify-content:space-between; font-size:13px; padding:6px 2px; border-bottom:1px dashed var(--line); color:var(--dim);}
+  .statrow b{color:var(--text);}
+
+  /* share card */
+  #sharecard{background:linear-gradient(160deg,#1e2142,#141631); border:1px solid var(--accent);
+    border-radius:16px; padding:18px; text-align:center;}
+  #sharecard .endtitle{font-size:22px; font-weight:800; color:var(--accent); margin:6px 0;}
+  #sharecard .sub{font-size:12px; color:var(--dim); line-height:1.8;}
+
+  .ai-note{font-size:11px; color:var(--dim); text-align:center;}
+  .spin{display:inline-block; animation:spin 1.1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  footer{text-align:center; color:#555877; font-size:11px; padding:10px 0 20px;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══ 타이틀 ═══ -->
+  <div class="screen active" id="scr-title">
+    <div class="moon">🌙</div>
+    <h1>NOT A NAP<small>오늘도 안 잠</small></h1>
+    <p class="tagline">
+      아기는 당신이 재우는 방법을 <b style="color:var(--accent)">기억</b>합니다.<br>
+      어제의 정답이 오늘의 문제가 됩니다.<br><br>
+      사흘 밤, 아침까지 살아남으세요.
+    </p>
+    <button class="btn primary" onclick="UI.startRun()">밤을 시작한다</button>
+    <div class="card" style="font-size:12.5px; color:var(--dim); line-height:1.8;">
+      <h3>플레이 방법</h3>
+      매 시간 행동 하나를 선택합니다. 아기를 진정시켜 재우고, 깊이 잠들었을 때
+      침대에 눕히세요. 반복하는 행동은 아기의 <b style="color:var(--text)">습관</b>이 되어
+      다음 날 밤의 난이도를 바꿉니다. 보호자 체력이 바닥나면 손이 떨립니다.
+    </div>
+  </div>
+
+  <!-- ═══ 아이템 선택 ═══ -->
+  <div class="screen" id="scr-items">
+    <h2 style="font-size:18px;" id="items-title">1일 차 밤 — 침실에 가져갈 육아용품</h2>
+    <p style="font-size:13px; color:var(--dim);">딱 <b style="color:var(--accent)">3개</b>만 고를 수 있습니다.</p>
+    <div class="pickgrid" id="pickgrid"></div>
+    <button class="btn primary" id="btn-night" onclick="UI.beginNight()" disabled>이 조합으로 밤을 버틴다 (0/3)</button>
+  </div>
+
+  <!-- ═══ 밤 플레이 ═══ -->
+  <div class="screen" id="scr-night">
+    <div id="topbar">
+      <div><b id="daylabel">1일 차</b> <span id="templabel"></span></div>
+      <div id="clock">21:00</div>
+    </div>
+    <div id="nursery">
+      <div class="star s1">✦</div><div class="star s2">✧</div><div class="star s3">✦</div>
+      <div class="star s4">✧</div><div class="star s5">✦</div>
+      <div id="moonball"></div>
+      <div id="statusword">칭얼거림</div>
+      <svg id="crib" viewBox="0 0 232 92">
+        <rect x="6"   y="6"  width="10" height="76" rx="5" fill="#8a6a4f"/>
+        <rect x="216" y="6"  width="10" height="76" rx="5" fill="#8a6a4f"/>
+        <rect x="30"  y="26" width="6"  height="52" rx="3" fill="#6d5138"/>
+        <rect x="58"  y="26" width="6"  height="52" rx="3" fill="#6d5138"/>
+        <rect x="168" y="26" width="6"  height="52" rx="3" fill="#6d5138"/>
+        <rect x="196" y="26" width="6"  height="52" rx="3" fill="#6d5138"/>
+        <rect x="6"   y="70" width="220" height="12" rx="6" fill="#9a7a5c"/>
+        <rect x="6"   y="16" width="220" height="8"  rx="4" fill="#9a7a5c"/>
+      </svg>
+      <div id="rocker"></div>
+      <div id="babywrap">
+        <div id="zzz"><span>z</span><span>Z</span><span>z</span></div>
+        <svg id="babySvg" viewBox="0 0 140 140">
+          <path d="M38 88 Q38 68 70 68 Q102 68 102 88 L99 112 Q70 127 41 112 Z" fill="#ffd9a0"/>
+          <path d="M38 88 Q38 68 70 68 Q102 68 102 88 L101 96 Q70 84 39 96 Z" fill="#ffcf8a"/>
+          <path d="M48 100 Q70 111 92 100" stroke="#f0b268" stroke-width="4" fill="none" stroke-linecap="round"/>
+          <circle cx="70" cy="52" r="34" fill="#ffe9d8"/>
+          <path d="M68 17 Q74 10 79 16 Q83 22 75 23" fill="none" stroke="#9c7350" stroke-width="3.5" stroke-linecap="round"/>
+          <ellipse cx="49" cy="63" rx="6.5" ry="4.5" fill="#ffb9a8" opacity=".75"/>
+          <ellipse cx="91" cy="63" rx="6.5" ry="4.5" fill="#ffb9a8" opacity=".75"/>
+          <g id="eyesOpen">
+            <circle cx="56" cy="52" r="4.5" fill="#4a3628"/>
+            <circle cx="84" cy="52" r="4.5" fill="#4a3628"/>
+            <circle cx="57.5" cy="50.5" r="1.6" fill="#fff"/>
+            <circle cx="85.5" cy="50.5" r="1.6" fill="#fff"/>
+          </g>
+          <g id="eyesClosed" style="display:none">
+            <path d="M50 53 Q56 58 62 53" stroke="#4a3628" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+            <path d="M78 53 Q84 58 90 53" stroke="#4a3628" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+          </g>
+          <path id="mouth" d="M63 68 Q70 74 77 68" stroke="#d97b62" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+          <g id="tears" style="display:none">
+            <ellipse class="t1" cx="45" cy="63" rx="3" ry="5.5" fill="#9fdcff"/>
+            <ellipse class="t2" cx="95" cy="63" rx="3" ry="5.5" fill="#9fdcff"/>
+          </g>
+        </svg>
+        <div><span id="babyplace">침대</span></div>
+      </div>
+    </div>
+
+    <div id="parentbar">
+      <span id="parentface">😌</span>
+      <div style="flex:1">
+        <div class="pb-top"><span>보호자 체력</span><b id="stamina-num">100%</b></div>
+        <div class="gauge big"><i class="stamina" id="stamina-fill" style="width:100%"></i></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="monitor"></div>
+    </div>
+
+    <div id="itembar"></div>
+
+    <div id="actions">
+      <button class="btn" id="act-hold"  onclick="UI.act('hold')">🤱<br>안아주기</button>
+      <button class="btn" id="act-pat"   onclick="UI.act('pat')">🫳<br>토닥이기</button>
+      <button class="btn" id="act-feed"  onclick="UI.act('feed')">🍼<br>수유하기</button>
+      <button class="btn" id="act-down"  onclick="UI.act('laydown')">🛏️<br>눕히기</button>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button class="btn" id="act-watch" onclick="UI.act('watch')" style="flex:1;">🫥 가만히 지켜보기 <span style="color:var(--dim);font-size:11px;">(체력 회복)</span></button>
+      <button class="btn grandma" id="act-grandma" onclick="UI.act('grandma')" style="flex:1;">👵 할머니 찬스</button>
+    </div>
+
+    <div class="card"><div id="log"></div></div>
+  </div>
+
+  <!-- ═══ 밤 종료 ═══ -->
+  <div class="screen" id="scr-nightend">
+    <div class="bigresult" id="ne-result"></div>
+    <div class="card">
+      <h3>오늘 밤의 기록</h3>
+      <div id="ne-stats"></div>
+    </div>
+    <div class="card">
+      <h3>🧠 아기의 기억 분석</h3>
+      <div class="memlist" id="ne-memory"></div>
+    </div>
+    <div class="diary" id="ne-diary">아기가 오늘 밤을 기억하는 중<span class="spin">🌙</span></div>
+    <p class="ai-note" id="ne-ainote"></p>
+    <button class="btn primary" id="ne-next" onclick="UI.nextDay()">다음 밤을 준비한다</button>
+  </div>
+
+  <!-- ═══ 엔딩 ═══ -->
+  <div class="screen" id="scr-ending">
+    <div id="sharecard">
+      <div style="font-size:36px;" id="end-emoji">🌅</div>
+      <div class="endtitle" id="end-title"></div>
+      <div class="sub" id="end-sub"></div>
+      <hr style="border-color:var(--line); margin:12px 0;">
+      <div class="sub" id="end-stats"></div>
+    </div>
+    <div class="card">
+      <h3>이 아기에게 형성된 습관</h3>
+      <div class="memlist" id="end-habits"></div>
+    </div>
+    <button class="btn primary" onclick="location.reload()">새로운 아기와 다시</button>
+    <footer>NOT A NAP — 기억하는 아기와 살아남는 밤 · NAN 2026 사전 과제</footer>
+  </div>
+
+</div>
+
+<!-- ═════════════════ GAME LOGIC (UI 독립, 테스트 가능) ═════════════════ -->
+<script id="game-logic">
+/* ═══ LOGIC_START ═══ */
+const CONFIG = {
+  AI_PROXY_URL: "",          // 서버리스 프록시 URL (비우면 규칙 기반 일지 생성)
+  AI_TIMEOUT_MS: 8000,
+  TOTAL_DAYS: 3,
+  START_HOUR: 21,
+  END_HOUR: 6,
+};
+
+const TEMPERAMENTS = [
+  { id:"soft",      name:"순둥이",   sens:0.2, hungerRate:9,  holdNeed:0.3, cribSens:0.10, selfSoothe:0.45, feedBonus:0,
+    hint:"작은 소리에는 크게 반응하지 않는 것 같다." },
+  { id:"sensitive", name:"예민보스", sens:0.8, hungerRate:10, holdNeed:0.7, cribSens:0.32, selfSoothe:0.10, feedBonus:0,
+    hint:"멀리서 나는 소리에도 몸을 움찔거린다." },
+  { id:"hungry",    name:"먹보",     sens:0.4, hungerRate:16, holdNeed:0.4, cribSens:0.18, selfSoothe:0.25, feedBonus:14,
+    hint:"입을 오물거리며 자꾸 무언가를 찾는다." },
+];
+
+const ITEMS = {
+  carrier: { name:"아기띠",       em:"🎒", desc:"착용하면 계속 안은 상태가 됩니다. 진정 효과가 크고 잠들기 쉬워집니다.",
+             side:"매 시간 체력 소모. 반복 사용 시 아기가 습관으로 학습합니다." },
+  pacifier:{ name:"쪽쪽이",       em:"🍭", desc:"즉시 진정 (밤당 3회, 시간 소모 없음).",
+             side:"선잠 중 빠지면 아기가 깰 수 있습니다." },
+  noise:   { name:"백색소음기",   em:"🔊", desc:"켜두면 매 시간 진정 + 소음 이벤트를 막아줍니다.",
+             side:"매일 반복하면 익숙해져 효과가 줄어듭니다." },
+  bouncer: { name:"바운서",       em:"🪑", desc:"내려놓은 아기를 체력 소모 없이 달래줍니다.",
+             side:"자극에 민감한 아기에게는 역효과." },
+  monitor: { name:"베이비 모니터",em:"📟", desc:"아기의 상태 수치를 정확히 보여줍니다.",
+             side:"진정 효과는 없습니다. 정보가 곧 무기." },
+};
+
+const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
+
+/* ─── 런(3일) 상태 ─── */
+function newRun(rng){
+  rng = rng || Math.random;
+  return {
+    day: 1,
+    temperament: TEMPERAMENTS[Math.floor(rng()*TEMPERAMENTS.length)],
+    memory: { carrier:0, heldDep:0, noiseHab:0, selfSoothe:0 },
+    memoryNotes: [],          // 누적 습관 설명
+    grandmaUsed: false,
+    nightResults: [],         // {result, wakes, laydownFail, staminaLeft, grandma}
+    rng,
+  };
+}
+
+/* ─── 밤 상태 ─── */
+function newNight(run, chosenItems){
+  return {
+    hour: CONFIG.START_HOUR,
+    baby: { calm:55, sleep:0, hunger:30, held:false, crying:false },
+    parent: { stamina:100 },
+    wearing: { carrier:false, noise:false, bouncer:false },
+    items: chosenItems,
+    pacifierLeft: 3,
+    pacifierInUse: false,
+    stats: { wakes:0, laydownFail:0, laydownOk:0, carrierTurns:0, heldSleepTurns:0,
+             noiseTurns:0, watchOk:0, grandma:false, feeds:0, refusals:0, holds:0 },
+    log: [],
+    events: [],
+    over: false,
+    result: null,
+  };
+}
+
+function hourLabel(h){ return String(h).padStart(2,"0")+":00"; }
+function nextHour(h){ return (h+1)%24; }
+function hoursLeft(n){ let h=n.hour,c=0; while(h!==CONFIG.END_HOUR){h=nextHour(h);c++;} return c; }
+
+function pushLog(n, text, cls){ n.log.push({text, cls:cls||"sys", hour:n.hour}); }
+
+/* ─── 수면 상태 단어 ─── */
+function sleepStage(b){
+  if(b.crying) return "cry";
+  if(b.sleep>=85) return "deep";
+  if(b.sleep>=50) return "shallow";
+  if(b.calm>=70) return "drowsy";
+  if(b.calm<=30) return "fussy";
+  return "awake";
+}
+const STAGE_KO = { cry:"대성통곡", deep:"깊은 잠", shallow:"선잠", drowsy:"꾸벅꾸벅", fussy:"짜증 폭발 직전", awake:"말똥말똥" };
+
+/* ─── 깨우기 ─── */
+function wakeBaby(n, reason){
+  const b=n.baby;
+  const wasAsleep = b.sleep>=50;
+  b.sleep = Math.min(b.sleep, 12);
+  b.calm = clamp(b.calm-22, 0, 100);
+  b.crying = true;
+  if(wasAsleep) n.stats.wakes++;
+  pushLog(n, wasAsleep ? `😱 ${reason} — 아기가 깼다!` : `😖 ${reason} — 아기가 자지러지게 운다!`, "warn");
+}
+
+/* ─── 행동 처리 (턴 소모 행동은 endTurn 호출 전 적용) ─── */
+function applyAction(run, n, action){
+  const b=n.baby, p=n.parent, t=run.temperament, m=run.memory;
+  const weak = p.stamina<20 ? 0.6 : 1;   // 체력 고갈 시 효과 감소
+  const r = run.rng;
+  let consumed = true;
+
+  switch(action){
+    case "hold": {
+      if(n.wearing.carrier){ pushLog(n,"이미 아기띠로 안고 있다."); consumed=false; break; }
+      b.held = true; n.stats.holds++;
+      const gain = (16 + t.holdNeed*12) * weak;
+      b.calm = clamp(b.calm+gain,0,100);
+      p.stamina = clamp(p.stamina-10,0,100);
+      pushLog(n, b.crying ? "품에 안자 울음이 조금씩 잦아든다." : "품에 안았다. 아기가 파고든다.");
+      if(b.crying && b.calm>45) b.crying=false;
+      break;
+    }
+    case "pat": {
+      const gain = 10*weak;
+      b.calm = clamp(b.calm+gain,0,100);
+      if(b.sleep>0 && !b.crying) b.sleep = clamp(b.sleep+8,0,100);
+      p.stamina = clamp(p.stamina-5,0,100);
+      if(b.crying && b.calm>50){ b.crying=false; pushLog(n,"토닥토닥… 울음이 멎었다.","good"); }
+      else pushLog(n,"등을 토닥여 주었다.");
+      break;
+    }
+    case "feed": {
+      p.stamina = clamp(p.stamina-8,0,100);
+      if(b.hunger>=45){
+        b.hunger = 5;
+        const gain = (20 + t.feedBonus)*weak;
+        b.calm = clamp(b.calm+gain,0,100);
+        b.crying = false;
+        n.stats.feeds++;
+        pushLog(n,"🍼 꿀꺽꿀꺽. 세상 행복한 표정이다.","good");
+      } else {
+        b.calm = clamp(b.calm-6,0,100);
+        n.stats.refusals++;
+        pushLog(n,"고개를 홱 돌린다. 지금은 배가 고픈 게 아닌가 보다.","warn");
+      }
+      break;
+    }
+    case "laydown": {
+      if(!b.held && !n.wearing.carrier){ pushLog(n,"아기는 이미 침대에 있다."); consumed=false; break; }
+      if(n.wearing.carrier){ n.wearing.carrier=false; }
+      p.stamina = clamp(p.stamina-4,0,100);
+      let pSuccess = b.sleep>=85 ? 0.9 : b.sleep>=50 ? 0.6 : 0.15;
+      pSuccess -= t.cribSens + m.heldDep*0.45 + m.carrier*0.20;
+      pSuccess = clamp(pSuccess, 0.05, 0.95);
+      if(r() < pSuccess){
+        b.held=false; n.stats.laydownOk++;
+        pushLog(n,"🛏️ 숨을 죽이고… 성공. 아기가 침대에서 계속 잔다.","good");
+      } else {
+        b.held=false; n.stats.laydownFail++;
+        wakeBaby(n, "등이 침대에 닿는 순간 센서 발동");
+        if(m.carrier>0.3 || m.heldDep>0.3)
+          pushLog(n,"※ 안겨 자는 습관 때문에 눕히기가 더 어려워졌다.","warn");
+      }
+      break;
+    }
+    case "watch": {
+      p.stamina = clamp(p.stamina+9,0,100);
+      const soothe = t.selfSoothe + m.selfSoothe;
+      if(!b.crying && b.calm>=45 && r() < soothe+0.15){
+        b.calm = clamp(b.calm+7,0,100);
+        n.stats.watchOk++;
+        pushLog(n,"아기가 혼자 꼼지락거리다 스스로 진정했다.","good");
+      } else if(b.crying){
+        b.calm = clamp(b.calm-9,0,100);
+        pushLog(n,"우는 아기를 지켜보는 건 고문이다… 울음이 더 커진다.","warn");
+      } else {
+        b.calm = clamp(b.calm-5,0,100);
+        pushLog(n,"아기가 심심한지 칭얼거리기 시작한다.");
+      }
+      break;
+    }
+    case "grandma": {
+      if(run.grandmaUsed){ pushLog(n,"할머니 찬스는 이미 사용했다."); consumed=false; break; }
+      run.grandmaUsed = true; n.stats.grandma = true;
+      b.calm=95; b.sleep=Math.max(b.sleep,60); b.crying=false; b.held=true;
+      p.stamina = clamp(p.stamina+35,0,100);
+      pushLog(n,"👵 \"애는 원래 안아서 재워야 해.\" 할머니의 품에서 아기가 순식간에 잠든다.","good");
+      pushLog(n,"…하지만 아기는 이 품도 기억할 것이다.","warn");
+      break;
+    }
+    case "pacifier": {   // 시간 소모 없음
+      consumed = false;
+      if(n.pacifierLeft<=0){ pushLog(n,"쪽쪽이를 다 썼다."); break; }
+      n.pacifierLeft--;
+      if(r() < 0.15){ b.calm=clamp(b.calm-8,0,100); pushLog(n,"퉤. 쪽쪽이를 뱉어버렸다.","warn"); }
+      else { b.calm=clamp(b.calm+18,0,100); n.pacifierInUse=true;
+             if(b.crying && b.calm>45) b.crying=false;
+             pushLog(n,"🍭 쪽쪽이를 물자 순식간에 조용해졌다.","good"); }
+      break;
+    }
+    case "toggle-carrier": {
+      consumed = false;
+      n.wearing.carrier = !n.wearing.carrier;
+      if(n.wearing.carrier){ n.baby.held=true; pushLog(n,"🎒 아기띠를 착용했다. 두 손이 자유롭다."); }
+      else { pushLog(n,"아기띠를 벗었다. (아기는 아직 품 안)"); }
+      break;
+    }
+    case "toggle-noise": {
+      consumed = false;
+      n.wearing.noise = !n.wearing.noise;
+      pushLog(n, n.wearing.noise ? "🔊 백색소음기 작동. 쏴아아—" : "백색소음기를 껐다.");
+      break;
+    }
+    case "toggle-bouncer": {
+      consumed = false;
+      if(b.held || n.wearing.carrier){ pushLog(n,"안고 있는 상태에선 바운서를 쓸 수 없다. 먼저 눕히세요."); n.wearing.bouncer=false; break; }
+      n.wearing.bouncer = !n.wearing.bouncer;
+      pushLog(n, n.wearing.bouncer ? "🪑 아기를 바운서에 태웠다." : "바운서에서 내렸다.");
+      break;
+    }
+  }
+  return consumed;
+}
+
+/* ─── 시간 경과 (패시브 + 수면 진행 + 이벤트) ─── */
+function endTurn(run, n){
+  const b=n.baby, p=n.parent, t=run.temperament, m=run.memory, r=run.rng;
+
+  /* 아이템 패시브 */
+  if(n.wearing.carrier){
+    b.held = true;
+    b.calm = clamp(b.calm + 12*(1+m.carrier*0.6), 0, 100);
+    p.stamina = clamp(p.stamina-6,0,100);
+    n.stats.carrierTurns++;
+  }
+  if(n.wearing.noise && n.items.includes("noise")){
+    b.calm = clamp(b.calm + 6*(1-m.noiseHab), 0, 100);
+    n.stats.noiseTurns++;
+  }
+  if(n.wearing.bouncer && !b.held){
+    if(t.sens>0.6){ b.calm=clamp(b.calm-6,0,100); pushLog(n,"바운서의 흔들림이 오히려 자극이 됐다.","warn"); }
+    else b.calm=clamp(b.calm+9,0,100);
+  }
+
+  /* 배고픔 */
+  b.hunger = clamp(b.hunger + t.hungerRate*(0.7+r()*0.6), 0, 100);
+  if(b.hunger>78 && !b.crying){
+    wakeBaby(n,"배꼽시계 발동");
+  }
+
+  /* 진정도 자연 감소 (깊은 잠 제외) */
+  if(b.sleep<85) b.calm = clamp(b.calm-4,0,100);
+  if(b.calm<=20 && !b.crying){ b.crying=true; pushLog(n,"결국 울음이 터졌다.","warn"); }
+
+  /* 수면 진행 */
+  if(!b.crying && b.calm>=68 && b.hunger<70){
+    let gain = 12;
+    if(b.held) gain += 5 + t.holdNeed*8;
+    else       gain += -4 + (t.selfSoothe+m.selfSoothe)*16;
+    if(n.wearing.carrier) gain += 4*(1+m.carrier);
+    b.sleep = clamp(b.sleep+gain,0,100);
+    if(b.sleep>=50 && b.held) n.stats.heldSleepTurns++;
+  } else if(b.crying){
+    b.sleep = clamp(b.sleep-12,0,100);
+  }
+
+  /* 쪽쪽이 이탈 */
+  if(n.pacifierInUse && b.sleep>=50 && b.sleep<85 && r()<0.3){
+    n.pacifierInUse=false;
+    if(r()<0.5) wakeBaby(n,"쪽쪽이가 쏙 빠졌다");
+    else pushLog(n,"쪽쪽이가 빠졌지만… 다행히 계속 잔다.","sys");
+  }
+
+  /* 시간 이동 */
+  n.hour = nextHour(n.hour);
+
+  /* 예정 이벤트 */
+  runScheduledEvents(run, n);
+
+  /* 밤 종료 */
+  if(n.hour===CONFIG.END_HOUR){
+    n.over = true;
+    const stage = sleepStage(b);
+    if((stage==="deep"||stage==="shallow") && !b.held) n.result="crib";
+    else if(stage==="deep"||stage==="shallow")          n.result="arms";
+    else                                                n.result="awake";
+    n.stats.staminaLeft = p.stamina;
+  }
+}
+
+function runScheduledEvents(run, n){
+  const b=n.baby, t=run.temperament, r=run.rng;
+  const noiseGuard = n.wearing.noise ? 0.35 : 0;
+  const key = run.day+"@"+n.hour;
+  const fired = (msg,fn)=>{ pushLog(n,msg,"warn"); if(fn) fn(); };
+
+  switch(key){
+    case "1@0":
+      fired("💩 심상치 않은 냄새… 기저귀 사태 발생.");
+      b.calm=clamp(b.calm-20,0,100);
+      if(b.sleep>=50 && r() < 0.8-noiseGuard*0.3) wakeBaby(n,"기저귀 불쾌감");
+      break;
+    case "2@23":
+      fired("🔔 초인종이 울렸다! 이 시간에 대체 누구야.");
+      if(b.sleep>=50 && r() < t.sens+0.25-noiseGuard) wakeBaby(n,"초인종 소리");
+      else if(b.sleep>=50) pushLog(n,"휴… 아기가 뒤척였지만 다시 잠들었다.","good");
+      break;
+    case "3@1":
+      fired("🏗️ 윗집에서 쿵— 하는 소리가 났다.");
+      if(b.sleep>=50 && r() < t.sens+0.45-noiseGuard) wakeBaby(n,"층간소음");
+      else if(b.sleep>=50) pushLog(n,"아기가 미간을 찌푸렸지만 버텨냈다.","good");
+      break;
+    case "3@4":
+      fired("새벽의 허기가 몰려온다…");
+      b.hunger = clamp(b.hunger+28,0,100);
+      break;
+  }
+}
+
+/* ─── 밤 종료 후 기억 형성 ─── */
+function consolidateMemory(run, n){
+  const m=run.memory, s=n.stats;
+  const notes=[];
+  if(s.carrierTurns>=3){
+    m.carrier = clamp(m.carrier+0.35,0,1);
+    notes.push({type:"neg", text:"아기띠에서 잠드는 습관이 형성되었습니다.",
+      sub:"아기띠 진정 효과 ↑ / 침대에 눕히기 성공률 ↓"});
+  }
+  if(s.heldSleepTurns>=3 || s.grandma){
+    m.heldDep = clamp(m.heldDep+0.3,0,1);
+    notes.push({type:"neg", text: s.grandma ? "할머니 품의 기억이 남았습니다. 안겨 자는 것에 더 익숙해졌습니다."
+                                            : "안겨서 자는 것에 익숙해졌습니다.",
+      sub:"품에서는 빨리 잠듦 / 혼자 두면 쉽게 깸"});
+  }
+  if(s.noiseTurns>=4){
+    m.noiseHab = clamp(m.noiseHab+0.35,0,1);
+    notes.push({type:"neg", text:"백색소음에 익숙해졌습니다.",
+      sub:"백색소음기 효과 감소"});
+  }
+  if(s.watchOk>=2){
+    m.selfSoothe = clamp(m.selfSoothe+0.22,0,1);
+    notes.push({type:"pos", text:"스스로 진정하는 힘이 자랐습니다.",
+      sub:"혼자서 잠들 확률 ↑ — 의존 습관을 되돌리는 열쇠"});
+  }
+  if(notes.length===0){
+    notes.push({type:"pos", text:"뚜렷한 새 습관 없이 밤을 넘겼습니다.", sub:"아기는 아직 당신을 관찰하는 중"});
+  }
+  run.memoryNotes.push(...notes.map(x=>x.text));
+  run.nightResults.push({ result:n.result, wakes:n.stats.wakes, laydownFail:n.stats.laydownFail,
+                          staminaLeft:n.stats.staminaLeft, grandma:n.stats.grandma });
+  return notes;
+}
+
+/* ─── 규칙 기반 육아일지 (AI 폴백) ─── */
+function fallbackDiary(run, n){
+  const s=n.stats, lines=[];
+  lines.push(`${run.day}일째 밤.`);
+  if(s.laydownFail>0) lines.push(`오늘 이 사람은 나를 ${s.laydownFail+s.laydownOk}번 침대에 내려놓았다. 나는 ${s.laydownFail}번 눈을 떴다.`);
+  else if(s.laydownOk>0) lines.push(`침대에 내려놓는 손길이 제법 익숙해졌다. 한 번도 걸리지 않다니, 인정.`);
+  if(s.carrierTurns>=3) lines.push(`아기띠는 좋다. 흔들리고, 따뜻하고, 심장 소리가 들린다. 내일도 이걸 요구할 생각이다.`);
+  if(s.grandma) lines.push(`오늘 아주 능숙한 품을 만났다. 이 사람들, 왜 진작 부르지 않았지?`);
+  if(s.watchOk>=2) lines.push(`혼자 있는 시간이 생각보다 나쁘지 않았다. 조금은.`);
+  if(s.feeds>0 && s.refusals>0) lines.push(`배가 안 고픈데 자꾸 젖병을 물리려 한다. 나도 취향이 있다.`);
+  if(n.result==="crib") lines.push(`결국 침대에서 아침을 맞았다. …오늘만 봐준 거다.`);
+  else if(n.result==="arms") lines.push(`품 안에서 아침을 맞았다. 계획대로다.`);
+  else lines.push(`아침까지 버텼다. 내가 이겼다.`);
+  return lines.join("\n");
+}
+
+/* ─── AI 프록시 클라이언트 (JSON 스키마 검증 + 폴백) ─── */
+async function requestAIDiary(run, n){
+  if(!CONFIG.AI_PROXY_URL) return null;
+  const payload = {
+    day: run.day,
+    temperament: run.temperament.id,
+    memory: run.memory,
+    stats: n.stats,
+    result: n.result,
+    log: n.log.slice(-30).map(l=>l.text),
+  };
+  try{
+    const ctrl = new AbortController();
+    const timer = setTimeout(()=>ctrl.abort(), CONFIG.AI_TIMEOUT_MS);
+    const res = await fetch(CONFIG.AI_PROXY_URL, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(payload), signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+    if(!res.ok) return null;
+    return validateAIResponse(await res.json());
+  }catch(e){ return null; }
+}
+
+/* AI 응답 검증: 허용된 필드·범위만 통과 */
+function validateAIResponse(j){
+  if(!j || typeof j!=="object") return null;
+  const out = {};
+  if(typeof j.diary==="string" && j.diary.length>0 && j.diary.length<=600) out.diary = j.diary;
+  else return null;
+  if(Array.isArray(j.memory_notes))
+    out.memory_notes = j.memory_notes.filter(x=>typeof x==="string" && x.length<=120).slice(0,4);
+  if(j.bias && typeof j.bias==="object"){
+    out.bias = {};
+    for(const k of ["carrier","heldDep","noiseHab","selfSoothe"]){
+      if(typeof j.bias[k]==="number") out.bias[k] = clamp(j.bias[k], -0.15, 0.15);
+    }
+  }
+  return out;
+}
+
+function applyAIBias(run, ai){
+  if(!ai || !ai.bias) return;
+  for(const k in ai.bias) run.memory[k] = clamp(run.memory[k]+ai.bias[k], 0, 1);
+}
+
+/* ─── 엔딩 판정 ─── */
+function decideEnding(run){
+  const last = run.nightResults[run.nightResults.length-1];
+  const cribNights = run.nightResults.filter(x=>x.result==="crib").length;
+  const totalWakes = run.nightResults.reduce((a,x)=>a+x.wakes,0);
+  const m = run.memory;
+  if(last.result==="awake")
+    return { id:"lose", em:"🌞", title:"아침이 이겼다",
+      sub:"아기는 말똥말똥한 눈으로 일출을 감상 중.\n오늘 밤, 다시 해보자." };
+  if(cribNights>=2 && m.heldDep<0.4 && m.carrier<0.5)
+    return { id:"routine", em:"🏆", title:"완벽한 루틴",
+      sub:"아기가 침대에서 스스로 잠드는 습관을 만들었다.\n육아계의 명장. 온 동네가 비결을 물으러 온다." };
+  if(m.selfSoothe>=0.3)
+    return { id:"tailored", em:"🧠", title:"아기 맞춤형 부모",
+      sub:"의존 대신 스스로 잠드는 힘을 길러줬다.\n아기의 기질을 정확히 읽어낸 관찰의 승리." };
+  if(run.grandmaUsed)
+    return { id:"village", em:"👵", title:"온 마을 육아",
+      sub:"한 아이를 재우려면 온 마을이 필요하다.\n오늘의 평화, 내일의 습관. 그래도 잤으면 된 거다." };
+  return { id:"survivor", em:"🧟", title:"새벽의 생존자",
+    sub:"루틴은 없었다. 전략도 무너졌다.\n하지만 아침은 왔고, 아기는 잔다. 그거면 충분하다." };
+}
+/* ═══ LOGIC_END ═══ */
+if(typeof module!=="undefined") module.exports = { CONFIG, TEMPERAMENTS, ITEMS, newRun, newNight,
+  applyAction, endTurn, consolidateMemory, fallbackDiary, validateAIResponse, applyAIBias,
+  decideEnding, sleepStage, wakeBaby, hoursLeft };
+</script>
+
+<!-- ═════════════════ UI LAYER ═════════════════ -->
+<script>
+const UI = (()=>{
+  let run=null, night=null, chosen=[];
+  const $ = id=>document.getElementById(id);
+
+  function show(id){
+    document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+    $(id).classList.add("active");
+    window.scrollTo(0,0);
+  }
+
+  /* ── 런 시작 ── */
+  function startRun(){
+    run = newRun();
+    showItemSelect();
+  }
+
+  /* ── 아이템 선택 ── */
+  function showItemSelect(){
+    chosen = [];
+    $("items-title").textContent = `${run.day}일 차 밤 — 침실에 가져갈 육아용품`;
+    const grid = $("pickgrid"); grid.innerHTML="";
+    for(const key in ITEMS){
+      const it = ITEMS[key];
+      const div = document.createElement("div");
+      div.className="pick"; div.dataset.key=key;
+      div.innerHTML = `<div class="em">${it.em}</div><div><b>${it.name}</b><p>${it.desc}</p><p class="side">⚠ ${it.side}</p></div>`;
+      div.onclick = ()=>{
+        if(chosen.includes(key)) chosen = chosen.filter(k=>k!==key);
+        else if(chosen.length<3) chosen.push(key);
+        grid.querySelectorAll(".pick").forEach(p=>p.classList.toggle("on", chosen.includes(p.dataset.key)));
+        $("btn-night").disabled = chosen.length!==3;
+        $("btn-night").textContent = `이 조합으로 밤을 버틴다 (${chosen.length}/3)`;
+      };
+      grid.appendChild(div);
+    }
+    $("btn-night").disabled=true;
+    $("btn-night").textContent="이 조합으로 밤을 버틴다 (0/3)";
+    show("scr-items");
+  }
+
+  /* ── 밤 시작 ── */
+  function beginNight(){
+    night = newNight(run, chosen.slice());
+    pushNightIntro();
+    renderAll();
+    show("scr-night");
+  }
+
+  function pushNightIntro(){
+    const t = run.temperament;
+    if(run.day===1){
+      logLine(`밤 21시. 처음 만나는 아기와의 첫날 밤이다.`, "sys");
+      logLine(`👶 ${t.hint}`, "baby");
+    } else {
+      logLine(`${run.day}일 차 밤. 아기는 어제의 일들을 기억하고 있다.`, "sys");
+      const m = run.memory;
+      if(m.carrier>0.3) logLine(`👶 아기가 아기띠를 보자 눈을 반짝인다. …불길하다.`, "baby");
+      if(m.heldDep>0.3) logLine(`👶 내려놓으려는 낌새만 보여도 몸이 굳는다.`, "baby");
+      if(m.noiseHab>0.3) logLine(`👶 백색소음기를 틀어도 심드렁한 표정이다.`, "baby");
+      if(m.selfSoothe>0.15) logLine(`👶 혼자서도 제법 의젓하게 누워 있는다.`, "good");
+    }
+  }
+
+  /* ── 행동 ── */
+  function act(action){
+    if(!night || night.over) return;
+    const consumed = applyAction(run, night, action);
+    if(consumed) endTurn(run, night);
+    renderAll();
+    if(night.over) setTimeout(finishNight, 900);
+  }
+
+  function toggleItem(key){
+    if(!night || night.over) return;
+    if(key==="pacifier") applyAction(run, night, "pacifier");
+    else applyAction(run, night, "toggle-"+key);
+    renderAll();
+  }
+
+  /* ── 렌더 ── */
+  function renderAll(){
+    const b=night.baby, p=night.parent, stage=sleepStage(b);
+    $("daylabel").textContent = `${run.day}일 차`;
+    $("templabel").textContent = run.day>1 ? `· ${run.temperament.name}` : "";
+    $("clock").textContent = hourLabel(night.hour);
+    $("statusword").textContent = STAGE_KO[stage];
+    $("babyplace").textContent = (b.held||night.wearing.carrier) ? (night.wearing.carrier?"아기띠 안":"품 안")
+                                : night.wearing.bouncer ? "바운서" : "침대";
+
+    /* 아기 얼굴 + 연출 */
+    const asleep = stage==="deep"||stage==="shallow";
+    $("eyesOpen").style.display   = asleep?"none":"";
+    $("eyesClosed").style.display = asleep?"":"none";
+    $("tears").style.display      = stage==="cry"?"":"none";
+    const mouth = $("mouth");
+    if(stage==="cry")        mouth.setAttribute("d","M60 66 Q70 81 80 66");
+    else if(stage==="fussy") mouth.setAttribute("d","M63 71 Q70 65 77 71");
+    else if(asleep)          mouth.setAttribute("d","M66 70 Q70 73 74 70");
+    else                     mouth.setAttribute("d","M63 68 Q70 74 77 68");
+    const wrap = $("babywrap");
+    wrap.className = "st-"+stage;
+    const held = b.held || night.wearing.carrier;
+    wrap.style.bottom = held ? "38px" : "14px";
+    $("crib").style.display   = (!held && !night.wearing.bouncer) ? "" : "none";
+    $("rocker").style.display = (!held && night.wearing.bouncer) ? "" : "none";
+
+    /* 보호자 HUD */
+    $("stamina-num").textContent = Math.round(p.stamina)+"%";
+    $("stamina-fill").style.width = Math.round(p.stamina)+"%";
+    $("parentface").textContent = p.stamina>66 ? "💪" : p.stamina>33 ? "😮‍💨" : "🫠";
+
+    /* 아기 모니터 or 퍼지 관찰 */
+    const mon = $("monitor");
+    if(night.items.includes("monitor")){
+      mon.innerHTML = gauge("진정",b.calm,"calm")+gauge("수면",b.sleep,"sleep")+gauge("허기",b.hunger,"hunger");
+    } else {
+      const hungerHint = b.hunger>70?"🍼 입을 쩝쩝거린다 (배고픔?)":b.hunger>45?"슬슬 출출할 시간인지도":"&nbsp;";
+      mon.innerHTML = `<div class="fuzzy">👶 ${STAGE_KO[stage]} · ${b.calm>65?"편안해 보인다":b.calm>35?"뒤척인다":"불편해 보인다"}<br>
+        ${hungerHint}<br><span style="font-size:11px;">📟 베이비 모니터가 있다면 정확한 수치가 보일 텐데…</span></div>`;
+    }
+
+    /* 인벤토리 슬롯 */
+    const bar = $("itembar"); bar.innerHTML="";
+    for(const key of night.items){
+      const it=ITEMS[key];
+      const btn=document.createElement("button");
+      btn.className="slot";
+      let badge="";
+      if(key==="pacifier"){
+        badge = "×"+night.pacifierLeft;
+        btn.disabled = night.pacifierLeft<=0;
+      } else if(key==="monitor"){
+        badge = "ON"; btn.classList.add("on"); btn.disabled = true;
+      } else {
+        const on = night.wearing[key];
+        badge = on ? "ON" : "OFF";
+        btn.classList.toggle("on", !!on);
+      }
+      btn.innerHTML = `<span class="badge">${badge}</span><span class="em">${it.em}</span><span class="nm">${it.name}</span>`;
+      btn.onclick=()=>toggleItem(key);
+      bar.appendChild(btn);
+    }
+
+    /* 행동 버튼 상태 */
+    $("act-hold").disabled = b.held||night.wearing.carrier;
+    $("act-down").disabled = !(b.held||night.wearing.carrier);
+    $("act-grandma").disabled = run.grandmaUsed;
+    $("act-grandma").style.display = run.grandmaUsed ? "none":"";
+
+    renderLog();
+  }
+
+  function gauge(lbl,val,cls){
+    return `<div class="gaugerow"><span class="lbl">${lbl}</span>
+      <div class="gauge"><i class="${cls}" style="width:${Math.round(val)}%"></i></div>
+      <span style="width:30px;text-align:right;font-variant-numeric:tabular-nums;">${Math.round(val)}</span></div>`;
+  }
+
+  function logLine(text, cls){ night.log.push({text, cls, hour:night.hour}); }
+
+  function renderLog(){
+    const el=$("log");
+    el.innerHTML = night.log.slice(-40).map(l=>
+      `<div class="${l.cls||"sys"}"><span style="color:#555877">${hourLabel(l.hour)}</span> ${l.text}</div>`).join("");
+    el.scrollTop = el.scrollHeight;
+  }
+
+  /* ── 밤 종료 ── */
+  async function finishNight(){
+    const notes = consolidateMemory(run, night);
+    const res = night.result;
+    $("ne-result").innerHTML = res==="crib" ? "🌅 아기가 침대에서 아침을 맞았다"
+      : res==="arms" ? "🌅 품에 안긴 채 아침을 맞았다 <div style='font-size:12px;color:var(--dim)'>재우긴 했지만… 팔이 저리다</div>"
+      : "😵 아기는 끝내 잠들지 않았다";
+    $("ne-stats").innerHTML =
+      statRow("깬 횟수", night.stats.wakes+"회")+
+      statRow("눕히기 실패", night.stats.laydownFail+"회")+
+      statRow("남은 체력", Math.round(night.stats.staminaLeft)+"%")+
+      statRow("할머니 찬스", night.stats.grandma?"사용":"미사용");
+    $("ne-memory").innerHTML = notes.map(x=>
+      `<div class="memitem ${x.type}">${x.text}<small>${x.sub}</small></div>`).join("");
+    $("ne-next").textContent = run.day>=CONFIG.TOTAL_DAYS ? "사흘 밤의 결과를 본다" : "다음 밤을 준비한다";
+    $("ne-diary").innerHTML = `아기가 오늘 밤을 기억하는 중… <span class="spin" style="display:inline-block">🌙</span>`;
+    $("ne-ainote").textContent = "";
+    show("scr-nightend");
+
+    /* AI 일지 (폴백 포함) */
+    const ai = await requestAIDiary(run, night);
+    if(ai){
+      applyAIBias(run, ai);
+      $("ne-diary").textContent = ai.diary;
+      $("ne-ainote").textContent = "AI가 오늘 밤의 플레이 이력을 해석해 작성한 일지입니다.";
+    } else {
+      $("ne-diary").textContent = fallbackDiary(run, night);
+      $("ne-ainote").textContent = CONFIG.AI_PROXY_URL ? "AI 연결 실패 — 기본 기억 모델로 작성된 일지입니다." : "";
+    }
+  }
+
+  function statRow(k,v){ return `<div class="statrow"><span>${k}</span><b>${v}</b></div>`; }
+
+  function nextDay(){
+    if(run.day>=CONFIG.TOTAL_DAYS){ showEnding(); return; }
+    run.day++;
+    showItemSelect();
+  }
+
+  /* ── 엔딩 ── */
+  function showEnding(){
+    const end = decideEnding(run);
+    const totalWakes = run.nightResults.reduce((a,x)=>a+x.wakes,0);
+    const totalFails = run.nightResults.reduce((a,x)=>a+x.laydownFail,0);
+    $("end-emoji").textContent = end.em;
+    $("end-title").textContent = end.title;
+    $("end-sub").textContent = end.sub;
+    $("end-stats").innerHTML =
+      `아기 기질: <b>${run.temperament.name}</b> · 사흘간 깬 횟수 <b>${totalWakes}회</b><br>` +
+      `눕히기 실패 <b>${totalFails}회</b> · 할머니 찬스 <b>${run.grandmaUsed?"1회":"0회"}</b><br><br>` +
+      `“${end.id==="lose" ? "오늘도 아기가 승리했습니다." : "오늘 밤, 당신은 살아남았습니다."}”`;
+    $("end-habits").innerHTML = [...new Set(run.memoryNotes)].map(t=>
+      `<div class="memitem">${t}</div>`).join("") || `<div class="memitem">형성된 습관 없음 — 미스터리한 아기</div>`;
+    show("scr-ending");
+  }
+
+  return { startRun, beginNight, act, nextDay };
+})();
+</script>
+</body>
+</html>
