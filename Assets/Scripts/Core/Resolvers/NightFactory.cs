@@ -9,6 +9,11 @@ namespace NotANap.Core
     /// </summary>
     public static class NightFactory
     {
+        public static NightState CreateV2Night(RunState run, IReadOnlyList<ItemId> items,
+            BabyProfile profile, GameBalanceConfig config,
+            NightModifierId modifier = NightModifierId.None,
+            IEnumerable<ProductCapability> capabilities = null)
+            => V2NightFactory.Create(run, items, profile, config, modifier, capabilities);
         public static int ItemSlots(NightId nightId)
             => nightId == NightId.HundredthNight
                 ? GameConfig.FinalNightItemSlots

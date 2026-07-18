@@ -6,6 +6,9 @@ namespace NotANap.Core
     /// </summary>
     public static class ActionResolver
     {
+        public static V2ActionOutcome ApplyV2(RunState run, NightState night, V2ActionId action,
+            GameBalanceConfig config, IRandomSource rng)
+            => V2ActionResolver.Apply(run, night, action, config, rng);
         public static ActionOutcome Apply(RunState run, NightState night, GameAction action, IRandomSource rng)
         {
             var outcome = new ActionOutcome { Action = action, Accepted = true, ConsumedTurn = true };

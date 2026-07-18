@@ -22,7 +22,11 @@ namespace NotANap.Core
     public enum ActionId
     {
         Hold, Pat, Feed, Laydown, Watch, Grandma, Pacifier,
-        ToggleCarrier, ToggleNoise, ToggleBouncer
+        ToggleCarrier, ToggleNoise, ToggleBouncer,
+        CheckDiaper, ChangeDiaper, CheckHungerSignals, CheckEnvironment,
+        AdjustTemperature, AdjustHumidity, Hesitate, CheckLimbRelaxation,
+        SterilizeBottle, PrepareWater, MeasureFormula, MixFormula, CoolBottle,
+        CheckBottleTemperature, FeedPreparedBottle, HoldWhilePreparing
     }
 
     /// <summary>Presentation이 현지화 문구로 변환하는 의미 기반 이벤트.</summary>

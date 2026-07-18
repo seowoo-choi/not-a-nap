@@ -20,5 +20,7 @@ namespace NotANap.Core
         public bool BareHandsLaydown;
         /// <summary>습관(memory)으로 인한 확률/효과 보정이 적용되었는지.</summary>
         public bool HabitPenaltyApplied;
+        /// <summary>V2 행동을 기존 진입점에서 호출한 경우의 구조화 결과.</summary>
+        public V2ActionOutcome V2;
     }
 }

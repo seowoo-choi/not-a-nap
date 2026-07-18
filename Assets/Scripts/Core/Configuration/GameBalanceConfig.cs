@@ -24,6 +24,7 @@ namespace NotANap.Core
         public double SelfSootheGain = .22;
         public VictoryRuleDefinition Victory = VictoryRuleDefinition.Default();
         public FeatureFlags Features = new FeatureFlags();
+        public V2BalanceConfig V2 = V2BalanceConfig.Default();
         public readonly Dictionary<string, TemperamentModifierDefinition> TemperamentModifiers =
             new Dictionary<string, TemperamentModifierDefinition>
             {
@@ -33,6 +34,62 @@ namespace NotANap.Core
             };
 
         public static GameBalanceConfig Default() => new GameBalanceConfig();
+    }
+
+    public sealed class V2BalanceConfig
+    {
+        public readonly Dictionary<NightModifierId, NightModifierState> NightModifiers =
+            new Dictionary<NightModifierId, NightModifierState>
+            {
+                { NightModifierId.None, new NightModifierState { Id = NightModifierId.None } },
+                { NightModifierId.Vaccination, new NightModifierState
+                    {
+                        Id = NightModifierId.Vaccination,
+                        WakeFrequencyMultiplier = 1.35,
+                        CryEscalationMultiplier = 1.25,
+                        SleepGainMultiplier = .85,
+                        ComfortActionModifier = 1.10,
+                        FeedingNeedModifier = 1.10
+                    }
+                }
+            };
+        public int NightDurationMinutes = 540;
+        public int DefaultActionMinutes = 15;
+        public int DiagnosisActionMinutes = 10;
+        public int PreparationActionMinutes = 15;
+        public int DecisionSeconds = 20;
+        public double MisdiagnosisStaminaPenalty = 6;
+        public double MisdiagnosisCryIncrease = 12;
+        public double HesitationStaminaPenalty = 4;
+        public double HesitationCryIncrease = 10;
+        public int WakeDelayMinMinutes = 45;
+        public int WakeDelayMaxMinutes = 120;
+        public double RecommendedTemperatureMin;
+        public double RecommendedTemperatureMax;
+        public double RecommendedHumidityMin;
+        public double RecommendedHumidityMax;
+        public double TemperatureAdjustment;
+        public double HumidityAdjustment;
+        public double EnvironmentAdjustmentStaminaCost = 4;
+        public double DeepSleepLaydownBonus = .25;
+        public double RemLaydownWakeChance = .75;
+        public double PacifierLovesCalmGain = 22;
+        public double PacifierNeutralCalmGain = 12;
+        public double HoldPreparingCryMultiplier = .35;
+        public double FeedingHungerReduction = 65;
+        public double FeedingCalmGain = 20;
+        public double FeedingPreparationStaminaCost = 3;
+        public double HoldPreparingExtraStaminaCost = 5;
+        public int GradeSLongestMinutes = 300;
+        public int GradeALongestMinutes = 240;
+        public int GradeBLongestMinutes = 180;
+        public int GradeCLongestMinutes = 120;
+        public double HungerEarlyThreshold = 35;
+        public double HungerActiveThreshold = 60;
+        public double HungerLateThreshold = 82;
+        public double SleepMinuteGain = 1;
+
+        public static V2BalanceConfig Default() => new V2BalanceConfig();
     }
 
     public sealed class TemperamentModifierDefinition

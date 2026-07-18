@@ -22,6 +22,8 @@ namespace NotANap.Core
         public NightOutcome? Result;
         /// <summary>이 밤에 소비된 턴 수 (21→06 = 9턴).</summary>
         public int ConsumedTurns;
+        /// <summary>V2 분 단위 루프. V1 API와 저장 호환을 위해 별도 합성 상태로 둔다.</summary>
+        public V2NightState V2;
 
         // ── 백일째 밤 전용 상태 ──
         /// <summary>이 밤에 발동 예정인 습관 표적 방해 이벤트 (최대 2개, 결정론적 선택).</summary>

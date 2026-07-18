@@ -58,6 +58,16 @@
 - 기질별 바운서 불이익을 장기 계약으로 검증하던 테스트는 일반적인 기질 modifier 테스트로 변경했다.
 - 수면 성공 아이템에서는 제거 예정이며 대체 아이템은 안전성 검토와 최종 기획 이후 확정한다.
 
+## V2 Phase 0 Core
+
+- `NightState.V2` 합성 상태에 분 단위 시계, `NightMetrics`, 수면 주기, 진단, 환경, 수유 준비, 프로필, modifier를 둔다.
+- `NightFactory.CreateV2Night`, `ActionResolver.ApplyV2`, `TurnResolver.AdvanceMinutes`가 V2 진입점이다. 기존 V1 API는 삭제하지 않았다.
+- 눕히기 성공 후에도 밤은 계속되고 `WakeScheduler`가 자연 주기·허기·기저귀·환경·모로반사·컨디션 각성을 결정론적으로 예약한다.
+- `NightEvaluationResolver`는 설정 가능한 S~D 경계로 06:00 지표를 평가한다.
+- 실제 의료 범위, 제품 브랜드, UI 문구는 포함하지 않는다.
+- `ItemId.Bouncer`는 기존 세이브 역직렬화를 위해 남지만 `V2NightFactory.SelectableItems`에서는 제외한다.
+- 기준 문서로 지정된 `docs/NOT_A_NAP_상세_스토리보드_개발명세.md`는 감사 시 저장소에 없었다. 현존하는 `docs/storyboard-dev-spec.md`는 V1 Presentation 명세여서 V2 규칙의 원본으로 사용하지 않았다.
+
 ### 문서/프로토타입에만 있음
 
 - 인수인계 UI, 엄마 깨우기 UI, 활성수면 튜토리얼, 배고픔 단서 애니메이션, 저자극 수유 UI
@@ -86,6 +96,7 @@
 - `-runTests`와 `-quit`를 함께 넘기면 `-quit`가 테스트 러너 시작 전에 에디터를 종료시켜 결과 XML이 생성되지 않는다. `-quit`를 제거하자 러너가 정상 실행됐다.
 - 최초 실행 결과 54개 중 53개 통과, 1개 실패(`RequiredVictoryCountComesFromDefinition`). 이는 production 버그가 아니라 테스트가 `new NightState()` 기본값(체력 ≥ 30)을 통제하지 않아 승리 조건이 2개 충족된 것이었다. 테스트에서 체력을 임계값 미만으로 고정해 조건을 정확히 1개로 만든 뒤 재실행했다.
 - 최종: EditMode 54개 전체 실행, 54개 통과, 실패 0, skipped/inconclusive 0. 결과 XML `TestResults/EditMode-results.xml` 생성(gitignore 처리됨).
+- V2 Phase 0 추가 후 `-quit` 없이 최종 재실행: EditMode 94개 전체 실행, 94개 통과, 실패·skipped·inconclusive 0. Core assembly 85개와 기존 사용자 Presentation assembly 9개를 포함하며 결과는 `TestResults/EditMode-results-v2.xml`에 저장됐다.
 
 ## 변경 위험이 높은 영역
 

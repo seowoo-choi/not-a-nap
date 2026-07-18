@@ -8,6 +8,9 @@ namespace NotANap.Core
     /// </summary>
     public static class TurnResolver
     {
+        public static void AdvanceMinutes(RunState run, NightState night, int minutes,
+            GameBalanceConfig config, IRandomSource rng)
+            => V2TimeResolver.Advance(run, night, minutes, config, rng);
         public static void EndTurn(RunState run, NightState night, IRandomSource rng)
         {
             if (night.Over) return;
