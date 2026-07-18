@@ -6,7 +6,7 @@ NHN NAN 2026 해커톤 사전 과제. Unity 2D → WebGL 빌드 → GitHub Pages
 
 ## 절대 규칙
 - 게임 판정(수치·확률·승패)은 전부 결정론적 C# 엔진이 담당한다. LLM은 판정하지 않는다.
-- AI(LLM)는 밤 종료 시 1회만 호출: 플레이 이력 → 육아일지 + 기억 편향(bias). 실패 시 규칙 기반 폴백.
+- AI(LLM)는 밤 종료 시 1회만 호출해 육아일지 등 서술만 생성한다. 게임 상태와 판정은 변경하지 않으며 실패 시 규칙 기반 폴백을 사용한다.
 - API 키를 유니티 빌드/저장소에 절대 넣지 않는다. 서버리스 프록시 URL만 설정한다.
 - 코어 로직(GameCore)은 MonoBehaviour 없는 순수 C#으로 작성해 Unity Test Framework로 테스트한다.
 - Reference/prototype.html의 <script id="game-logic"> 블록이 1~2일차 밸런스 원본이다.
