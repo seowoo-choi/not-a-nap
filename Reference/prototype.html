@@ -736,18 +736,7 @@ function validateAIResponse(j){
   else return null;
   if(Array.isArray(j.memory_notes))
     out.memory_notes = j.memory_notes.filter(x=>typeof x==="string" && x.length<=120).slice(0,4);
-  if(j.bias && typeof j.bias==="object"){
-    out.bias = {};
-    for(const k of ["carrier","heldDep","noiseHab","selfSoothe"]){
-      if(typeof j.bias[k]==="number") out.bias[k] = clamp(j.bias[k], -0.15, 0.15);
-    }
-  }
   return out;
-}
-
-function applyAIBias(run, ai){
-  if(!ai || !ai.bias) return;
-  for(const k in ai.bias) run.memory[k] = clamp(run.memory[k]+ai.bias[k], 0, 1);
 }
 
 /* ─── 엔딩 판정 ─── */
@@ -773,7 +762,7 @@ function decideEnding(run){
 }
 /* ═══ LOGIC_END ═══ */
 if(typeof module!=="undefined") module.exports = { CONFIG, TEMPERAMENTS, ITEMS, newRun, newNight,
-  applyAction, endTurn, consolidateMemory, fallbackDiary, validateAIResponse, applyAIBias,
+  applyAction, endTurn, consolidateMemory, fallbackDiary, validateAIResponse,
   decideEnding, sleepStage, wakeBaby, hoursLeft };
 </script>
 
@@ -968,7 +957,6 @@ const UI = (()=>{
     /* AI 일지 (폴백 포함) */
     const ai = await requestAIDiary(run, night);
     if(ai){
-      applyAIBias(run, ai);
       $("ne-diary").textContent = ai.diary;
       $("ne-ainote").textContent = "AI가 오늘 밤의 플레이 이력을 해석해 작성한 일지입니다.";
     } else {
