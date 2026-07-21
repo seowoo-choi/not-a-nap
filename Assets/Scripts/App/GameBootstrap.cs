@@ -40,7 +40,21 @@ namespace NotANap.App
         private GUIStyle _tabSelected;
         private Texture2D _speechBubble;
 
+        private System.Random _ambientRandom;
+        private int _ambientFrame;
+        private int _previousAmbientFrame;
+        private float _ambientTransitionStarted;
+        private float _ambientTransitionDuration = 0.24f;
+        private float _nextAmbientMotionAt;
+        private float _nextBabbleAt;
+        private float _babbleUntil;
+        private string _currentBabble;
+        private V2ActionOutcome _trackedVisualOutcome;
+        private float _visualOutcomeUntil;
+
         private static readonly string[] AwakeBabble = { "아우…", "으응?", "응아", "에…", "아으" };
+        private static readonly string[] FussBabble = { "으응…", "에에…", "아으…" };
+        private static readonly string[] CryBabble = { "으아앙!", "에앵!", "아앙…" };
 
         private enum ActionGroup { Diagnose, Care, Feed }
 
@@ -58,6 +72,9 @@ namespace NotANap.App
             _flow = new GameFlowController(new SystemRandomSource(Environment.TickCount));
             _babyVisual = new BabyVisualPresenter();
             _room = Resources.Load<Texture2D>("Art/nursery-night-empty");
+            _ambientRandom = new System.Random(Environment.TickCount ^ GetInstanceID());
+            _nextAmbientMotionAt = Time.unscaledTime + RandomRange(0.4f, 1.4f);
+            _nextBabbleAt = Time.unscaledTime + RandomRange(1.8f, 4.5f);
         }
 
         private void EnsureStyles()
@@ -242,6 +259,7 @@ namespace NotANap.App
                 _actionEncounterSequence = encounterSequence;
                 _actionGroup = ActionGroup.Diagnose;
             }
+            UpdateBabyAmbient(vm);
 
             if (_portrait)
             {
@@ -299,13 +317,9 @@ namespace NotANap.App
             Fill(rect, new Color(0.01f, 0.025f, 0.05f, 0.38f));
             bool crying = vm.CryIntensity > 35 && vm.SleepStage == V2SleepStage.Awake;
             bool sleeping = vm.SleepStage == V2SleepStage.RemActiveSleep || vm.SleepStage == V2SleepStage.NremDeepSleep;
-            var texture = _babyVisual.AnimationFrameFor(vm, _lastResult?.Outcome, CurrentAnimationFrame());
-            if (texture != null)
-            {
-                var babyRect = new Rect(rect.x + rect.width * 0.5f - 175, rect.y + 14, 350, 350);
-                DrawAnimatedBaby(vm, texture, babyRect);
-                DrawBabbleBubble(vm, babyRect, true);
-            }
+            var babyRect = new Rect(rect.x + rect.width * 0.5f - 175, rect.y + 14, 350, 350);
+            DrawAnimatedBaby(vm, babyRect);
+            DrawBabbleBubble(vm, babyRect, true);
 
             string state = crying ? "으앙! 지금 울고 있어요" : sleeping ? "새근새근 잠들었어요" : "눈을 뜨고 살피고 있어요";
             GUI.Label(new Rect(rect.x + 45, rect.y + 340, rect.width - 90, 48), state, Centered(_headline));
@@ -314,23 +328,20 @@ namespace NotANap.App
 
         private void DrawLandscapeBaby(V2PlayViewModel vm)
         {
-            var texture = _babyVisual.AnimationFrameFor(vm, _lastResult?.Outcome, CurrentAnimationFrame());
-            if (texture != null)
-            {
-                var babyRect = new Rect(690, 210, 520, 520);
-                DrawAnimatedBaby(vm, texture, babyRect);
-                DrawBabbleBubble(vm, babyRect, false);
-            }
+            var babyRect = new Rect(690, 210, 520, 520);
+            DrawAnimatedBaby(vm, babyRect);
+            DrawBabbleBubble(vm, babyRect, false);
         }
 
-        private static void DrawAnimatedBaby(V2PlayViewModel vm, Texture2D texture, Rect baseRect)
+        private void DrawAnimatedBaby(V2PlayViewModel vm, Rect baseRect)
         {
             bool sleeping = IsSleeping(vm);
-            float speed = sleeping ? 1.25f : vm.CryIntensity > 35 ? 5.2f : 2.15f;
-            float phase = Time.unscaledTime * speed;
+            float now = Time.unscaledTime;
+            float phase = now * (sleeping ? 1.1f : 1.55f);
             float breath = (Mathf.Sin(phase) + 1f) * 0.5f;
-            float scale = 1f + breath * (sleeping ? 0.012f : 0.022f);
-            float wiggle = sleeping ? 0f : Mathf.Sin(phase * 0.63f) * (vm.CryIntensity > 35 ? 5f : 2.2f);
+            float scale = 1f + breath * (sleeping ? 0.014f : 0.009f);
+            float wiggle = sleeping ? 0f : Mathf.Sin(now * 0.73f) * 1.4f + Mathf.Sin(now * 1.17f) * 0.7f;
+            if (vm.CryIntensity > 35) wiggle += Mathf.Sin(now * 5.3f) * 3.5f;
             float width = baseRect.width * scale;
             float height = baseRect.height * scale;
             var animated = new Rect(
@@ -338,27 +349,33 @@ namespace NotANap.App
                 baseRect.center.y - height * 0.5f - breath * (sleeping ? 3f : 6f),
                 width,
                 height);
-            GUI.DrawTexture(animated, texture, ScaleMode.ScaleToFit, true);
-        }
 
-        private static int CurrentAnimationFrame()
-            => Mathf.FloorToInt(Time.unscaledTime * 2.6f) % 4;
+            var outcome = ActiveVisualOutcome();
+            var current = _babyVisual.AnimationFrameFor(vm, outcome, _ambientFrame);
+            var previous = _babyVisual.AnimationFrameFor(vm, outcome, _previousAmbientFrame);
+            float blend = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((now - _ambientTransitionStarted) / _ambientTransitionDuration));
+            Color oldColor = GUI.color;
+            if (current == previous)
+            {
+                if (current != null) GUI.DrawTexture(animated, current, ScaleMode.ScaleToFit, true);
+                return;
+            }
+            if (previous != null && blend < 1f)
+            {
+                GUI.color = new Color(oldColor.r, oldColor.g, oldColor.b, oldColor.a * (1f - blend));
+                GUI.DrawTexture(animated, previous, ScaleMode.ScaleToFit, true);
+            }
+            if (current != null)
+            {
+                GUI.color = new Color(oldColor.r, oldColor.g, oldColor.b, oldColor.a * blend);
+                GUI.DrawTexture(animated, current, ScaleMode.ScaleToFit, true);
+            }
+            GUI.color = oldColor;
+        }
 
         private void DrawBabbleBubble(V2PlayViewModel vm, Rect babyRect, bool portrait)
         {
-            if (IsSleeping(vm)) return;
-
-            float cycle = Mathf.Repeat(Time.unscaledTime, 5.4f);
-            if (cycle > (vm.CryIntensity > 35 ? 2.5f : 1.65f)) return;
-
-            string babble;
-            if (vm.CryIntensity > 35) babble = "으아앙!";
-            else if (vm.CryIntensity > 0) babble = "으응…";
-            else
-            {
-                int index = Mathf.FloorToInt(Time.unscaledTime / 5.4f) % AwakeBabble.Length;
-                babble = AwakeBabble[index];
-            }
+            if (IsSleeping(vm) || Time.unscaledTime >= _babbleUntil || string.IsNullOrEmpty(_currentBabble)) return;
 
             float bubbleWidth = portrait ? 190f : 220f;
             float bubbleHeight = portrait ? 74f : 82f;
@@ -371,8 +388,61 @@ namespace NotANap.App
             GUI.DrawTexture(new Rect(bubble.x - 17f, bubble.y + bubble.height * 0.62f, 13f, 13f), _speechBubble, ScaleMode.StretchToFill, true);
             GUI.DrawTexture(new Rect(bubble.x - 31f, bubble.y + bubble.height * 0.76f, 8f, 8f), _speechBubble, ScaleMode.StretchToFill, true);
             var style = LabelStyle(portrait ? 28 : 31, FontStyle.Bold, new Color(0.09f, 0.12f, 0.17f), TextAnchor.MiddleCenter);
-            GUI.Label(bubble, babble, style);
+            GUI.Label(bubble, _currentBabble, style);
         }
+
+        private void UpdateBabyAmbient(V2PlayViewModel vm)
+        {
+            float now = Time.unscaledTime;
+            bool sleeping = IsSleeping(vm);
+
+            if (now >= _nextAmbientMotionAt)
+            {
+                _previousAmbientFrame = _ambientFrame;
+                int candidate = sleeping
+                    ? (_ambientFrame + _ambientRandom.Next(1, 4)) % 4
+                    : _ambientFrame == 0 ? _ambientRandom.Next(1, 4) : 0;
+                _ambientFrame = candidate;
+                _ambientTransitionStarted = now;
+                _ambientTransitionDuration = RandomRange(sleeping ? 0.32f : 0.16f, sleeping ? 0.58f : 0.34f);
+                if (sleeping)
+                    _nextAmbientMotionAt = now + RandomRange(0.9f, 2.8f);
+                else if (_ambientFrame == 0)
+                    _nextAmbientMotionAt = now + RandomRange(vm.CryIntensity > 35 ? 0.3f : 0.8f, vm.CryIntensity > 35 ? 1.0f : 4.2f);
+                else
+                    _nextAmbientMotionAt = now + RandomRange(0.24f, 0.72f);
+            }
+
+            if (sleeping)
+            {
+                _currentBabble = null;
+                _babbleUntil = 0f;
+                if (_nextBabbleAt < now) _nextBabbleAt = now + RandomRange(2.5f, 6f);
+                return;
+            }
+
+            if (now >= _nextBabbleAt)
+            {
+                string[] choices = vm.CryIntensity > 35 ? CryBabble : vm.CryIntensity > 0 ? FussBabble : AwakeBabble;
+                _currentBabble = choices[_ambientRandom.Next(choices.Length)];
+                _babbleUntil = now + RandomRange(vm.CryIntensity > 35 ? 1.5f : 0.9f, vm.CryIntensity > 35 ? 2.8f : 1.9f);
+                _nextBabbleAt = _babbleUntil + RandomRange(vm.CryIntensity > 35 ? 1.4f : 3.2f, vm.CryIntensity > 35 ? 4f : 9.5f);
+            }
+        }
+
+        private V2ActionOutcome ActiveVisualOutcome()
+        {
+            var latest = _lastResult?.Outcome;
+            if (!ReferenceEquals(latest, _trackedVisualOutcome))
+            {
+                _trackedVisualOutcome = latest;
+                _visualOutcomeUntil = Time.unscaledTime + 1.35f;
+            }
+            return latest != null && Time.unscaledTime < _visualOutcomeUntil ? latest : null;
+        }
+
+        private float RandomRange(float min, float max)
+            => min + (float)_ambientRandom.NextDouble() * (max - min);
 
         private static bool IsSleeping(V2PlayViewModel vm)
             => vm.SleepStage == V2SleepStage.RemActiveSleep || vm.SleepStage == V2SleepStage.NremDeepSleep;
