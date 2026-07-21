@@ -38,6 +38,7 @@ namespace NotANap.App
         private GUIStyle _buttonSelected;
         private GUIStyle _tabButton;
         private GUIStyle _tabSelected;
+        private Texture2D _speechBubble;
 
         private static readonly string[] AwakeBabble = { "아우…", "으응?", "응아", "에…", "아으" };
 
@@ -75,6 +76,7 @@ namespace NotANap.App
             _buttonSelected = ButtonStyle(23, new Color(0.78f, 0.54f, 0.23f, 0.98f), new Color(0.95f, 0.76f, 0.44f), Color.white);
             _tabButton = ButtonStyle(18, new Color(0.07f, 0.11f, 0.17f, 0.94f), new Color(0.28f, 0.36f, 0.45f), new Color(0.82f, 0.85f, 0.88f));
             _tabSelected = ButtonStyle(18, new Color(0.78f, 0.54f, 0.23f, 0.98f), new Color(0.95f, 0.76f, 0.44f), Color.white);
+            _speechBubble = RoundedTexture(new Color(0.97f, 0.94f, 0.87f, 0.98f), 14);
         }
 
         private GUIStyle LabelStyle(int size, FontStyle weight, Color color, TextAnchor align = TextAnchor.UpperLeft)
@@ -113,6 +115,22 @@ namespace NotANap.App
         {
             var texture = new Texture2D(1, 1) { hideFlags = HideFlags.HideAndDontSave };
             texture.SetPixel(0, 0, color);
+            texture.Apply();
+            return texture;
+        }
+
+        private static Texture2D RoundedTexture(Color color, int radius)
+        {
+            const int width = 64;
+            const int height = 32;
+            var texture = new Texture2D(width, height) { hideFlags = HideFlags.HideAndDontSave };
+            for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
+            {
+                float dx = Mathf.Max(radius - x, x - (width - radius - 1), 0);
+                float dy = Mathf.Max(radius - y, y - (height - radius - 1), 0);
+                texture.SetPixel(x, y, dx * dx + dy * dy <= radius * radius ? color : Color.clear);
+            }
             texture.Apply();
             return texture;
         }
@@ -277,7 +295,7 @@ namespace NotANap.App
             Panel(rect, 0.78f);
             bool crying = vm.CryIntensity > 35 && vm.SleepStage == V2SleepStage.Awake;
             bool sleeping = vm.SleepStage == V2SleepStage.RemActiveSleep || vm.SleepStage == V2SleepStage.NremDeepSleep;
-            var texture = _babyVisual.TextureFor(vm, _lastResult?.Outcome);
+            var texture = _babyVisual.AnimationFrameFor(vm, _lastResult?.Outcome, CurrentAnimationFrame());
             if (texture != null)
             {
                 var babyRect = new Rect(rect.x + rect.width * 0.5f - 175, rect.y + 14, 350, 350);
@@ -292,7 +310,7 @@ namespace NotANap.App
 
         private void DrawLandscapeBaby(V2PlayViewModel vm)
         {
-            var texture = _babyVisual.TextureFor(vm, _lastResult?.Outcome);
+            var texture = _babyVisual.AnimationFrameFor(vm, _lastResult?.Outcome, CurrentAnimationFrame());
             if (texture != null)
             {
                 var babyRect = new Rect(690, 210, 520, 520);
@@ -319,6 +337,9 @@ namespace NotANap.App
             GUI.DrawTexture(animated, texture, ScaleMode.ScaleToFit, true);
         }
 
+        private static int CurrentAnimationFrame()
+            => Mathf.FloorToInt(Time.unscaledTime * 2.6f) % 4;
+
         private void DrawBabbleBubble(V2PlayViewModel vm, Rect babyRect, bool portrait)
         {
             if (IsSleeping(vm)) return;
@@ -338,12 +359,13 @@ namespace NotANap.App
             float bubbleWidth = portrait ? 190f : 220f;
             float bubbleHeight = portrait ? 74f : 82f;
             var bubble = new Rect(
-                babyRect.xMax - (portrait ? 155f : 85f),
+                babyRect.xMax - (portrait ? 18f : 38f),
                 babyRect.y + (portrait ? 30f : 40f),
                 bubbleWidth,
                 bubbleHeight);
-            Fill(bubble, new Color(0.97f, 0.94f, 0.87f, 0.96f));
-            Fill(new Rect(bubble.x + 24f, bubble.yMax, 24f, 18f), new Color(0.97f, 0.94f, 0.87f, 0.96f));
+            GUI.DrawTexture(bubble, _speechBubble, ScaleMode.StretchToFill, true);
+            GUI.DrawTexture(new Rect(bubble.x - 17f, bubble.y + bubble.height * 0.62f, 13f, 13f), _speechBubble, ScaleMode.StretchToFill, true);
+            GUI.DrawTexture(new Rect(bubble.x - 31f, bubble.y + bubble.height * 0.76f, 8f, 8f), _speechBubble, ScaleMode.StretchToFill, true);
             var style = LabelStyle(portrait ? 28 : 31, FontStyle.Bold, new Color(0.09f, 0.12f, 0.17f), TextAnchor.MiddleCenter);
             GUI.Label(bubble, babble, style);
         }

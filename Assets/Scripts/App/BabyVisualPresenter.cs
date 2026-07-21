@@ -28,6 +28,9 @@ namespace NotANap.App
         }
 
         private readonly Dictionary<VisualState, Texture2D> _textures = new Dictionary<VisualState, Texture2D>();
+        private readonly Texture2D[] _awakeFrames = new Texture2D[4];
+        private readonly Texture2D[] _fussFrames = new Texture2D[4];
+        private readonly Texture2D[] _sleepFrames = new Texture2D[4];
 
         public BabyVisualPresenter()
         {
@@ -43,10 +46,27 @@ namespace NotANap.App
             Load(VisualState.MoroStartle, "moro_startle");
             Load(VisualState.PacifierAccept, "pacifier_accept");
             Load(VisualState.PacifierReject, "pacifier_reject");
+            LoadFrames(_awakeFrames, "awake");
+            LoadFrames(_fussFrames, "fuss");
+            LoadFrames(_sleepFrames, "sleep");
         }
 
         public Texture2D TextureFor(V2PlayViewModel vm, V2ActionOutcome latestOutcome)
             => _textures.TryGetValue(Resolve(vm, latestOutcome), out var texture) ? texture : null;
+
+        public Texture2D AnimationFrameFor(V2PlayViewModel vm, V2ActionOutcome latestOutcome, int frame)
+        {
+            VisualState state = Resolve(vm, latestOutcome);
+            Texture2D[] frames = null;
+            if (state == VisualState.AwakeCalm) frames = _awakeFrames;
+            else if (state == VisualState.FussSoft) frames = _fussFrames;
+            else if (state == VisualState.Drowsy || state == VisualState.RemActive ||
+                     state == VisualState.NremDeep || state == VisualState.Relaxed) frames = _sleepFrames;
+
+            if (frames != null && frames[frame % frames.Length] != null)
+                return frames[frame % frames.Length];
+            return TextureFor(vm, latestOutcome);
+        }
 
         public VisualState Resolve(V2PlayViewModel vm, V2ActionOutcome latestOutcome)
         {
@@ -80,5 +100,11 @@ namespace NotANap.App
 
         private void Load(VisualState state, string fileName)
             => _textures[state] = Resources.Load<Texture2D>($"Art/Baby/{fileName}");
+
+        private static void LoadFrames(Texture2D[] frames, string prefix)
+        {
+            for (int i = 0; i < frames.Length; i++)
+                frames[i] = Resources.Load<Texture2D>($"Art/Baby/Animated/{prefix}_{i}");
+        }
     }
 }
