@@ -241,15 +241,16 @@ namespace NotANap.Core.Tests
             var result = V2ActionResolver.Apply(run, Night(run, config), V2ActionId.FeedPreparedBottle,
                 config, new SequenceRandomSource(0));
             Assert.IsFalse(result.Accepted);
-            Assert.AreEqual(6, result.MissingPreparationSteps.Count);
+            Assert.AreEqual(5, result.MissingPreparationSteps.Count);
+            CollectionAssert.DoesNotContain(result.MissingPreparationSteps, FeedingPreparationStep.SanitizeBottle);
             Assert.IsTrue(run.Traces.Contains(CoreTraceIds.FeedingAttemptedBeforeReady));
         }
 
         [Test]
-        public void PreSanitizedCapabilitySkipsSanitizingStep()
+        public void BottleIsSanitizedByDefault()
         {
             var config = GameBalanceConfig.Default();
-            var night = Night(config: config, capabilities: new[] { ProductCapability.PreSanitizedBottle });
+            var night = Night(config: config);
             Assert.IsTrue(night.V2.Feeding.BottleSanitized);
             var result = V2ActionResolver.Apply(RunState.Create(Temperament.Soft), night,
                 V2ActionId.FeedPreparedBottle, config, new SequenceRandomSource(0));

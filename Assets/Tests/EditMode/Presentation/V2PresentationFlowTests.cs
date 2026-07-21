@@ -27,6 +27,17 @@ namespace NotANap.Presentation.Tests
             Assert.IsNotNull(flow.Session.Night.V2);
             Assert.AreEqual("21:00", flow.BuildV2Play().Clock);
             Assert.AreEqual(540, flow.BuildV2Play().RemainingMinutes);
+            Assert.IsFalse(flow.BuildV2Play().Actions.Any(a => a.Action == V2ActionId.SterilizeBottle));
+        }
+
+        [Test]
+        public void SterilizeActionAppearsOnlyForExceptionalUnsanitizedBottle()
+        {
+            var flow = StartV2();
+            flow.Session.Night.V2.Feeding.BottleSanitized = false;
+
+            Assert.IsTrue(flow.BuildV2Play().Actions.Any(a =>
+                a.Action == V2ActionId.SterilizeBottle && a.Enabled));
         }
 
         [Test]

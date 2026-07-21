@@ -307,12 +307,16 @@ namespace NotANap.Presentation
                 Grade = Night.Over ? NightEvaluationResolver.Evaluate(Night, _config).Grade : null
             };
             foreach (V2ActionId action in Enum.GetValues(typeof(V2ActionId)))
+            {
+                // 이미 끝난 일상 준비는 화면에서 감춘다. 미소독 돌발 상태에서만 노출된다.
+                if (action == V2ActionId.SterilizeBottle && v2.Feeding.BottleSanitized) continue;
                 vm.Actions.Add(new V2ActionButtonViewModel
                 {
                     Action = action,
                     Label = PresentationCopyMapper.V2ActionLabel(action),
                     Enabled = !Night.Over && IsV2ActionAvailable(action)
                 });
+            }
             return vm;
         }
 
