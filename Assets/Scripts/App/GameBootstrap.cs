@@ -39,6 +39,8 @@ namespace NotANap.App
         private GUIStyle _tabButton;
         private GUIStyle _tabSelected;
 
+        private static readonly string[] AwakeBabble = { "아우…", "으응?", "응아", "에…", "아으" };
+
         private enum ActionGroup { Diagnose, Care, Feed }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -277,7 +279,11 @@ namespace NotANap.App
             bool sleeping = vm.SleepStage == V2SleepStage.RemActiveSleep || vm.SleepStage == V2SleepStage.NremDeepSleep;
             var texture = _babyVisual.TextureFor(vm, _lastResult?.Outcome);
             if (texture != null)
-                GUI.DrawTexture(new Rect(rect.x + rect.width * 0.5f - 175, rect.y + 14, 350, 350), texture, ScaleMode.ScaleToFit, true);
+            {
+                var babyRect = new Rect(rect.x + rect.width * 0.5f - 175, rect.y + 14, 350, 350);
+                DrawAnimatedBaby(vm, texture, babyRect);
+                DrawBabbleBubble(vm, babyRect, true);
+            }
 
             string state = crying ? "으앙! 지금 울고 있어요" : sleeping ? "새근새근 잠들었어요" : "눈을 뜨고 살피고 있어요";
             GUI.Label(new Rect(rect.x + 45, rect.y + 340, rect.width - 90, 48), state, Centered(_headline));
@@ -288,8 +294,62 @@ namespace NotANap.App
         {
             var texture = _babyVisual.TextureFor(vm, _lastResult?.Outcome);
             if (texture != null)
-                GUI.DrawTexture(new Rect(690, 210, 520, 520), texture, ScaleMode.ScaleToFit, true);
+            {
+                var babyRect = new Rect(690, 210, 520, 520);
+                DrawAnimatedBaby(vm, texture, babyRect);
+                DrawBabbleBubble(vm, babyRect, false);
+            }
         }
+
+        private static void DrawAnimatedBaby(V2PlayViewModel vm, Texture2D texture, Rect baseRect)
+        {
+            bool sleeping = IsSleeping(vm);
+            float speed = sleeping ? 1.25f : vm.CryIntensity > 35 ? 5.2f : 2.15f;
+            float phase = Time.unscaledTime * speed;
+            float breath = (Mathf.Sin(phase) + 1f) * 0.5f;
+            float scale = 1f + breath * (sleeping ? 0.012f : 0.022f);
+            float wiggle = sleeping ? 0f : Mathf.Sin(phase * 0.63f) * (vm.CryIntensity > 35 ? 5f : 2.2f);
+            float width = baseRect.width * scale;
+            float height = baseRect.height * scale;
+            var animated = new Rect(
+                baseRect.center.x - width * 0.5f + wiggle,
+                baseRect.center.y - height * 0.5f - breath * (sleeping ? 3f : 6f),
+                width,
+                height);
+            GUI.DrawTexture(animated, texture, ScaleMode.ScaleToFit, true);
+        }
+
+        private void DrawBabbleBubble(V2PlayViewModel vm, Rect babyRect, bool portrait)
+        {
+            if (IsSleeping(vm)) return;
+
+            float cycle = Mathf.Repeat(Time.unscaledTime, 5.4f);
+            if (cycle > (vm.CryIntensity > 35 ? 2.5f : 1.65f)) return;
+
+            string babble;
+            if (vm.CryIntensity > 35) babble = "으아앙!";
+            else if (vm.CryIntensity > 0) babble = "으응…";
+            else
+            {
+                int index = Mathf.FloorToInt(Time.unscaledTime / 5.4f) % AwakeBabble.Length;
+                babble = AwakeBabble[index];
+            }
+
+            float bubbleWidth = portrait ? 190f : 220f;
+            float bubbleHeight = portrait ? 74f : 82f;
+            var bubble = new Rect(
+                babyRect.xMax - (portrait ? 155f : 85f),
+                babyRect.y + (portrait ? 30f : 40f),
+                bubbleWidth,
+                bubbleHeight);
+            Fill(bubble, new Color(0.97f, 0.94f, 0.87f, 0.96f));
+            Fill(new Rect(bubble.x + 24f, bubble.yMax, 24f, 18f), new Color(0.97f, 0.94f, 0.87f, 0.96f));
+            var style = LabelStyle(portrait ? 28 : 31, FontStyle.Bold, new Color(0.09f, 0.12f, 0.17f), TextAnchor.MiddleCenter);
+            GUI.Label(bubble, babble, style);
+        }
+
+        private static bool IsSleeping(V2PlayViewModel vm)
+            => vm.SleepStage == V2SleepStage.RemActiveSleep || vm.SleepStage == V2SleepStage.NremDeepSleep;
 
         private void DrawPortraitEvent(V2PlayViewModel vm)
         {
