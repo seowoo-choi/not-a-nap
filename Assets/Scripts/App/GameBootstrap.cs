@@ -207,17 +207,19 @@ namespace NotANap.App
             GUI.Label(new Rect(1450, 75, 360, 44), $"가져갈 물건  {vm.SelectedCount} / {vm.Slots}", Right(_headline));
 
             const float cardW = 548f;
-            const float cardH = 270f;
+            const float cardH = 250f;
             for (int i = 0; i < vm.Cards.Count; i++)
             {
                 var card = vm.Cards[i];
                 int col = i % 3;
                 int row = i / 3;
-                var rect = new Rect(90 + col * 580, 220 + row * 300, cardW, cardH);
+                var rect = new Rect(90 + col * 580, 220 + row * 270, cardW, cardH);
                 DrawItemCard(rect, card, vm.SelectedCount, vm.Slots);
             }
-            DrawLockedCandidate(new Rect(670, 520, cardW, cardH), "옆잠베개", "월령과 제품별 안전 조건을 확인한 뒤 해금됩니다.");
-            DrawLockedCandidate(new Rect(1250, 520, cardW, cardH), "토닥이인형", "사용 환경과 안전 기준을 확인한 뒤 해금됩니다.");
+            // 후속 해금 후보 3종은 Figma M_UNLOCK_CANDIDATES와 동일하게 전부 노출한다(선택 불가).
+            DrawLockedCandidate(new Rect(670, 490, cardW, cardH), "옆잠베개", "월령과 제품별 안전 조건을 확인한 뒤 해금됩니다.");
+            DrawLockedCandidate(new Rect(1250, 490, cardW, cardH), "토닥이인형", "사용 환경과 안전 기준을 확인한 뒤 해금됩니다.");
+            DrawLockedCandidate(new Rect(90, 760, cardW, cardH), "수면 포지셔너", "안전 수면 자세 지침을 확인한 뒤 해금됩니다.");
 
             var oldEnabled = GUI.enabled;
             GUI.enabled = vm.CanStart;
@@ -234,7 +236,7 @@ namespace NotANap.App
             Fill(new Rect(rect.x, rect.y, card.Selected ? 7 : 2, rect.height), card.Selected ? new Color(0.92f, 0.7f, 0.36f) : new Color(0.2f, 0.28f, 0.36f));
             GUI.Label(new Rect(rect.x + 24, rect.y + 20, 500, 52), card.Name, _headline);
             GUI.Label(new Rect(rect.x + 24, rect.y + 82, 500, 105), card.Desc, _body);
-            GUI.Label(new Rect(rect.x + 24, rect.y + 202, 500, 54), $"주의  {card.Side}", _caption);
+            GUI.Label(new Rect(rect.x + 24, rect.y + rect.height - 56, 500, 54), $"주의  {card.Side}", _caption);
             var oldEnabled = GUI.enabled;
             GUI.enabled = !card.Disabled;
             if (GUI.Button(rect, GUIContent.none, GUIStyle.none)) _flow.ToggleV2Item(card.Id);
@@ -245,9 +247,9 @@ namespace NotANap.App
         {
             Fill(rect, new Color(0.055f, 0.075f, 0.1f, 0.82f));
             Fill(new Rect(rect.x, rect.y, 5, rect.height), new Color(0.35f, 0.39f, 0.44f));
-            GUI.Label(new Rect(rect.x + 24, rect.y + 20, rect.width - 48, 52), $"잠김 · {name}", _headline);
-            GUI.Label(new Rect(rect.x + 24, rect.y + 86, rect.width - 48, 92), description, _body);
-            GUI.Label(new Rect(rect.x + 24, rect.y + rect.height - 58, rect.width - 48, 38), "후속 해금 후보 · 현재 선택 불가", _caption);
+            GUI.Label(new Rect(rect.x + 24, rect.y + 18, rect.width - 48, 52), $"잠김 · {name}", _headline);
+            GUI.Label(new Rect(rect.x + 24, rect.y + 76, rect.width - 48, Mathf.Max(38f, rect.height - 122)), description, _body);
+            GUI.Label(new Rect(rect.x + 24, rect.y + rect.height - 42, rect.width - 48, 38), "후속 해금 후보 · 현재 선택 불가", _caption);
         }
 
         private void DrawPlay()
@@ -315,13 +317,11 @@ namespace NotANap.App
             else
                 Fill(rect, new Color(0.025f, 0.055f, 0.1f));
             Fill(rect, new Color(0.01f, 0.025f, 0.05f, 0.38f));
-            bool crying = vm.CryIntensity > 35 && vm.SleepStage == V2SleepStage.Awake;
-            bool sleeping = vm.SleepStage == V2SleepStage.RemActiveSleep || vm.SleepStage == V2SleepStage.NremDeepSleep;
             var babyRect = new Rect(rect.x + rect.width * 0.5f - 175, rect.y + 14, 350, 350);
             DrawAnimatedBaby(vm, babyRect);
             DrawBabbleBubble(vm, babyRect, true);
 
-            string state = crying ? "으앙! 지금 울고 있어요" : sleeping ? "새근새근 잠들었어요" : "눈을 뜨고 살피고 있어요";
+            string state = BabyStateHeadline(vm);
             GUI.Label(new Rect(rect.x + 45, rect.y + 340, rect.width - 90, 48), state, Centered(_headline));
             GUI.Label(new Rect(rect.x + 60, rect.y + 392, rect.width - 120, 38), BabyStepHint(vm), Centered(_body));
         }
@@ -468,6 +468,18 @@ namespace NotANap.App
         {
             Panel(new Rect(0, 1200, PortraitWidth, 720), 0.98f);
             GUI.Label(new Rect(48, 1230, 500, 52), "어떻게 할까요?", _headline);
+            // 세로 화면에도 가로와 같은 수면 중 시간 보내기 입력을 제공한다(Figma M_SLEEP_FAST_FORWARD).
+            if (IsSleeping(vm))
+            {
+                var oldFastForward = GUI.enabled;
+                GUI.enabled = oldFastForward && !_flow.InputLocked;
+                if (GUI.Button(new Rect(560, 1212, 472, 80), "잠든 동안 조용히 시간 보내기  ›", _buttonSmall))
+                {
+                    _flow.FastForwardV2Sleep();
+                    _lastResult = null;
+                }
+                GUI.enabled = oldFastForward;
+            }
             DrawTab(new Rect(48, 1300, 305, 70), "살펴보기", ActionGroup.Diagnose);
             DrawTab(new Rect(388, 1300, 305, 70), "돌보기", ActionGroup.Care);
             DrawTab(new Rect(727, 1300, 305, 70), "수유 준비", ActionGroup.Feed);
@@ -697,8 +709,10 @@ namespace NotANap.App
                 if (GUI.Button(rect, GUIContent.none, GUIStyle.none)) _flow.ToggleV2Item(card.Id);
                 GUI.enabled = oldEnabled;
             }
-            DrawLockedCandidate(new Rect(48, 1250, cardW, cardH), "옆잠베개", "월령과 제품별 안전 조건 확인 후 해금됩니다.");
-            DrawLockedCandidate(new Rect(558, 1250, cardW, cardH), "토닥이인형", "사용 환경과 안전 기준 확인 후 해금됩니다.");
+            // 후속 해금 후보 3종은 Figma M_UNLOCK_CANDIDATES와 동일하게 전부 노출한다(선택 불가).
+            DrawLockedCandidate(new Rect(48, 1240, 984, 150), "옆잠베개", "월령과 제품별 안전 조건 확인 후 해금됩니다.");
+            DrawLockedCandidate(new Rect(48, 1400, 984, 150), "수면 포지셔너", "안전 수면 자세 지침 확인 후 해금됩니다.");
+            DrawLockedCandidate(new Rect(48, 1560, 984, 150), "토닥이인형", "사용 환경과 안전 기준 확인 후 해금됩니다.");
             var previous = GUI.enabled;
             GUI.enabled = vm.CanStart;
             if (GUI.Button(new Rect(100, 1740, 880, 120), vm.CanStart ? "이 준비로 밤 시작하기 →" : $"물건을 {vm.Slots}개 골라주세요", _button)) _flow.ConfirmV2Setup();
@@ -755,6 +769,25 @@ namespace NotANap.App
             if (vm.Calm < vm.DrowsyCalmThreshold)
                 return $"진정도 {vm.Calm:0} / {vm.SleepStartCalmThreshold:0} · 안기 또는 토닥이기";
             return $"진정도 {vm.Calm:0} / {vm.SleepStartCalmThreshold:0} · 한 번 더 달래주세요";
+        }
+
+        private static string BabyStateHeadline(V2PlayViewModel vm)
+        {
+            switch (vm.SleepStage)
+            {
+                case V2SleepStage.Drowsy:
+                    return "눈이 반쯤 감기고 움직임이 줄었다";
+                case V2SleepStage.RemActiveSleep:
+                    return "눈꺼풀이 떨리고 손끝이 가끔 움직인다";
+                case V2SleepStage.NremDeepSleep:
+                    return vm.DeepSleepObserved
+                        ? "팔다리 힘이 빠지고 깊이 잠들었다"
+                        : "호흡이 고르고 몸의 긴장이 풀린다";
+                default:
+                    if (vm.CryIntensity > 35) return "얼굴이 붉어지고 울음이 커졌다";
+                    if (vm.CryIntensity > 0) return "조금 불편한 듯 몸을 꼼지락거린다";
+                    return "울지 않고 조용히 주변을 본다";
+            }
         }
 
         private static string FormatDuration(int minutes) => minutes >= 60 ? $"{minutes / 60}시간 {minutes % 60:00}분" : $"{minutes}분";

@@ -59,6 +59,18 @@ namespace NotANap.Presentation.Tests
         }
 
         [Test]
+        public void V2ActionLabels_MatchMobileStoryboardCopy()
+        {
+            Assert.AreEqual("품에 안기", PresentationCopyMapper.V2ActionLabel(V2ActionId.Hold));
+            Assert.AreEqual("천천히 토닥이기", PresentationCopyMapper.V2ActionLabel(V2ActionId.Pat));
+            Assert.AreEqual("쪽쪽이 건네기", PresentationCopyMapper.V2ActionLabel(V2ActionId.Pacifier));
+            Assert.AreEqual("조심히 눕히기", PresentationCopyMapper.V2ActionLabel(V2ActionId.Laydown));
+            Assert.AreEqual("기저귀 갈기", PresentationCopyMapper.V2ActionLabel(V2ActionId.ChangeDiaper));
+            Assert.AreEqual("온도·습도", PresentationCopyMapper.V2ActionLabel(V2ActionId.CheckEnvironment));
+            Assert.AreEqual("잠시 망설임", PresentationCopyMapper.V2ActionLabel(V2ActionId.Hesitate));
+        }
+
+        [Test]
         public void V2SelectableItems_ExcludeLegacyBouncer()
         {
             Assert.IsFalse(V2NightFactory.SelectableItems.Contains(ItemId.Bouncer));
