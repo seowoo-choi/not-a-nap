@@ -1,5 +1,12 @@
 # NOT A NAP — 화면 개발 명세 (Screen Development Spec)
 
+> 상태: `V1 LEGACY / CURRENT V2 IMPLEMENTATION SOURCE 아님`
+>
+> 이 문서는 1시간 턴과 V1 `GameAction`을 설명한다. 2026-07-21 기준 V2에는 `CheckDiaper`와 분 단위 통잠 루프가 실제로 존재하므로,
+> 본문의 “그런 행동 없음” 같은 문장을 현재 사실로 사용하지 않는다. 현재 개발 순서는
+> [`code-first-development-plan.md`](code-first-development-plan.md), 제품 의도는
+> [`vertical-slice-spec.md`](vertical-slice-spec.md)를 따른다.
+
 이 문서는 **개발자가 보고 바로 구현할 수 있는** 화면 명세다. Figma 스토리보드(와이어프레임)를 대체한다.
 Figma는 "그림 참고"로만 쓰고, **구현의 원본은 이 문서 + 실제 Core 코드**다.
 

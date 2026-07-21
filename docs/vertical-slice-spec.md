@@ -6,6 +6,11 @@
 > 수치는 결정론(시드 기반)으로 구현하며, 아래 값은 초기 튜닝값(조정 가능)이다. 판정은 전부 C# Core.
 > 이 문서가 코어 메커니즘 원본이고, `docs/storyboard-dev-spec.md`(화면)는 이 문서 확정 후 갱신한다.
 
+> [!IMPORTANT]
+> 2026-07-21 코드 감사 결과, V2 Phase 0과 한 밤 Presentation은 구현됐지만 제품 규칙 전체가 완료된 상태는 아니다.
+> 실제 구현명과 남은 작업은 [`code-first-development-plan.md`](code-first-development-plan.md)가 관리한다.
+> 이 문서의 제품 의도를 유지하되, 존재하지 않는 API 이름을 개발 계약으로 복사하지 않는다.
+
 관련: [feedback-log.md](feedback-log.md)(출처), [final-night-spec.md](final-night-spec.md)(백일밤은 이후 챕터로 보류).
 
 ---
@@ -36,27 +41,30 @@
 ## 1. 핵심 루프 재정의 — 통잠
 
 ### 1.1 시간 모델
-- 밤 = 21:00(=0분) → 06:00(=**540분**). 내부는 **분 단위** 정수 시계 `NightClockMinutes`.
+- 밤 = 21:00(=0분) → 06:00(=**540분**). 내부 시계는 `V2NightState.ElapsedMinutes`다.
 - 아기는 **수면 사이클**을 돈다. 영아 사이클 ≈ **45분**(`SleepCycleMinutes`, 튜닝).
 - 아기가 **자는 동안 시간은 블록으로 자동 진행**(빨리감기)되며 연속 수면이 쌓인다.
 - **각성 이벤트**가 뜨면 자동 진행이 멈추고 **인카운터(Encounter)**가 열린다 → 플레이어가 개입.
 
 ### 1.2 연속 수면(streak) — 결과 지표
-- `CurrentSleepStreakMin`: 지금 끊기지 않고 이어진 수면 분. **완전 각성(울음/Full Wake)** 시 0으로 리셋.
-- `LongestSleepStreakMin`: 밤 전체 최댓값. **이게 밤 결과 평가의 1순위 지표.**
+- `NightMetrics.CurrentSleepStretchMinutes`: 지금 끊기지 않고 이어진 수면 분. **완전 각성(울음/Full Wake)** 시 0으로 리셋.
+- `NightMetrics.LongestSleepStretchMinutes`: 밤 전체 최댓값. **이게 밤 결과 평가의 1순위 지표.**
 - 선잠(REM) 표면화로 잠깐 뒤척이는 건 리셋 아님. **Full Wake만 리셋.**
 
-### 1.3 밤 결과 등급 (`NightSleepGrade`)
-| 등급 | LongestSleepStreakMin | 의미 |
+### 1.3 밤 결과 등급 (`NightGrade`)
+| 등급 | `NightMetrics.LongestSleepStretchMinutes` | 의미 |
 |---|---|---|
-| `ThroughTheNight` | ≥ 240 (4h) | 통잠 성공 |
-| `LongStretch` | 150–239 | 긴 한숨 |
-| `Fragmented` | 60–149 | 조각잠 |
-| `WhiteNight` | < 60 | 백야(거의 못 잼) |
+| `S` | ≥ 300 + 안전 위반 0 | 통잠에 가까운 밤 |
+| `A` | ≥ 240 | 통잠 성공 |
+| `B` | ≥ 180 | 긴 한숨 |
+| `C` | ≥ 120 | 조각잠 |
+| `D` | < 120 | 백야 |
+
+`통잠 성공/긴 한숨/조각잠/백야`는 화면 표시 문구다. 별도 enum을 중복 생성하지 않는다.
 
 ### 1.4 승리 조건 재정의 (백일밤 3중2 대체 예정, 이번엔 일반 밤 평가)
 아침 6시 기준 아래로 밤을 평가(엔딩 연동):
-1. `NightSleepGrade ≥ LongStretch` (통잠 지향)
+1. `NightGrade`가 `S`, `A`, `B` 중 하나(긴 연속 수면 지향)
 2. 보호자 체력 ≥ 30
 3. **진단 정확도**: 그 밤 각성 인카운터에서 **오판 0~1회** (관찰 육아 보상)
 → 3개 중 2개 이상 = 그 밤 "좋은 밤". 백일밤 최종 승리는 후속.
@@ -67,28 +75,29 @@
 
 ### 2.1 `BabyState` 확장
 기존 `Calm/Sleep/Hunger/Held/Crying` 유지 + 추가:
+```csharp
+V2SleepStage SleepCycle.Stage      // Awake / Drowsy / RemActiveSleep / NremDeepSleep
+bool SleepCycle.IsLimbRelaxed
+bool SleepCycle.IsBreathingRegular
+int Metrics.CurrentSleepStretchMinutes
+int Metrics.LongestSleepStretchMinutes
+WakeCause Diagnosis.ActiveCause    // 플레이어에게 직접 노출하지 않음
+HungerSignalStage HungerSignal     // None / Early / Active / Late
+// FatigueSignalStage는 아직 미구현. P0-2에서 추가한다.
 ```
-SleepPhase Phase           // Awake / Drowsy(기면) / REM(활동수면) / NREM(비활동수면)
-bool ArmRelaxed            // NREM 관찰 신호 (단독으로 성공 확정 아님)
-bool BreathingRegular      // NREM 관찰 신호 (규칙적 호흡)
-int CurrentSleepStreakMin
-int LongestSleepStreakMin
-WakeCause PendingCause      // 인카운터가 열렸을 때 숨은 원인 (플레이어에겐 미공개)
-SignalStage HungerSignal    // None/Early/Mid/Late (책 표1)
-SignalStage FatigueSignal   // None/Early/Mid/Late (책 표3)
-```
-- `SleepPhase`: `Sleep` 수치 + 사이클 진행으로 파생. Drowsy(잠들기 직전)→REM→NREM→REM→(각성 또는 NREM 유지).
-- `ArmRelaxed`·`BreathingRegular`: NREM에서 참이 되는 **관찰 신호**. 눕히기 성공은 이 신호들을 관찰로 확인했을 때 보너스를 주되, 단독 신호로 성공을 확정하지 않는다(§4).
+- `V2SleepStage`: `Sleep` 수치 + 사이클 진행으로 파생. Drowsy(잠들기 직전)→REM→NREM→REM→(각성 또는 NREM 유지).
+- `IsLimbRelaxed`·`IsBreathingRegular`: NREM에서 참이 되는 **관찰 신호**. 눕히기 성공은 이 신호들을 관찰로 확인했을 때 보너스를 주되, 단독 신호로 성공을 확정하지 않는다(§4).
 
 ### 2.2 `EnvironmentState` (신규)
-```
-int TempC        // 방 온도, 최적 20~22
-int HumidityPct  // 습도, 최적 40~60
+```csharp
+double TemperatureCelsius
+double HumidityPercent
 ```
 밤 동안 서서히 드리프트. 최적 밴드 이탈이 커지면 각성 원인 후보가 됨.
 
-### 2.3 `WakeCause` (신규 enum)
-`SleepCycleStir`(원인 없는 선잠 각성) / `Diaper` / `Hunger` / `Overtired`(과각성) / `Environment` / `Moro`(놀람반사).
+### 2.3 `WakeCause`
+현재 구현: `Unknown / Diaper / Hunger / Temperature / Humidity / MoroReflex / PainOrCondition / NaturalCycle`.
+피로 누적에 의한 `Overtired`는 P0-2에서 추가하거나 `PainOrCondition`과 분리된 규칙 태그로 구현한다.
 
 ### 2.4 `SignalStage` (신규 enum)
 `None / Early / Mid / Late`. 책 신호 표의 단계. Late일수록 이미 늦어 대응 난이도↑.
@@ -109,7 +118,7 @@ int HumidityPct  // 습도, 최적 40~60
 각 트리거는 `PendingCause`를 세팅하고 인카운터를 연다. **원인은 숨김.** 플레이어는 신호로 추론.
 
 ### 3.2 제한시간 (요구 3)
-- 인카운터가 열리면 UI에 **초읽기**(예: `EncounterTimerSec = 8`) 시작. 실시간.
+- 인카운터가 열리면 UI에 **초읽기**(`GameBalanceConfig.V2.DecisionSeconds`, 현재 기본 20초) 시작. 실시간.
 - 시간 내 미해결 → Core에 `EncounterAction.Timeout` 전달 → **각성 심화**(Calm 큰 폭 하락, Crying=대성통곡, streak는 이미 리셋, 해결 난이도↑).
 - **결정론 보장**: 타이머는 Presentation. Core는 벽시계를 읽지 않고, UI가 만료를 `Timeout`이라는 **이산 입력**으로 넘긴다. 같은 입력 시퀀스 → 같은 결과.
 
@@ -118,9 +127,12 @@ int HumidityPct  // 습도, 최적 40~60
 - **정석**: 첫 행동으로 `CheckDiaper`(짧은 시간, 무해). 결과:
   - 젖음 → 원인 공개(Diaper) → `ChangeDiaper`로 해결.
   - 안 젖음 → 기저귀 배제, **신호 관찰**로 다음 원인 좁히기.
-- **오판**: `CheckDiaper` 없이 다른 개입(안기·수유·눕히기 등)을 첫 행동으로 하면 → `MisjudgeFlag` 기록 + 페널티(원인이 실제로 기저귀였다면 강한 페널티, 아니면 약한 페널티).
+- **오판**: `CheckDiaper` 없이 다른 개입(안기·수유·눕히기 등)을 첫 행동으로 하면 → 안전한 첫 확인 누락 기록 + 페널티(원인이 실제로 기저귀였다면 강한 페널티, 아니면 약한 페널티).
   - 페널티: Calm −(8~15), 시간 +(5~8분), 각성 심화 가능, `NightStats.Misjudgments++`.
 - 이 규칙으로 "울면 기저귀부터"가 **학습되는 습관**이 된다(오판이 반복되면 힌트 강조).
+
+> 현재 `RegisterCheck`는 원인이 기저귀가 아닐 때 첫 `CheckDiaper`도 오판으로 계산한다. 이는 승인된 규칙과 반대이므로
+> 기획을 바꾸지 않고 Core를 P0-2에서 수정한다.
 
 ### 3.4 신호 관찰 (요구 5, 책 표1·표3)
 - `Observe`(관찰하기) 행동: 시간 소량, 현재 `HungerSignal`/`FatigueSignal` 단계를 **텍스트 신호로 공개**.
@@ -248,9 +260,9 @@ interface INightModifier {
 
 ## 10. 결과 평가 & 엔딩 연동 (요구 2)
 
-- 밤 종료 시 `NightSleepGrade`(§1.3) + 체력 + 진단정확도로 그 밤 평가.
+- 밤 종료 시 `NightGrade`(§1.3) + 체력 + 진단정확도로 그 밤을 평가한다.
 - 기존 `EndingId` 6종은 **의미 유지하되 판정 입력을 streak 기반으로 교체**:
-  - 실패(아침이 이겼다) ↔ `WhiteNight`.
+  - 실패(아침이 이겼다) ↔ `NightGrade.D` 및 최종 승리 실패.
   - 통잠+저의존 ↔ 우리 집의 루틴. 등.
 - `VictoryResolver`/`EndingResolver`의 입력만 교체(§1.4), 구조 유지.
 
@@ -269,21 +281,11 @@ interface INightModifier {
 
 ---
 
-## 12. 빌드 순서 (Core 먼저, 테스트 가능)
+## 12. 빌드 순서
 
-Core는 UnityEngine 의존성을 최소화한 순수 C# 구조로 유지한다. Unity EditMode 테스트는 **Unity Test Runner로 실행**한다. 별도 .NET 테스트 프로젝트가 존재하거나 새로 구성된 경우에만 Unity 없이 테스트할 수 있다. **정적 검토를 실제 테스트 통과로 표현하지 않는다.** 권장 순서:
-
-- **P1 상태·타임모델**: 분 단위 시계, SleepPhase, streak, EnvironmentState, 프로필/Capability/Modifier 껍데기. + 결정론 테스트.
-- **P2 통잠 루프**: 사이클 자동진행 + 각성 트리거 + streak 리셋/기록 + 등급. + 테스트.
-- **P3 진단 인카운터**: WakeCause, CheckDiaper 우선/오판, Observe/신호, 원인별 해결, Timeout. + 테스트.
-- **P4 눕히기 재설계** REM/NREM/ArmRelaxed. + 테스트.
-- **P5 새벽수유 단계** + FormulaMaker. + 테스트.
-- **P6 아이템 교체**(Bouncer LEGACY, 신규 4종), 쪽쪽이 프로필. + 테스트.
-- **P7 예방접종 NightModifier**. + 테스트.
-- **P8 결과/엔딩 입력 교체**. + 테스트.
-- **P9 Presentation**: PLAY 인카운터 UI, 스토리보드 갱신.
-
-각 P는 기존 결정론 테스트(현재 54개) 유지 + 신규 테스트 추가.
+Phase 0 코드가 이미 존재하므로 과거 P1~P9 계획을 다시 수행하지 않는다. 실제 남은 순서는
+[`code-first-development-plan.md`](code-first-development-plan.md)의 P0-1~P0-5를 따른다.
+Core는 UnityEngine 의존성 없는 순수 C# 구조를 유지하고, 정적 검토를 실제 테스트 통과로 표현하지 않는다.
 
 ---
 

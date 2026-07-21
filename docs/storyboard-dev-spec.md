@@ -1,10 +1,25 @@
 # NOT A NAP : 백일의 밤 — 상세 스토리보드 및 화면 개발 명세
 
-> 문서 상태: `READY FOR PRESENTATION IMPLEMENTATION`  
-> 적용 대상: Unity 6000.3.20f1 / PC WebGL / 16:9  
-> 기준 해상도: 1920×1080, Canvas Scaler `Scale With Screen Size`  
-> 구현 원본: 실제 `Assets/Scripts/Core` 코드 + 이 문서  
+> 문서 상태: `V1 LEGACY / DO NOT IMPLEMENT AS CURRENT V2`
+> 적용 대상: Unity 6000.3.20f1 / PC WebGL / 16:9
+> 기준 해상도: 1920×1080, Canvas Scaler `Scale With Screen Size`
+> 현재 구현 원본: [`code-first-development-plan.md`](code-first-development-plan.md) + 실제 `Assets/Scripts/Core` 코드
 > Figma: 분위기와 배치 참고용이며 판정 규칙의 원본이 아니다.
+
+> [!WARNING]
+> 이 문서의 본문은 V1 `GameAction`·1시간 턴·자동 기저귀 사건을 기준으로 작성되어 현재 V2 통잠 루프와 충돌한다.
+> `READY FOR PRESENTATION IMPLEMENTATION` 상태를 취소한다. 아래 화면 배치·색상·효과 ID만 참고하고,
+> 행동 계약과 화면 흐름은 코드 기준 개발 계획의 P0-1~P0-5가 끝난 뒤 다시 생성한다.
+
+## 0. 2026-07-21 코드 감사 결과
+
+- 현재 실제 V2 화면은 `TITLE → SETUP → PLAY → DIARY → 처음부터 다시` 한 밤까지만 연결되어 있다.
+- V2 행동은 `GameAction`이 아니라 `V2ActionId`, 결과는 `V2ActionOutcome`을 사용한다.
+- V2 행동은 스스로 분 시간을 진행하므로 아래 V1 공통 시퀀스의 `Apply → EndTurn`을 그대로 사용하면 안 된다.
+- 기저귀 확인·분유 준비·REM/NREM은 코드에 존재하지만 피로 신호, 정상 온습도, 상태 기반 각성, 세 밤 Memory/Ending 연결은 미완성이다.
+- 35개 Figma 프레임은 Scene 목록이 아니라 `PLAY`의 상태와 QA 캡처 시나리오로 취급한다.
+
+현재 개발 순서와 정확한 파일·테스트 계약은 [`code-first-development-plan.md`](code-first-development-plan.md)를 따른다.
 
 ---
 
