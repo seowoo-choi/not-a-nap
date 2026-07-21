@@ -133,11 +133,29 @@ namespace NotANap.Core.Tests
             var run = RunState.Create(Temperament.Soft);
             var night = Night(run, config);
             V2TimeResolver.TriggerWake(night, WakeCause.Diaper, config);
-            V2ActionResolver.Apply(run, night, V2ActionId.CheckDiaper, config, new SequenceRandomSource(0));
+            var checkedDiaper = V2ActionResolver.Apply(run, night, V2ActionId.CheckDiaper,
+                config, new SequenceRandomSource(0));
+            Assert.AreEqual(DiaperCheckResult.Wet, checkedDiaper.DiaperCheckResult);
             var changed = V2ActionResolver.Apply(run, night, V2ActionId.ChangeDiaper, config, new SequenceRandomSource(0));
             Assert.IsTrue(changed.CauseResolved);
             Assert.AreEqual(1, night.V2.Metrics.CorrectFirstChecks);
             Assert.IsTrue(run.Traces.Contains(CoreTraceIds.DiaperCheckedFirst));
+        }
+
+        [Test]
+        public void CleanDiaperCheckIsVisibleAndDoesNotCountAsMisdiagnosis()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            V2TimeResolver.TriggerWake(night, WakeCause.Hunger, config);
+
+            var result = V2ActionResolver.Apply(run, night, V2ActionId.CheckDiaper,
+                config, new SequenceRandomSource(0));
+
+            Assert.AreEqual(DiaperCheckResult.Clean, result.DiaperCheckResult);
+            Assert.AreEqual(0, night.V2.Metrics.MisdiagnosisCount);
+            Assert.IsFalse(night.V2.Diagnosis.CauseResolved);
         }
 
         [Test]

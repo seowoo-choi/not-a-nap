@@ -751,6 +751,10 @@ namespace NotANap.App
                 return "아직 잠들지 않았어요. 먼저 충분히 달래주세요.";
             if (outcome.BlockReason == V2ActionBlockReason.ItemUnavailable)
                 return "이 물건을 가져오지 않아 사용할 수 없어요.";
+            if (outcome.DiaperCheckResult == DiaperCheckResult.Wet)
+                return "기저귀가 젖어 있어요. 기저귀를 갈아주세요.";
+            if (outcome.DiaperCheckResult == DiaperCheckResult.Clean)
+                return "기저귀는 깨끗해요. 다른 불편 신호를 살펴보세요.";
             if (outcome.Action == V2ActionId.CheckHungerSignals)
             {
                 switch (outcome.HungerSignalStage)

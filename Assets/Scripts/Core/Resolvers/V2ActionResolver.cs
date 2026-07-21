@@ -65,7 +65,10 @@ namespace NotANap.Core
             switch (action)
             {
                 case V2ActionId.CheckDiaper:
-                    Diagnose(run, night, WakeCause.Diaper, outcome, config);
+                    // 기저귀 우선 확인은 젖지 않았어도 안전한 배제 검사이므로 오판이 아니다.
+                    Diagnose(run, night, WakeCause.Diaper, outcome, config, false);
+                    outcome.DiaperCheckResult = night.V2.Diagnosis.ActiveCause == WakeCause.Diaper
+                        ? DiaperCheckResult.Wet : DiaperCheckResult.Clean;
                     break;
                 case V2ActionId.ChangeDiaper:
                     Consume(outcome, config.V2.DiagnosisActionMinutes, -4);

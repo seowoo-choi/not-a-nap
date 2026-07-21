@@ -12,6 +12,7 @@ namespace NotANap.Core
         public bool CauseResolved;
         public V2ActionBlockReason BlockReason;
         public HungerSignalStage HungerSignalStage;
+        public DiaperCheckResult DiaperCheckResult;
         public bool MonitorRead;
         public readonly List<ObservationSignalId> ObservedSignals = new List<ObservationSignalId>();
         public readonly List<FeedingPreparationStep> MissingPreparationSteps = new List<FeedingPreparationStep>();
