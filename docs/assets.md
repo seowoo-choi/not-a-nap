@@ -3,7 +3,7 @@
 | 파일 | 용도 | 출처 | 라이선스/권리 | 비고 |
 |---|---|---|---|---|
 | `Assets/Resources/Fonts/NotoSansKR.ttf` | 한국어 UI 폰트 | Google Fonts, Noto Sans KR | SIL Open Font License 1.1 | 원문은 같은 폴더의 `OFL.txt` |
-| `Assets/Resources/Art/nursery-night.png` | 16:9 밤 침실 배경 | OpenAI 내장 이미지 생성 도구로 2026-07-21 생성 | 프로젝트 사용을 위한 사용자 소유 생성물 | 텍스트·로고 없음, 2048px로 축소 |
+| `Reference/nursery-night-original.png` | 최초 16:9 밤 침실 배경 보관본 | OpenAI 내장 이미지 생성 도구로 2026-07-21 생성 | 프로젝트 사용을 위한 사용자 소유 생성물 | 빌드 중복 포함을 막기 위해 Unity `Resources` 밖에 보관 |
 | `Assets/Resources/Art/nursery-night-empty.png` | 캐릭터 분리용 빈 침실 배경 | 기존 생성 배경을 OpenAI 내장 이미지 생성 도구로 편집 | 프로젝트 사용을 위한 사용자 소유 생성물 | 아기·베개·느슨한 이불 제거, 빈 매트리스 복원 |
 | `Assets/Resources/Art/Baby/*.png` | 아기 상태 캐릭터 12종 | OpenAI 내장 이미지 생성 도구로 2026-07-21 생성 | 프로젝트 사용을 위한 사용자 소유 생성물 | 동일한 동양 아기, 부드러운 큰 웨이브와 C자 애교머리, 크로마키 제거 투명 PNG |
 | `Assets/Resources/Art/Baby/Animated/*.png` | 아기 프레임 애니메이션 12종 | 기존 아기 캐릭터를 OpenAI 내장 이미지 생성 도구로 확장 | 프로젝트 사용을 위한 사용자 소유 생성물 | 깨어 있음·보챔·수면 각 4프레임, 눈·입·손발 동작 포함 |
