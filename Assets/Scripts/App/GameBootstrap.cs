@@ -292,7 +292,11 @@ namespace NotANap.App
 
         private void DrawBabyStateVisual(V2PlayViewModel vm, Rect rect)
         {
-            Panel(rect, 0.78f);
+            if (_room != null)
+                GUI.DrawTexture(rect, _room, ScaleMode.ScaleAndCrop, true);
+            else
+                Fill(rect, new Color(0.025f, 0.055f, 0.1f));
+            Fill(rect, new Color(0.01f, 0.025f, 0.05f, 0.38f));
             bool crying = vm.CryIntensity > 35 && vm.SleepStage == V2SleepStage.Awake;
             bool sleeping = vm.SleepStage == V2SleepStage.RemActiveSleep || vm.SleepStage == V2SleepStage.NremDeepSleep;
             var texture = _babyVisual.AnimationFrameFor(vm, _lastResult?.Outcome, CurrentAnimationFrame());
