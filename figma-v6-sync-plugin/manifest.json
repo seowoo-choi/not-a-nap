@@ -1,0 +1,8 @@
+{
+  "name": "NOT A NAP — V6 Code Sync",
+  "id": "not-a-nap-mobile-v6-code-sync",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page"
+}

@@ -103,17 +103,17 @@ DiagnosisState.EncounterSequence 증가 + CauseResolved=false
 | Figma variant | 시각 표현 | 코드 조건/근거 | 연결 상태 |
 |---|---|---|---|
 | `BABY_AWAKE_CALM` | 눈을 뜨고 조용히 주변을 봄 | `SleepStage=Awake && CryIntensity<=35` | 세로 UI 구현됨 |
-| `BABY_FUSS_SOFT` | 찡그림, 몸 꼼지락, 작은 파형 | `SleepStage=Awake && 0<CryIntensity<=35` | Figma 분리 필요, 코드 비주얼은 아직 Awake와 동일 |
-| `BABY_CRY_HARD` | 입 크게 벌림, 눈물, 큰 파형 | `SleepStage=Awake && CryIntensity>35` | 세로 UI 구현됨 |
-| `BABY_HUNGER_EARLY` | 입맛 다심, 입 벌림, 손 빨기 | `HungerSignalStage.Early` + 대응 `ObservedSignals` | Core 존재, 관찰 후 Presentation 연결 필요 |
-| `BABY_HUNGER_LATE` | 빠른 호흡, 머리 돌림, 배고픈 울음 | `HungerSignalStage.Late` + `RapidBreathing/HungerCry` | Core 존재, 관찰 후 Presentation 연결 필요 |
-| `BABY_DROWSY` | 눈이 반쯤 감기고 움직임 감소 | `SleepStage=Drowsy` | 상태 존재, 전용 그림 필요 |
-| `BABY_REM` | 눈꺼풀 떨림, 불규칙 호흡, 팔다리 움직임 | `SleepStage=RemActiveSleep`; 관찰 시 REM signals | Core 존재, 애니메이션 필요 |
-| `BABY_NREM` | 편안한 얼굴, 규칙적인 호흡 | `SleepStage=NremDeepSleep` | Core 존재, 애니메이션 필요 |
-| `BABY_RELAXED` | 팔·다리가 축 늘어짐 | `IsLimbRelaxed && IsBreathingRegular`; 확인 후 `DeepSleepObserved` | Core 존재, 관찰 전후 variant 필요 |
-| `BABY_MORO` | 양팔이 순간 벌어지고 몸이 움찔 | `LaydownFailed` 후 `MoroReflex` 각성 등 의미 이벤트 | 결과 연출 연결 필요; 숨은 원인 사전 누설 금지 |
-| `BABY_PACIFIER_ACCEPT` | 쪽쪽이를 물고 표정 완화 | outcome `TraceIds`에 `PacifierAccepted` | Core 존재, 결과 연출 연결 필요 |
-| `BABY_PACIFIER_REJECT` | 쪽쪽이를 뱉고 얼굴을 돌림 | outcome `Accepted=false` + `PacifierRejected` trace | Core 존재, 결과 연출 연결 필요 |
+| `BABY_FUSS_SOFT` | 찡그림, 몸 꼼지락, 작은 파형 | `SleepStage=Awake && 0<CryIntensity<=35` | 전용 텍스처·상태 문장 연결됨 |
+| `BABY_CRY_HARD` | 입 크게 벌림, 눈물, 큰 파형 | `SleepStage=Awake && CryIntensity>35` | 전용 텍스처·상태 문장 연결됨 |
+| `BABY_HUNGER_EARLY` | 입맛 다심, 입 벌림, 손 빨기 | `HungerSignalStage.Early` + 대응 `ObservedSignals` | 관찰 outcome 기반 전용 텍스처 연결됨 |
+| `BABY_HUNGER_LATE` | 빠른 호흡, 머리 돌림, 배고픈 울음 | `HungerSignalStage.Late` + `RapidBreathing/HungerCry` | 관찰 outcome 기반 전용 텍스처 연결됨 |
+| `BABY_DROWSY` | 눈이 반쯤 감기고 움직임 감소 | `SleepStage=Drowsy` | 전용 텍스처·상태 문장 연결됨 |
+| `BABY_REM` | 눈꺼풀 떨림, 불규칙 호흡, 팔다리 움직임 | `SleepStage=RemActiveSleep`; 관찰 시 REM signals | 전용 텍스처·4프레임 앰비언트 연결됨 |
+| `BABY_NREM` | 편안한 얼굴, 규칙적인 호흡 | `SleepStage=NremDeepSleep` | 전용 텍스처·4프레임 앰비언트 연결됨 |
+| `BABY_RELAXED` | 팔·다리가 축 늘어짐 | `IsLimbRelaxed && IsBreathingRegular`; 확인 후 `DeepSleepObserved` | 관찰 전후 텍스처·상태 문장 연결됨 |
+| `BABY_MORO` | 양팔이 순간 벌어지고 몸이 움찔 | `LaydownFailed` 후 `MoroReflex` 각성 등 의미 이벤트 | 결과 연출 텍스처 연결됨; 숨은 원인 사전 누설 없음 |
+| `BABY_PACIFIER_ACCEPT` | 쪽쪽이를 물고 표정 완화 | outcome `TraceIds`에 `PacifierAccepted` | 결과 연출 텍스처 연결됨 |
+| `BABY_PACIFIER_REJECT` | 쪽쪽이를 뱉고 얼굴을 돌림 | outcome `Accepted=false` + `PacifierRejected` trace | 결과 연출 텍스처 연결됨 |
 
 REM/NREM은 정지 그림만 바꾸지 않고 최소 2프레임 또는 Smart Animate variant로 표현한다. REM은 작은 불규칙 움직임, NREM은 느리고 규칙적인 호흡을 사용한다.
 
