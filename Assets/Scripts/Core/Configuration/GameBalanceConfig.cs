@@ -88,6 +88,10 @@ namespace NotANap.Core
         public double HungerActiveThreshold = 60;
         public double HungerLateThreshold = 82;
         public double SleepMinuteGain = 1;
+        public double DrowsyCalmThreshold = 65;
+        public double SleepStartCalmThreshold = 78;
+        public double HoldSleepGain = 12;
+        public double PatSleepGain = 9;
 
         public static V2BalanceConfig Default() => new V2BalanceConfig();
     }

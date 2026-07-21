@@ -48,9 +48,11 @@ namespace NotANap.Core
         public int RemainingDecisionSeconds;
         public int MisdiagnosisCount;
         public int CheckAttempts;
+        public int EncounterSequence;
 
         public void Begin(WakeCause cause, int decisionSeconds)
         {
+            EncounterSequence++;
             ActiveCause = cause;
             CauseResolved = false;
             CheckedCauses.Clear();

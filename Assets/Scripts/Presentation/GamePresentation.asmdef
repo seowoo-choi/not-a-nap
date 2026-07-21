@@ -1,0 +1,16 @@
+{
+    "name": "GamePresentation",
+    "rootNamespace": "NotANap.Presentation",
+    "references": [
+        "GameCore"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

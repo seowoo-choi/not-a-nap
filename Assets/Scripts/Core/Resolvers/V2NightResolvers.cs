@@ -163,6 +163,12 @@ namespace NotANap.Core
             night.Baby.Crying = false;
         }
 
+        public static void SetDrowsy(NightState night)
+        {
+            WakeScheduler.RequireV2(night);
+            SetStage(night.V2.SleepCycle, V2SleepStage.Drowsy);
+        }
+
         public static void TriggerWake(NightState night, WakeCause cause, GameBalanceConfig config)
         {
             WakeScheduler.RequireV2(night);

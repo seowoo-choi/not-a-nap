@@ -121,8 +121,22 @@ namespace NotANap.Core
                     Consume(outcome, config.V2.DefaultActionMinutes, action == V2ActionId.Hold ? -8 : -4);
                     night.Baby.Calm = CoreMath.Clamp(night.Baby.Calm +
                         12 * night.V2.Modifier.ComfortActionModifier, 0, 100);
+                    night.Baby.Sleep = CoreMath.Clamp(night.Baby.Sleep +
+                        (action == V2ActionId.Hold ? config.V2.HoldSleepGain : config.V2.PatSleepGain) *
+                        night.V2.Modifier.SleepGainMultiplier, 0, 100);
                     if (!night.V2.Diagnosis.CauseResolved && night.V2.Diagnosis.ActiveCause == WakeCause.Diaper)
                         ApplyMisdiagnosis(night, outcome, config);
+                    else if (night.V2.Diagnosis.CauseResolved)
+                    {
+                        if (night.Baby.Calm >= config.V2.SleepStartCalmThreshold)
+                        {
+                            V2TimeResolver.BeginSleep(night, V2SleepStage.RemActiveSleep);
+                            if (night.V2.NextWake == null || night.V2.NextWake.Triggered)
+                                WakeScheduler.Schedule(night, config, rng);
+                        }
+                        else if (night.Baby.Calm >= config.V2.DrowsyCalmThreshold)
+                            V2TimeResolver.SetDrowsy(night);
+                    }
                     break;
                 case V2ActionId.SterilizeBottle:
                     Prepare(night, outcome, config, FeedingPreparationStep.SanitizeBottle);

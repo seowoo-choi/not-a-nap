@@ -322,5 +322,32 @@ namespace NotANap.Core.Tests
             Assert.AreEqual(60, wake.AtElapsedMinute);
             Assert.AreEqual(seed.EventId, wake.SourceFutureEventId);
         }
+
+        [Test]
+        public void ComfortActionsCanStartSleepAndScheduleAWake()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            var rng = new SequenceRandomSource(.5, .25);
+
+            V2ActionResolver.Apply(run, night, V2ActionId.Hold, config, rng);
+            Assert.AreEqual(V2SleepStage.Drowsy, night.V2.SleepCycle.Stage);
+
+            V2ActionResolver.Apply(run, night, V2ActionId.Pat, config, rng);
+            Assert.AreEqual(V2SleepStage.RemActiveSleep, night.V2.SleepCycle.Stage);
+            Assert.IsNotNull(night.V2.NextWake);
+            Assert.Greater(night.V2.NextWake.AtElapsedMinute, night.V2.ElapsedMinutes);
+        }
+
+        [Test]
+        public void EachDiagnosisEncounterGetsAStableIncreasingSequence()
+        {
+            var state = new DiagnosisState();
+            state.Begin(WakeCause.Diaper, 20);
+            Assert.AreEqual(1, state.EncounterSequence);
+            state.Begin(WakeCause.Hunger, 20);
+            Assert.AreEqual(2, state.EncounterSequence);
+        }
     }
 }
