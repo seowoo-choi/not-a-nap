@@ -183,6 +183,16 @@
   if (await appendReviewNote(laydown,
     "선행 조건: Held=true + REM/NREM 수면. 아직 잠들지 않았으면 시간·각성 이벤트 없이 거부(BabyNotAsleep).")) changes += 1;
 
+  const diaperWet = contractFor("M_DIAPER_CHECK_WET");
+  if (await setBadge(diaperWet, "IMPLEMENTED", green)) changes += 1;
+  if (await appendReviewNote(diaperWet,
+    "CheckDiaper 결과 DiaperCheckResult.Wet → ‘기저귀가 젖어 있어요. 기저귀를 갈아주세요.’ 표시.")) changes += 1;
+
+  const diaperClean = contractFor("M_DIAPER_CHECK_CLEAN");
+  if (await setBadge(diaperClean, "IMPLEMENTED", green)) changes += 1;
+  if (await appendReviewNote(diaperClean,
+    "CheckDiaper 결과 DiaperCheckResult.Clean → 다른 신호 확인 안내. 안전한 배제 검사라 오판 0.")) changes += 1;
+
   const hunger = contractContaining(["CheckHungerSignals", "HungerSignalStage"]);
   if (await appendReviewNote(hunger,
     "배고픔 각성은 HungerLateThreshold 이상. 확인 결과는 없음/초기/활성/후기 신호와 수유 필요 여부를 명시.")) changes += 1;

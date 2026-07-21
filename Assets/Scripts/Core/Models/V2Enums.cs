@@ -5,6 +5,7 @@ namespace NotANap.Core
     public enum V2SleepStage { Awake, Drowsy, RemActiveSleep, NremDeepSleep }
     public enum WakeCause { Unknown, Diaper, Hunger, Temperature, Humidity, MoroReflex, PainOrCondition, NaturalCycle }
     public enum HungerSignalStage { None, Early, Active, Late }
+    public enum DiaperCheckResult { None, Clean, Wet }
     public enum PacifierAffinity { Loves, Neutral, Rejects }
     public enum NightModifierId { None, Vaccination, WonderWeeks, Teething, SleepRegression }
     public enum NightGrade { S, A, B, C, D }
