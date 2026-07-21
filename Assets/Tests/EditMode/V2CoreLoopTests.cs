@@ -241,15 +241,16 @@ namespace NotANap.Core.Tests
             var result = V2ActionResolver.Apply(run, Night(run, config), V2ActionId.FeedPreparedBottle,
                 config, new SequenceRandomSource(0));
             Assert.IsFalse(result.Accepted);
-            Assert.AreEqual(6, result.MissingPreparationSteps.Count);
+            Assert.AreEqual(5, result.MissingPreparationSteps.Count);
+            CollectionAssert.DoesNotContain(result.MissingPreparationSteps, FeedingPreparationStep.SanitizeBottle);
             Assert.IsTrue(run.Traces.Contains(CoreTraceIds.FeedingAttemptedBeforeReady));
         }
 
         [Test]
-        public void PreSanitizedCapabilitySkipsSanitizingStep()
+        public void BottleIsSanitizedByDefault()
         {
             var config = GameBalanceConfig.Default();
-            var night = Night(config: config, capabilities: new[] { ProductCapability.PreSanitizedBottle });
+            var night = Night(config: config);
             Assert.IsTrue(night.V2.Feeding.BottleSanitized);
             var result = V2ActionResolver.Apply(RunState.Create(Temperament.Soft), night,
                 V2ActionId.FeedPreparedBottle, config, new SequenceRandomSource(0));
@@ -377,6 +378,70 @@ namespace NotANap.Core.Tests
             Assert.AreEqual(1, state.EncounterSequence);
             state.Begin(WakeCause.Hunger, 20);
             Assert.AreEqual(2, state.EncounterSequence);
+        }
+
+        [Test]
+        public void LaydownBeforeSleepIsRejectedWithoutWakeOrTimePassing()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            night.Baby.Held = true;
+            int events = night.Events.Count;
+
+            var result = V2ActionResolver.Apply(run, night, V2ActionId.Laydown,
+                config, new SequenceRandomSource(0));
+
+            Assert.IsFalse(result.Accepted);
+            Assert.AreEqual(V2ActionBlockReason.BabyNotAsleep, result.BlockReason);
+            Assert.AreEqual(0, night.V2.ElapsedMinutes);
+            Assert.AreEqual(events, night.Events.Count);
+        }
+
+        [Test]
+        public void HungerWakeCreatesVisibleLateHungerSignals()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            V2TimeResolver.TriggerWake(night, WakeCause.Hunger, config);
+
+            var result = V2ActionResolver.Apply(run, night, V2ActionId.CheckHungerSignals,
+                config, new SequenceRandomSource(0));
+
+            Assert.AreEqual(HungerSignalStage.Late, result.HungerSignalStage);
+            CollectionAssert.Contains(result.ObservedSignals, ObservationSignalId.HungerCry);
+        }
+
+        [Test]
+        public void EnvironmentWakeShowsAbnormalValueAndAdjustmentReturnsToRange()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            V2TimeResolver.TriggerWake(night, WakeCause.Humidity, config);
+            Assert.AreEqual(30, night.V2.Environment.HumidityPercent);
+
+            V2ActionResolver.Apply(run, night, V2ActionId.CheckEnvironment, config, new SequenceRandomSource(0));
+            V2ActionResolver.Apply(run, night, V2ActionId.AdjustHumidity, config, new SequenceRandomSource(0));
+
+            Assert.AreEqual(40, night.V2.Environment.HumidityPercent);
+            Assert.IsTrue(night.V2.Diagnosis.CauseResolved);
+        }
+
+        [Test]
+        public void NoiseAndMonitorItemsHavePlayableV2Actions()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = V2NightFactory.Create(run, new[] { ItemId.Noise, ItemId.Monitor, ItemId.Pacifier },
+                new BabyProfile(), config);
+
+            Assert.IsTrue(V2ActionResolver.Apply(run, night, V2ActionId.ToggleNoise,
+                config, new SequenceRandomSource(0)).Accepted);
+            Assert.IsTrue(night.Wearing.Noise);
+            Assert.IsTrue(V2ActionResolver.Apply(run, night, V2ActionId.CheckMonitor,
+                config, new SequenceRandomSource(0)).MonitorRead);
         }
     }
 }

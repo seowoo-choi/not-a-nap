@@ -134,5 +134,13 @@ namespace NotANap.Presentation
 
         public DiaryViewModel BuildDiary() => Session.BuildDiary();
         public V2DiaryViewModel BuildV2Diary() => Session.BuildV2Diary();
+
+        public bool AdvanceFromV2Diary()
+        {
+            if (Screen != ScreenState.Diary || !Session.AdvanceToNextV2Night()) return false;
+            _selected.Clear();
+            GoTo(ScreenState.Setup);
+            return true;
+        }
     }
 }

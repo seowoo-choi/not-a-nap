@@ -173,6 +173,7 @@ namespace NotANap.Presentation
         public double SleepStartCalmThreshold;
         public double ParentStamina;
         public double CryIntensity;
+        public double Hunger;
         public bool IsLimbRelaxed;
         public bool IsBreathingRegular;
         public bool DeepSleepObserved;
@@ -181,6 +182,9 @@ namespace NotANap.Presentation
         public bool TemperatureChecked;
         public bool HumidityChecked;
         public bool FeedingReady;
+        public bool HasNoise;
+        public bool NoiseOn;
+        public bool HasMonitor;
         public NightGrade? Grade;
         public readonly List<V2ActionButtonViewModel> Actions = new List<V2ActionButtonViewModel>();
     }
@@ -215,5 +219,6 @@ namespace NotANap.Presentation
         public int MisdiagnosisCount;
         public int UnsafeChoiceCount;
         public double ParentStaminaAtDawn;
+        public bool HasNextNight;
     }
 }

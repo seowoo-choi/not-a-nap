@@ -10,7 +10,9 @@ namespace NotANap.Core
         public int TimeDeltaMinutes;
         public double StaminaDelta;
         public bool CauseResolved;
+        public V2ActionBlockReason BlockReason;
         public HungerSignalStage HungerSignalStage;
+        public bool MonitorRead;
         public readonly List<ObservationSignalId> ObservedSignals = new List<ObservationSignalId>();
         public readonly List<FeedingPreparationStep> MissingPreparationSteps = new List<FeedingPreparationStep>();
         public readonly List<GameEventId> EventIds = new List<GameEventId>();

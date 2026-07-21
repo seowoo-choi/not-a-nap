@@ -457,8 +457,7 @@ namespace NotANap.App
             if (outcome != null)
             {
                 title = outcome.Accepted ? "당신의 선택이 밤을 바꿨어요." : "아직 그 행동을 할 수 없어요.";
-                if (outcome.ObservedSignals.Count > 0) detail = "관찰 · " + PresentationCopyMapper.ObservationLabel(outcome.ObservedSignals[0]);
-                else if (outcome.MissingPreparationSteps.Count > 0) detail = "먼저 필요함 · " + PresentationCopyMapper.FeedingStepLabel(outcome.MissingPreparationSteps[0]);
+                detail = OutcomeDetail(vm, outcome, detail);
             }
             GUI.Label(new Rect(82, 1002, 900, 52), title, _headline);
             GUI.Label(new Rect(82, 1062, 900, 76), detail, _body);
@@ -580,12 +579,7 @@ namespace NotANap.App
             if (outcome != null)
             {
                 title = outcome.Accepted ? "당신의 선택이 밤을 조금 바꿨다." : "아직 그 행동을 할 수 없어요.";
-                if (outcome.ObservedSignals.Count > 0)
-                    detail = "관찰  ·  " + PresentationCopyMapper.ObservationLabel(outcome.ObservedSignals[0]);
-                else if (outcome.MissingPreparationSteps.Count > 0)
-                    detail = "먼저 필요함  ·  " + PresentationCopyMapper.FeedingStepLabel(outcome.MissingPreparationSteps[0]);
-                else if (outcome.ConsumedTime)
-                    detail = $"{outcome.TimeDeltaMinutes}분이 흘렀고, 체력이 {outcome.StaminaDelta:+0;-0;0} 변했어요.";
+                detail = OutcomeDetail(vm, outcome, detail);
             }
             GUI.Label(new Rect(478, 856, 840, 42), title, _headline);
             GUI.Label(new Rect(478, 910, 840, 52), detail, _body);
@@ -603,9 +597,9 @@ namespace NotANap.App
             switch (group)
             {
                 case ActionGroup.Diagnose:
-                    return new[] { V2ActionId.CheckDiaper, V2ActionId.CheckHungerSignals, V2ActionId.CheckEnvironment, V2ActionId.CheckLimbRelaxation, V2ActionId.Hesitate };
+                    return new[] { V2ActionId.CheckDiaper, V2ActionId.CheckHungerSignals, V2ActionId.CheckEnvironment, V2ActionId.CheckMonitor, V2ActionId.CheckLimbRelaxation, V2ActionId.Hesitate };
                 case ActionGroup.Care:
-                    return new[] { V2ActionId.Hold, V2ActionId.Pat, V2ActionId.Pacifier, V2ActionId.Laydown, V2ActionId.ChangeDiaper, V2ActionId.AdjustTemperature, V2ActionId.AdjustHumidity };
+                    return new[] { V2ActionId.Hold, V2ActionId.Pat, V2ActionId.Pacifier, V2ActionId.ToggleNoise, V2ActionId.Laydown, V2ActionId.ChangeDiaper, V2ActionId.AdjustTemperature, V2ActionId.AdjustHumidity };
                 default:
                     return new[] { V2ActionId.SterilizeBottle, V2ActionId.PrepareWater, V2ActionId.MeasureFormula, V2ActionId.MixFormula, V2ActionId.CoolBottle, V2ActionId.CheckBottleTemperature, V2ActionId.HoldWhilePreparing, V2ActionId.FeedPreparedBottle };
             }
@@ -664,9 +658,11 @@ namespace NotANap.App
             GUI.Label(new Rect(770, 305, 940, 110), "완벽하게 재우는 밤은 없었다.\n하지만 우리 가족이 계속할 수 있는 방법을 조금 배웠다.", _headline);
             GUI.Label(new Rect(770, 465, 940, 44), "오늘의 선택은 다음 밤에 돌아옵니다.", _body);
             GUI.Label(new Rect(770, 535, 940, 120), $"오판 {vm.MisdiagnosisCount}회  ·  안전 위반 {vm.UnsafeChoiceCount}회\n아기는 반복된 행동을 새로운 잠 습관으로 기억해요.", _body);
-            if (GUI.Button(new Rect(1290, 920, 520, 76), "처음부터 다시 보기", _button))
+            string nextLabel = vm.HasNextNight ? NextNightButtonLabel(vm.NightId) : "처음부터 다시 보기";
+            if (GUI.Button(new Rect(1290, 920, 520, 76), nextLabel, _button))
             {
-                _flow = new GameFlowController(new SystemRandomSource(Environment.TickCount));
+                if (vm.HasNextNight) _flow.AdvanceFromV2Diary();
+                else _flow = new GameFlowController(new SystemRandomSource(Environment.TickCount));
                 _lastResult = null;
                 _actionGroup = ActionGroup.Diagnose;
                 _timedEncounterSequence = -1;
@@ -732,14 +728,56 @@ namespace NotANap.App
             GUI.Label(new Rect(110, 930, 860, 48), "육아일지", _caption);
             GUI.Label(new Rect(110, 1010, 860, 180), "완벽하게 재우는 밤은 없었다.\n그래도 우리 가족이 계속할 수 있는 방법을 조금 배웠다.", _headline);
             GUI.Label(new Rect(110, 1240, 860, 100), "오늘의 선택은 다음 밤에 돌아옵니다.", _body);
-            if (GUI.Button(new Rect(100, 1600, 880, 120), "처음부터 다시 보기", _button))
+            string nextLabel = vm.HasNextNight ? NextNightButtonLabel(vm.NightId) : "처음부터 다시 보기";
+            if (GUI.Button(new Rect(100, 1600, 880, 120), nextLabel, _button))
             {
-                _flow = new GameFlowController(new SystemRandomSource(Environment.TickCount));
+                if (vm.HasNextNight) _flow.AdvanceFromV2Diary();
+                else _flow = new GameFlowController(new SystemRandomSource(Environment.TickCount));
                 _lastResult = null;
                 _actionGroup = ActionGroup.Diagnose;
                 _timedEncounterSequence = -1;
                 _actionEncounterSequence = -1;
             }
+        }
+
+        private static string NextNightButtonLabel(NightId night)
+            => night == NightId.FirstNight ? "둘째 밤 준비하기 →" : "백일째 밤 준비하기 →";
+
+        private static string OutcomeDetail(V2PlayViewModel vm, V2ActionOutcome outcome, string fallback)
+        {
+            if (outcome.BlockReason == V2ActionBlockReason.BabyNotHeld)
+                return "아기는 이미 침대에 있어요. 먼저 품에 안아주세요.";
+            if (outcome.BlockReason == V2ActionBlockReason.BabyNotAsleep)
+                return "아직 잠들지 않았어요. 먼저 충분히 달래주세요.";
+            if (outcome.BlockReason == V2ActionBlockReason.ItemUnavailable)
+                return "이 물건을 가져오지 않아 사용할 수 없어요.";
+            if (outcome.Action == V2ActionId.CheckHungerSignals)
+            {
+                switch (outcome.HungerSignalStage)
+                {
+                    case HungerSignalStage.Late: return "입을 찾고 빠르게 숨 쉬며 배고픈 울음을 내요. 수유가 필요해요.";
+                    case HungerSignalStage.Active: return "고개를 돌리고 보호자 쪽으로 몸을 기울여요. 배고픔 신호예요.";
+                    case HungerSignalStage.Early: return "입맛을 다시고 손을 빨아요. 초기 배고픔 신호예요.";
+                    default: return "지금은 배고픔 신호가 보이지 않아요.";
+                }
+            }
+            if (outcome.Action == V2ActionId.CheckEnvironment)
+                return $"온도 {vm.TemperatureCelsius:0.#}°C · 습도 {vm.HumidityPercent:0.#}% (권장 20–22°C · 40–60%)";
+            if (outcome.Action == V2ActionId.AdjustTemperature)
+                return $"온도를 {vm.TemperatureCelsius:0.#}°C로 조절했어요.";
+            if (outcome.Action == V2ActionId.AdjustHumidity)
+                return $"습도를 {vm.HumidityPercent:0.#}%로 조절했어요.";
+            if (outcome.MonitorRead)
+                return $"울음 {vm.CryIntensity:0} · 진정 {vm.Calm:0} · 허기 {vm.Hunger:0}";
+            if (outcome.Action == V2ActionId.ToggleNoise)
+                return vm.NoiseOn ? "백색소음기를 켰어요." : "백색소음기를 껐어요.";
+            if (outcome.ObservedSignals.Count > 0)
+                return "관찰 · " + PresentationCopyMapper.ObservationLabel(outcome.ObservedSignals[0]);
+            if (outcome.MissingPreparationSteps.Count > 0)
+                return "먼저 필요함 · " + PresentationCopyMapper.FeedingStepLabel(outcome.MissingPreparationSteps[0]);
+            if (outcome.ConsumedTime)
+                return $"{outcome.TimeDeltaMinutes}분이 흘렀고, 체력이 {outcome.StaminaDelta:+0;-0;0} 변했어요.";
+            return fallback;
         }
 
         private static string CauseSignal(V2PlayViewModel vm)

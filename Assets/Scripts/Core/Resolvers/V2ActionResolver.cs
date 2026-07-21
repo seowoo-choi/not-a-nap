@@ -88,13 +88,17 @@ namespace NotANap.Core
                     break;
                 case V2ActionId.AdjustTemperature:
                     Consume(outcome, config.V2.DefaultActionMinutes, -config.V2.EnvironmentAdjustmentStaminaCost);
-                    night.V2.Environment.TemperatureCelsius += config.V2.TemperatureAdjustment;
+                    night.V2.Environment.TemperatureCelsius = CoreMath.Clamp(
+                        night.V2.Environment.TemperatureCelsius,
+                        config.V2.RecommendedTemperatureMin, config.V2.RecommendedTemperatureMax);
                     if (night.V2.Diagnosis.ActiveCause == WakeCause.Temperature && night.V2.Environment.IsTemperatureChecked)
                         ResolveCause(night, outcome);
                     break;
                 case V2ActionId.AdjustHumidity:
                     Consume(outcome, config.V2.DefaultActionMinutes, -config.V2.EnvironmentAdjustmentStaminaCost);
-                    night.V2.Environment.HumidityPercent += config.V2.HumidityAdjustment;
+                    night.V2.Environment.HumidityPercent = CoreMath.Clamp(
+                        night.V2.Environment.HumidityPercent,
+                        config.V2.RecommendedHumidityMin, config.V2.RecommendedHumidityMax);
                     if (night.V2.Diagnosis.ActiveCause == WakeCause.Humidity && night.V2.Environment.IsHumidityChecked)
                         ResolveCause(night, outcome);
                     break;
@@ -111,10 +115,26 @@ namespace NotANap.Core
                         night.V2.SleepCycle.DeepSleepObserved = true;
                     break;
                 case V2ActionId.Laydown:
+                    if (!night.Baby.Held) return Reject(outcome, V2ActionBlockReason.BabyNotHeld);
+                    if (night.V2.SleepCycle.Stage != V2SleepStage.RemActiveSleep &&
+                        night.V2.SleepCycle.Stage != V2SleepStage.NremDeepSleep)
+                        return Reject(outcome, V2ActionBlockReason.BabyNotAsleep);
                     ApplyLaydown(run, night, outcome, config, rng);
                     break;
                 case V2ActionId.Pacifier:
+                    if (!night.HasItem(ItemId.Pacifier))
+                        return Reject(outcome, V2ActionBlockReason.ItemUnavailable);
                     ApplyPacifier(run, night, outcome, config);
+                    break;
+                case V2ActionId.ToggleNoise:
+                    if (!night.HasItem(ItemId.Noise) || night.NoiseDisabled)
+                        return Reject(outcome, V2ActionBlockReason.ItemUnavailable);
+                    night.Wearing.Noise = !night.Wearing.Noise;
+                    break;
+                case V2ActionId.CheckMonitor:
+                    if (!night.HasItem(ItemId.Monitor))
+                        return Reject(outcome, V2ActionBlockReason.ItemUnavailable);
+                    outcome.MonitorRead = true;
                     break;
                 case V2ActionId.Hold:
                 case V2ActionId.Pat:
@@ -332,9 +352,11 @@ namespace NotANap.Core
             outcome.StaminaDelta += stamina;
         }
 
-        private static V2ActionOutcome Reject(V2ActionOutcome outcome)
+        private static V2ActionOutcome Reject(V2ActionOutcome outcome,
+            V2ActionBlockReason reason = V2ActionBlockReason.None)
         {
             outcome.Accepted = false;
+            outcome.BlockReason = reason;
             outcome.ConsumedTime = false;
             outcome.TimeDeltaMinutes = 0;
             return outcome;

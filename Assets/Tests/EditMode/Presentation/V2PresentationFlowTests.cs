@@ -27,6 +27,17 @@ namespace NotANap.Presentation.Tests
             Assert.IsNotNull(flow.Session.Night.V2);
             Assert.AreEqual("21:00", flow.BuildV2Play().Clock);
             Assert.AreEqual(540, flow.BuildV2Play().RemainingMinutes);
+            Assert.IsFalse(flow.BuildV2Play().Actions.Any(a => a.Action == V2ActionId.SterilizeBottle));
+        }
+
+        [Test]
+        public void SterilizeActionAppearsOnlyForExceptionalUnsanitizedBottle()
+        {
+            var flow = StartV2();
+            flow.Session.Night.V2.Feeding.BottleSanitized = false;
+
+            Assert.IsTrue(flow.BuildV2Play().Actions.Any(a =>
+                a.Action == V2ActionId.SterilizeBottle && a.Enabled));
         }
 
         [Test]
@@ -68,6 +79,8 @@ namespace NotANap.Presentation.Tests
             Assert.AreEqual("기저귀 갈기", PresentationCopyMapper.V2ActionLabel(V2ActionId.ChangeDiaper));
             Assert.AreEqual("온도·습도", PresentationCopyMapper.V2ActionLabel(V2ActionId.CheckEnvironment));
             Assert.AreEqual("잠시 망설임", PresentationCopyMapper.V2ActionLabel(V2ActionId.Hesitate));
+            Assert.AreEqual("백색소음기 켜기/끄기", PresentationCopyMapper.V2ActionLabel(V2ActionId.ToggleNoise));
+            Assert.AreEqual("베이비 모니터 확인", PresentationCopyMapper.V2ActionLabel(V2ActionId.CheckMonitor));
         }
 
         [Test]
@@ -97,6 +110,22 @@ namespace NotANap.Presentation.Tests
 
             Assert.IsNotNull(flow.BuildV2Play().Grade);
             Assert.AreEqual("06:00", flow.BuildV2Play().Clock);
+        }
+
+        [Test]
+        public void FirstNightDiaryAdvancesSameRunToSecondNightSetup()
+        {
+            var flow = StartV2();
+            TurnResolver.AdvanceMinutes(flow.Session.Run, flow.Session.Night, 540,
+                GameBalanceConfig.Default(), new SystemRandomSource(8));
+            flow.ActV2(V2ActionId.Hesitate);
+
+            Assert.AreEqual(ScreenState.Diary, flow.Screen);
+            Assert.IsTrue(flow.BuildV2Diary().HasNextNight);
+            Assert.IsTrue(flow.AdvanceFromV2Diary());
+            Assert.AreEqual(ScreenState.Setup, flow.Screen);
+            Assert.AreEqual(NightId.SecondNight, flow.Session.Run.CurrentNightId);
+            Assert.AreEqual(1, flow.Session.Run.NightResults.Count);
         }
     }
 }

@@ -73,6 +73,8 @@ namespace NotANap.Presentation
             V2ActionId.CheckBottleTemperature => "분유 온도 확인",
             V2ActionId.FeedPreparedBottle => "준비한 분유 수유",
             V2ActionId.HoldWhilePreparing => "안고 준비하기",
+            V2ActionId.ToggleNoise => "백색소음기 켜기/끄기",
+            V2ActionId.CheckMonitor => "베이비 모니터 확인",
             _ => action.ToString()
         };
 
