@@ -55,6 +55,11 @@ jobs:
         shell: bash
         run: |
           test -f Builds/WebGL/index.html
+          # Unity reuses stable WebGL filenames between deployments. Without a
+          # version query, a browser can combine an older data/wasm response
+          # with the latest index and leave the canvas blank after navigation.
+          perl -0pi -e 's/(\.(?:loader\.js|framework\.js|data|wasm))"/$1?v=$ENV{GITHUB_SHA}"/g' Builds/WebGL/index.html
+          grep -F "?v=${GITHUB_SHA}" Builds/WebGL/index.html
           touch Builds/WebGL/.nojekyll
           build_bytes=$(du -sb Builds/WebGL | cut -f1)
           limit_bytes=$((50 * 1024 * 1024))
