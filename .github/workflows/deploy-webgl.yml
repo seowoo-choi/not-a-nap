@@ -47,6 +47,10 @@ jobs:
           buildMethod: NotANap.Editor.WebBuildCommand.Build
           customParameters: -outputPath Builds/WebGL -uncompressedWebGL
 
+      # game-ci builds inside Docker, so its output can be owned by root.
+      - name: Fix build output permissions
+        run: sudo chown -R "$(id -u):$(id -g)" Builds/WebGL
+
       - name: Prepare Pages artifact
         shell: bash
         run: |
