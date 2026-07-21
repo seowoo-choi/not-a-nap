@@ -30,6 +30,8 @@ namespace NotANap.Core
                     FeedingNeedModifier = source.FeedingNeedModifier
                 }
             };
+            night.V2.Environment.TemperatureCelsius = 21;
+            night.V2.Environment.HumidityPercent = 50;
             if (capabilities != null) night.V2.ProductCapabilities.UnionWith(capabilities);
             if (night.V2.ProductCapabilities.Contains(ProductCapability.PreSanitizedBottle))
                 night.V2.Feeding.BottleSanitized = true;
@@ -110,7 +112,7 @@ namespace NotANap.Core
                 if (night.V2.NextWake != null && !night.V2.NextWake.Triggered)
                     step = Math.Min(step, Math.Max(0, night.V2.NextWake.AtElapsedMinute - night.V2.ElapsedMinutes));
 
-                if (step > 0) AdvanceContinuous(night, step, config);
+                if (step > 0) AdvanceContinuous(run, night, step, config);
 
                 if (night.V2.NextWake != null && !night.V2.NextWake.Triggered &&
                     night.V2.ElapsedMinutes >= night.V2.NextWake.AtElapsedMinute)
@@ -127,13 +129,26 @@ namespace NotANap.Core
                 night.Over = true;
                 night.V2.Metrics.ParentStaminaAtDawn = night.Parent.Stamina;
                 night.Stats.StaminaLeft = night.Parent.Stamina;
+                night.Stats.Wakes = night.V2.Metrics.WakeCount;
+                bool sleepingAtDawn = night.V2.SleepCycle.Stage == V2SleepStage.NremDeepSleep ||
+                                      night.V2.SleepCycle.Stage == V2SleepStage.RemActiveSleep;
+                night.Result = sleepingAtDawn
+                    ? (night.Baby.Held ? NightOutcome.Arms : NightOutcome.Crib)
+                    : NightOutcome.Awake;
                 night.AddEvent(GameEventId.NightCompleted);
             }
         }
 
-        private static void AdvanceContinuous(NightState night, int minutes, GameBalanceConfig config)
+        private static void AdvanceContinuous(RunState run, NightState night, int minutes, GameBalanceConfig config)
         {
             var v2 = night.V2;
+            night.Baby.Hunger = CoreMath.Clamp(night.Baby.Hunger + minutes * .25, 0, 100);
+            if (night.Wearing.Noise && night.HasItem(ItemId.Noise) && !night.NoiseDisabled)
+            {
+                double effectiveness = 1 - run.GetEffectiveMemory().NoiseHab;
+                night.Baby.Calm = CoreMath.Clamp(night.Baby.Calm + minutes * .4 * effectiveness, 0, 100);
+                night.Stats.NoiseTurns += Math.Max(1, (int)Math.Ceiling(minutes / 15d));
+            }
             bool sleeping = v2.SleepCycle.Stage == V2SleepStage.RemActiveSleep ||
                             v2.SleepCycle.Stage == V2SleepStage.NremDeepSleep;
             if (sleeping)
@@ -177,6 +192,12 @@ namespace NotANap.Core
             night.Baby.Crying = true;
             night.V2.CryIntensity = Math.Max(night.V2.CryIntensity, 20);
             night.V2.Diagnosis.Begin(cause, config.V2.DecisionSeconds);
+            if (cause == WakeCause.Hunger)
+                night.Baby.Hunger = Math.Max(night.Baby.Hunger, config.V2.HungerLateThreshold);
+            else if (cause == WakeCause.Temperature)
+                night.V2.Environment.TemperatureCelsius = config.V2.RecommendedTemperatureMax + 5;
+            else if (cause == WakeCause.Humidity)
+                night.V2.Environment.HumidityPercent = config.V2.RecommendedHumidityMin - 10;
             night.AddEvent(GameEventId.BabyFullyWoke);
         }
 

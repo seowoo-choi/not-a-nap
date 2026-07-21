@@ -64,10 +64,10 @@ namespace NotANap.Core
         public double HesitationCryIncrease = 10;
         public int WakeDelayMinMinutes = 45;
         public int WakeDelayMaxMinutes = 120;
-        public double RecommendedTemperatureMin;
-        public double RecommendedTemperatureMax;
-        public double RecommendedHumidityMin;
-        public double RecommendedHumidityMax;
+        public double RecommendedTemperatureMin = 20;
+        public double RecommendedTemperatureMax = 22;
+        public double RecommendedHumidityMin = 40;
+        public double RecommendedHumidityMax = 60;
         public double TemperatureAdjustment;
         public double HumidityAdjustment;
         public double EnvironmentAdjustmentStaminaCost = 4;

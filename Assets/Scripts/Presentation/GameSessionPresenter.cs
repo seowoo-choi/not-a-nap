@@ -31,6 +31,7 @@ namespace NotANap.Presentation
         /// <summary>DIARY 기억 형성 1회 호출 보장.</summary>
         private bool _diaryBuilt;
         private DiaryViewModel _diary;
+        private bool _v2DiaryBuilt;
 
         public GameSessionPresenter(IRandomSource rng, GameBalanceConfig config = null)
         {
@@ -61,6 +62,7 @@ namespace NotANap.Presentation
             PendingOverlay = null;
             _diaryBuilt = false;
             _diary = null;
+            _v2DiaryBuilt = false;
         }
 
         /// <summary>V1 밤 생성 API를 유지하면서 V2 분 단위 루프를 명시적으로 시작한다.</summary>
@@ -78,6 +80,7 @@ namespace NotANap.Presentation
             PendingOverlay = null;
             _diaryBuilt = false;
             _diary = null;
+            _v2DiaryBuilt = false;
         }
 
         // ── 행동 실행 (★ Apply → EndTurn 순서 고정) ───────────────
@@ -289,6 +292,7 @@ namespace NotANap.Presentation
                 SleepStartCalmThreshold = _config.V2.SleepStartCalmThreshold,
                 ParentStamina = Night.Parent.Stamina,
                 CryIntensity = v2.CryIntensity,
+                Hunger = Night.Baby.Hunger,
                 IsLimbRelaxed = v2.SleepCycle.IsLimbRelaxed,
                 IsBreathingRegular = v2.SleepCycle.IsBreathingRegular,
                 DeepSleepObserved = v2.SleepCycle.DeepSleepObserved,
@@ -297,6 +301,9 @@ namespace NotANap.Presentation
                 TemperatureChecked = v2.Environment.IsTemperatureChecked,
                 HumidityChecked = v2.Environment.IsHumidityChecked,
                 FeedingReady = v2.Feeding.IsReadyToFeed,
+                HasNoise = Night.HasItem(ItemId.Noise) && !Night.NoiseDisabled,
+                NoiseOn = Night.Wearing.Noise,
+                HasMonitor = Night.HasItem(ItemId.Monitor),
                 Grade = Night.Over ? NightEvaluationResolver.Evaluate(Night, _config).Grade : null
             };
             foreach (V2ActionId action in Enum.GetValues(typeof(V2ActionId)))
@@ -304,15 +311,28 @@ namespace NotANap.Presentation
                 {
                     Action = action,
                     Label = PresentationCopyMapper.V2ActionLabel(action),
-                    Enabled = !Night.Over
+                    Enabled = !Night.Over && IsV2ActionAvailable(action)
                 });
             return vm;
+        }
+
+        private bool IsV2ActionAvailable(V2ActionId action)
+        {
+            if (action == V2ActionId.Pacifier) return Night.HasItem(ItemId.Pacifier);
+            if (action == V2ActionId.ToggleNoise) return Night.HasItem(ItemId.Noise) && !Night.NoiseDisabled;
+            if (action == V2ActionId.CheckMonitor) return Night.HasItem(ItemId.Monitor);
+            return true;
         }
 
         public V2DiaryViewModel BuildV2Diary()
         {
             if (Night?.V2 == null || !Night.Over)
                 throw new InvalidOperationException("종료된 V2 밤이 필요하다.");
+            if (!_v2DiaryBuilt)
+            {
+                MemoryConsolidator.Consolidate(Run, Night, _config);
+                _v2DiaryBuilt = true;
+            }
             var evaluation = NightEvaluationResolver.Evaluate(Night, _config);
             var m = evaluation.Metrics;
             return new V2DiaryViewModel
@@ -326,8 +346,22 @@ namespace NotANap.Presentation
                 CorrectFirstChecks = m.CorrectFirstChecks,
                 MisdiagnosisCount = m.MisdiagnosisCount,
                 UnsafeChoiceCount = m.UnsafeChoiceCount,
-                ParentStaminaAtDawn = m.ParentStaminaAtDawn
+                ParentStaminaAtDawn = m.ParentStaminaAtDawn,
+                HasNextNight = Run.CurrentNightId != NightId.HundredthNight
             };
+        }
+
+        public bool AdvanceToNextV2Night()
+        {
+            if (Night?.V2 == null || !Night.Over || Run.CurrentNightId == NightId.HundredthNight)
+                return false;
+            BuildV2Diary();
+            if (!Run.AdvanceNight()) return false;
+            Night = null;
+            PendingOverlay = null;
+            _eventCursor = 0;
+            _v2DiaryBuilt = false;
+            return true;
         }
 
         private void BuildActions(PlayViewModel vm)

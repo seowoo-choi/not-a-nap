@@ -28,8 +28,11 @@ namespace NotANap.Core
         CheckDiaper, ChangeDiaper, CheckHungerSignals, CheckEnvironment,
         AdjustTemperature, AdjustHumidity, Hesitate,
         SterilizeBottle, PrepareWater, MeasureFormula, MixFormula, CoolBottle,
-        CheckBottleTemperature, FeedPreparedBottle, HoldWhilePreparing
+        CheckBottleTemperature, FeedPreparedBottle, HoldWhilePreparing,
+        ToggleNoise, CheckMonitor
     }
+
+    public enum V2ActionBlockReason { None, BabyNotHeld, BabyNotAsleep, ItemUnavailable }
 
     public static class CoreTraceIds
     {
