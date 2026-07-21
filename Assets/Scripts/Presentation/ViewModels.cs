@@ -168,6 +168,9 @@ namespace NotANap.Presentation
         public int WakeCount;
         public int CorrectFirstChecks;
         public int MisdiagnosisCount;
+        public double Calm;
+        public double DrowsyCalmThreshold;
+        public double SleepStartCalmThreshold;
         public double ParentStamina;
         public double CryIntensity;
         public bool IsLimbRelaxed;
