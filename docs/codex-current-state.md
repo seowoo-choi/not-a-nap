@@ -1,6 +1,23 @@
 # Codex 현재 상태 감사
 
-감사일: 2026-07-18 (Asia/Seoul)
+최초 감사일: 2026-07-18 (Asia/Seoul)
+최신 코드 재감사: 2026-07-21, `main` / `f4c10fa`
+
+## 2026-07-21 최신 결론
+
+이 문서의 2026-07-18 기록 이후 V2 Core와 실행 가능한 Presentation 셸이 추가되었다. 현재 상태는 다음과 같다.
+
+- `GameBootstrap`이 `TITLE → SETUP → PLAY → DIARY` 한 밤을 실제로 그린다.
+- `GameSessionPresenter`, `GameFlowController`, V2 ViewModel과 Presentation 테스트가 존재한다.
+- 분 단위 통잠 루프·반복 각성·수면 지표·REM/NREM·진단·수유 준비·S~D 평가는 코드에 있다.
+- 그러나 DIARY 이후는 “처음부터 다시”이며 둘째 밤·백일밤·V2 Memory·Ending이 연결되지 않았다.
+- 온습도 기본값과 조절량은 0이고, Hunger/환경의 시간 변화 및 상태 기반 각성 원인 판정은 미구현이다.
+- 기저귀가 실제 원인이 아닐 때 첫 `CheckDiaper`를 오판 처리하는 현재 코드는 승인된 “기저귀 먼저 확인” 규칙과 충돌한다.
+- V2 Setup에서 선택 가능한 Carrier/Noise/Monitor의 V2 효과가 없고 Pacifier는 소지 검사가 없다.
+- 피로 신호 enum 값은 있으나 관찰 Resolver와 행동 결과에 연결되지 않았다.
+
+따라서 현재 상태는 `한 밤 기술 데모 가능 / 세 밤 제품 루프 미완성`이다. 후속 작업의 원본은
+[`code-first-development-plan.md`](code-first-development-plan.md)다.
 
 ## 작업 시작 상태
 
@@ -102,6 +119,7 @@
 
 - `ActionResolver`, `TurnResolver`, `ScheduledEventResolver`의 레거시 하드코딩 수치와 한국어 로그
 - 05:58 연출 및 최종 밤 규칙의 문서상 확정 표현
-- Scene/Presentation 계층 부재: 현재 Unity에서 실제 플레이 가능한 UI 흐름은 없다.
+- V2와 V1이 같은 `NightState`·Resolver 계층에 공존하므로 잘못된 V1 API 호출이 다시 섞일 위험이 있다.
+- `GameBootstrap`은 실제 플레이 가능하지만 한 밤 뒤 종료되며, 세 밤 Memory/Ending을 지원하지 않는다.
 - Unity 라이선스/배치 실행 환경이 재현 가능한 CI로 정리되지 않음
 - 기존 Assets 코드와 테스트 전체가 작업 시작 당시 Git 미추적 상태였음
