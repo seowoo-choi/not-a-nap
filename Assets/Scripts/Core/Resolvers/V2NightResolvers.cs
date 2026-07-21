@@ -52,9 +52,8 @@ namespace NotANap.Core
     {
         private static readonly WakeCause[] Causes =
         {
-            WakeCause.NaturalCycle, WakeCause.Hunger, WakeCause.Diaper,
-            WakeCause.Temperature, WakeCause.Humidity, WakeCause.MoroReflex,
-            WakeCause.PainOrCondition
+            WakeCause.Hunger, WakeCause.Diaper,
+            WakeCause.Temperature, WakeCause.Humidity
         };
 
         public static ScheduledWake Schedule(NightState night, GameBalanceConfig config, IRandomSource rng)

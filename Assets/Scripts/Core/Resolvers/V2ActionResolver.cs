@@ -124,6 +124,10 @@ namespace NotANap.Core
                     night.Baby.Sleep = CoreMath.Clamp(night.Baby.Sleep +
                         (action == V2ActionId.Hold ? config.V2.HoldSleepGain : config.V2.PatSleepGain) *
                         night.V2.Modifier.SleepGainMultiplier, 0, 100);
+                    if (!night.V2.Diagnosis.CauseResolved &&
+                        (night.V2.Diagnosis.ActiveCause == WakeCause.NaturalCycle ||
+                         night.V2.Diagnosis.ActiveCause == WakeCause.MoroReflex))
+                        ResolveCause(night, outcome);
                     if (!night.V2.Diagnosis.CauseResolved && night.V2.Diagnosis.ActiveCause == WakeCause.Diaper)
                         ApplyMisdiagnosis(night, outcome, config);
                     else if (night.V2.Diagnosis.CauseResolved)

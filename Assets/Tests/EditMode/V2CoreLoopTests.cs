@@ -55,6 +55,35 @@ namespace NotANap.Core.Tests
         }
 
         [Test]
+        public void ScheduledWakeAlwaysHasAPlayerResolutionPath()
+        {
+            var config = GameBalanceConfig.Default();
+            var actionable = new[] { WakeCause.Hunger, WakeCause.Diaper, WakeCause.Temperature, WakeCause.Humidity };
+            for (int seed = 0; seed < 100; seed++)
+            {
+                var wake = WakeScheduler.Schedule(Night(), config, new SystemRandomSource(seed));
+                CollectionAssert.Contains(actionable, wake.Cause);
+            }
+        }
+
+        [TestCase(WakeCause.NaturalCycle, V2ActionId.Pat)]
+        [TestCase(WakeCause.MoroReflex, V2ActionId.Hold)]
+        public void ComfortResolvesLaydownRecoveryWake(WakeCause cause, V2ActionId action)
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            night.Baby.Calm = 70;
+            V2TimeResolver.TriggerWake(night, cause, config);
+
+            var outcome = V2ActionResolver.Apply(run, night, action, config, new SequenceRandomSource(0));
+
+            Assert.IsTrue(outcome.CauseResolved);
+            Assert.IsTrue(night.V2.Diagnosis.CauseResolved);
+            Assert.AreEqual(V2SleepStage.RemActiveSleep, night.V2.SleepCycle.Stage);
+        }
+
+        [Test]
         public void OneSuccessfulLaydownDoesNotEndNight()
         {
             var config = GameBalanceConfig.Default();

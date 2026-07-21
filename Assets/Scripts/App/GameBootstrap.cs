@@ -323,7 +323,7 @@ namespace NotANap.App
 
             string state = crying ? "으앙! 지금 울고 있어요" : sleeping ? "새근새근 잠들었어요" : "눈을 뜨고 살피고 있어요";
             GUI.Label(new Rect(rect.x + 45, rect.y + 340, rect.width - 90, 48), state, Centered(_headline));
-            GUI.Label(new Rect(rect.x + 60, rect.y + 392, rect.width - 120, 38), PresentationCopyMapper.V2StageLabel(vm.SleepStage), Centered(_body));
+            GUI.Label(new Rect(rect.x + 60, rect.y + 392, rect.width - 120, 38), BabyStepHint(vm), Centered(_body));
         }
 
         private void DrawLandscapeBaby(V2PlayViewModel vm)
@@ -452,7 +452,7 @@ namespace NotANap.App
             Panel(new Rect(48, 920, 984, 250));
             GUI.Label(new Rect(82, 950, 900, 42), !vm.CauseResolved ? $"결정까지 {UpdateDecisionTimer(vm)}초" : "방금 일어난 일", _caption);
             string title = vm.CauseResolved ? "아기의 숨소리를 지켜보고 있어요." : "왜 깼는지 먼저 살펴보세요.";
-            string detail = vm.CauseResolved ? "서두르지 않아도 괜찮아요." : CauseSignal(vm);
+            string detail = vm.CauseResolved ? BabyStepHint(vm) : CauseSignal(vm);
             var outcome = _lastResult?.Outcome;
             if (outcome != null)
             {
@@ -563,7 +563,7 @@ namespace NotANap.App
             GUI.Label(new Rect(478, 816, 840, 28), !vm.CauseResolved ? $"결정까지  {UpdateDecisionTimer(vm)}초" : "방금 일어난 일", _caption);
 
             string title = "아기의 숨소리만 방 안에 작게 들린다.";
-            string detail = "지금은 서두르지 않아도 괜찮아요.";
+            string detail = BabyStepHint(vm);
             var outcome = _lastResult?.Outcome;
             if (outcome != null)
             {
@@ -733,9 +733,28 @@ namespace NotANap.App
 
         private static string SleepSignal(V2PlayViewModel vm)
         {
+            if (!vm.CauseResolved) return CauseSignal(vm);
+            if (vm.SleepStage == V2SleepStage.RemActiveSleep)
+                return "활동 수면이에요.\n아직 눕히기보다 기다려주세요.";
+            if (vm.SleepStage == V2SleepStage.NremDeepSleep && !vm.DeepSleepObserved)
+                return "깊은 수면이에요.\n팔다리 이완을 확인해보세요.";
+            if (vm.SleepStage == V2SleepStage.NremDeepSleep)
+                return "팔다리 힘이 빠졌어요.\n이제 눕히기를 시도할 수 있어요.";
             if (vm.CryIntensity > 45) return "울음이 커지고 있어요.\n자극을 줄이고 천천히 반응하세요.";
-            if (vm.IsLimbRelaxed && vm.IsBreathingRegular) return "팔다리에 힘이 빠지고\n숨결이 고르게 이어져요.";
-            return "표정과 숨소리를 살피며\n다음 행동을 고르세요.";
+            if (vm.Calm < vm.DrowsyCalmThreshold)
+                return $"진정도 {vm.Calm:0} / {vm.SleepStartCalmThreshold:0}\n안기나 토닥이기로 달래주세요.";
+            return $"진정도 {vm.Calm:0} / {vm.SleepStartCalmThreshold:0}\n한 번만 더 차분히 달래주세요.";
+        }
+
+        private static string BabyStepHint(V2PlayViewModel vm)
+        {
+            if (!vm.CauseResolved) return "먼저 깨어난 원인을 확인해주세요";
+            if (vm.SleepStage == V2SleepStage.RemActiveSleep) return "활동 수면 · 아직 눕히기엔 일러요";
+            if (vm.SleepStage == V2SleepStage.NremDeepSleep && !vm.DeepSleepObserved) return "깊은 수면 · 팔다리 이완을 확인하세요";
+            if (vm.SleepStage == V2SleepStage.NremDeepSleep) return "깊은 수면 확인 · 이제 눕혀도 좋아요";
+            if (vm.Calm < vm.DrowsyCalmThreshold)
+                return $"진정도 {vm.Calm:0} / {vm.SleepStartCalmThreshold:0} · 안기 또는 토닥이기";
+            return $"진정도 {vm.Calm:0} / {vm.SleepStartCalmThreshold:0} · 한 번 더 달래주세요";
         }
 
         private static string FormatDuration(int minutes) => minutes >= 60 ? $"{minutes / 60}시간 {minutes % 60:00}분" : $"{minutes}분";
