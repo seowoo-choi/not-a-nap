@@ -17,6 +17,7 @@ namespace NotANap.App
         private const float PortraitHeight = 1920f;
 
         private GameFlowController _flow;
+        private BabyVisualPresenter _babyVisual;
         private V2PresentationActionResult _lastResult;
         private int _timedEncounterSequence = -1;
         private float _decisionDeadline;
@@ -35,6 +36,10 @@ namespace NotANap.App
         private GUIStyle _button;
         private GUIStyle _buttonSmall;
         private GUIStyle _buttonSelected;
+        private GUIStyle _tabButton;
+        private GUIStyle _tabSelected;
+
+        private static readonly string[] AwakeBabble = { "아우…", "으응?", "응아", "에…", "아으" };
 
         private enum ActionGroup { Diagnose, Care, Feed }
 
@@ -50,7 +55,8 @@ namespace NotANap.App
         private void Awake()
         {
             _flow = new GameFlowController(new SystemRandomSource(Environment.TickCount));
-            _room = Resources.Load<Texture2D>("Art/nursery-night");
+            _babyVisual = new BabyVisualPresenter();
+            _room = Resources.Load<Texture2D>("Art/nursery-night-empty");
         }
 
         private void EnsureStyles()
@@ -67,6 +73,8 @@ namespace NotANap.App
             _button = ButtonStyle(28, new Color(0.09f, 0.14f, 0.21f, 0.98f), new Color(0.91f, 0.72f, 0.42f), new Color(0.97f, 0.94f, 0.87f));
             _buttonSmall = ButtonStyle(23, new Color(0.07f, 0.11f, 0.17f, 0.94f), new Color(0.28f, 0.36f, 0.45f), new Color(0.82f, 0.85f, 0.88f));
             _buttonSelected = ButtonStyle(23, new Color(0.78f, 0.54f, 0.23f, 0.98f), new Color(0.95f, 0.76f, 0.44f), Color.white);
+            _tabButton = ButtonStyle(18, new Color(0.07f, 0.11f, 0.17f, 0.94f), new Color(0.28f, 0.36f, 0.45f), new Color(0.82f, 0.85f, 0.88f));
+            _tabSelected = ButtonStyle(18, new Color(0.78f, 0.54f, 0.23f, 0.98f), new Color(0.95f, 0.76f, 0.44f), Color.white);
         }
 
         private GUIStyle LabelStyle(int size, FontStyle weight, Color color, TextAnchor align = TextAnchor.UpperLeft)
@@ -164,15 +172,17 @@ namespace NotANap.App
             GUI.Label(new Rect(1450, 75, 360, 44), $"가져갈 물건  {vm.SelectedCount} / {vm.Slots}", Right(_headline));
 
             const float cardW = 548f;
-            const float cardH = 250f;
+            const float cardH = 270f;
             for (int i = 0; i < vm.Cards.Count; i++)
             {
                 var card = vm.Cards[i];
                 int col = i % 3;
                 int row = i / 3;
-                var rect = new Rect(90 + col * 580, 220 + row * 280, cardW, cardH);
+                var rect = new Rect(90 + col * 580, 220 + row * 300, cardW, cardH);
                 DrawItemCard(rect, card, vm.SelectedCount, vm.Slots);
             }
+            DrawLockedCandidate(new Rect(670, 520, cardW, cardH), "옆잠베개", "월령과 제품별 안전 조건을 확인한 뒤 해금됩니다.");
+            DrawLockedCandidate(new Rect(1250, 520, cardW, cardH), "토닥이인형", "사용 환경과 안전 기준을 확인한 뒤 해금됩니다.");
 
             var oldEnabled = GUI.enabled;
             GUI.enabled = vm.CanStart;
@@ -187,13 +197,22 @@ namespace NotANap.App
             if (card.Disabled) panel.a = 0.52f;
             Fill(rect, panel);
             Fill(new Rect(rect.x, rect.y, card.Selected ? 7 : 2, rect.height), card.Selected ? new Color(0.92f, 0.7f, 0.36f) : new Color(0.2f, 0.28f, 0.36f));
-            GUI.Label(new Rect(rect.x + 24, rect.y + 20, 500, 42), $"{card.Emoji}  {card.Name}", _headline);
-            GUI.Label(new Rect(rect.x + 24, rect.y + 78, 500, 70), card.Desc, _body);
-            GUI.Label(new Rect(rect.x + 24, rect.y + 168, 500, 52), $"주의  {card.Side}", _caption);
+            GUI.Label(new Rect(rect.x + 24, rect.y + 20, 500, 52), card.Name, _headline);
+            GUI.Label(new Rect(rect.x + 24, rect.y + 82, 500, 105), card.Desc, _body);
+            GUI.Label(new Rect(rect.x + 24, rect.y + 202, 500, 54), $"주의  {card.Side}", _caption);
             var oldEnabled = GUI.enabled;
             GUI.enabled = !card.Disabled;
             if (GUI.Button(rect, GUIContent.none, GUIStyle.none)) _flow.ToggleV2Item(card.Id);
             GUI.enabled = oldEnabled;
+        }
+
+        private void DrawLockedCandidate(Rect rect, string name, string description)
+        {
+            Fill(rect, new Color(0.055f, 0.075f, 0.1f, 0.82f));
+            Fill(new Rect(rect.x, rect.y, 5, rect.height), new Color(0.35f, 0.39f, 0.44f));
+            GUI.Label(new Rect(rect.x + 24, rect.y + 20, rect.width - 48, 52), $"잠김 · {name}", _headline);
+            GUI.Label(new Rect(rect.x + 24, rect.y + 86, rect.width - 48, 92), description, _body);
+            GUI.Label(new Rect(rect.x + 24, rect.y + rect.height - 58, rect.width - 48, 38), "후속 해금 후보 · 현재 선택 불가", _caption);
         }
 
         private void DrawPlay()
@@ -214,6 +233,7 @@ namespace NotANap.App
             }
 
             DrawTopBar(vm);
+            DrawLandscapeBaby(vm);
             DrawStatusPanel(vm);
             DrawActionPanel(vm);
             DrawEventPanel(vm);
@@ -257,32 +277,79 @@ namespace NotANap.App
             Panel(rect, 0.78f);
             bool crying = vm.CryIntensity > 35 && vm.SleepStage == V2SleepStage.Awake;
             bool sleeping = vm.SleepStage == V2SleepStage.RemActiveSleep || vm.SleepStage == V2SleepStage.NremDeepSleep;
-            Color face = crying ? new Color(0.92f, 0.55f, 0.52f) : sleeping ? new Color(0.62f, 0.78f, 0.88f) : new Color(0.93f, 0.76f, 0.55f);
-            var faceRect = new Rect(rect.x + rect.width * 0.5f - 110, rect.y + 45, 220, 220);
-            Fill(faceRect, face);
-            Color ink = new Color(0.08f, 0.11f, 0.16f);
-            if (sleeping)
+            var texture = _babyVisual.TextureFor(vm, _lastResult?.Outcome);
+            if (texture != null)
             {
-                Fill(new Rect(faceRect.x + 45, faceRect.y + 85, 45, 10), ink);
-                Fill(new Rect(faceRect.x + 130, faceRect.y + 85, 45, 10), ink);
+                var babyRect = new Rect(rect.x + rect.width * 0.5f - 175, rect.y + 14, 350, 350);
+                DrawAnimatedBaby(vm, texture, babyRect);
+                DrawBabbleBubble(vm, babyRect, true);
             }
-            else
-            {
-                Fill(new Rect(faceRect.x + 58, faceRect.y + 72, 20, 28), ink);
-                Fill(new Rect(faceRect.x + 142, faceRect.y + 72, 20, 28), ink);
-            }
-            if (crying)
-            {
-                Fill(new Rect(faceRect.x + 82, faceRect.y + 142, 56, 42), ink);
-                Fill(new Rect(faceRect.x + 38, faceRect.y + 112, 12, 50), new Color(0.42f, 0.72f, 0.95f));
-                Fill(new Rect(faceRect.x + 170, faceRect.y + 112, 12, 50), new Color(0.42f, 0.72f, 0.95f));
-            }
-            else Fill(new Rect(faceRect.x + 82, faceRect.y + 148, 56, 10), ink);
 
             string state = crying ? "으앙! 지금 울고 있어요" : sleeping ? "새근새근 잠들었어요" : "눈을 뜨고 살피고 있어요";
-            GUI.Label(new Rect(rect.x + 45, rect.y + 285, rect.width - 90, 62), state, Centered(_headline));
-            GUI.Label(new Rect(rect.x + 60, rect.y + 352, rect.width - 120, 54), PresentationCopyMapper.V2StageLabel(vm.SleepStage), Centered(_body));
+            GUI.Label(new Rect(rect.x + 45, rect.y + 340, rect.width - 90, 48), state, Centered(_headline));
+            GUI.Label(new Rect(rect.x + 60, rect.y + 392, rect.width - 120, 38), PresentationCopyMapper.V2StageLabel(vm.SleepStage), Centered(_body));
         }
+
+        private void DrawLandscapeBaby(V2PlayViewModel vm)
+        {
+            var texture = _babyVisual.TextureFor(vm, _lastResult?.Outcome);
+            if (texture != null)
+            {
+                var babyRect = new Rect(690, 210, 520, 520);
+                DrawAnimatedBaby(vm, texture, babyRect);
+                DrawBabbleBubble(vm, babyRect, false);
+            }
+        }
+
+        private static void DrawAnimatedBaby(V2PlayViewModel vm, Texture2D texture, Rect baseRect)
+        {
+            bool sleeping = IsSleeping(vm);
+            float speed = sleeping ? 1.25f : vm.CryIntensity > 35 ? 5.2f : 2.15f;
+            float phase = Time.unscaledTime * speed;
+            float breath = (Mathf.Sin(phase) + 1f) * 0.5f;
+            float scale = 1f + breath * (sleeping ? 0.012f : 0.022f);
+            float wiggle = sleeping ? 0f : Mathf.Sin(phase * 0.63f) * (vm.CryIntensity > 35 ? 5f : 2.2f);
+            float width = baseRect.width * scale;
+            float height = baseRect.height * scale;
+            var animated = new Rect(
+                baseRect.center.x - width * 0.5f + wiggle,
+                baseRect.center.y - height * 0.5f - breath * (sleeping ? 3f : 6f),
+                width,
+                height);
+            GUI.DrawTexture(animated, texture, ScaleMode.ScaleToFit, true);
+        }
+
+        private void DrawBabbleBubble(V2PlayViewModel vm, Rect babyRect, bool portrait)
+        {
+            if (IsSleeping(vm)) return;
+
+            float cycle = Mathf.Repeat(Time.unscaledTime, 5.4f);
+            if (cycle > (vm.CryIntensity > 35 ? 2.5f : 1.65f)) return;
+
+            string babble;
+            if (vm.CryIntensity > 35) babble = "으아앙!";
+            else if (vm.CryIntensity > 0) babble = "으응…";
+            else
+            {
+                int index = Mathf.FloorToInt(Time.unscaledTime / 5.4f) % AwakeBabble.Length;
+                babble = AwakeBabble[index];
+            }
+
+            float bubbleWidth = portrait ? 190f : 220f;
+            float bubbleHeight = portrait ? 74f : 82f;
+            var bubble = new Rect(
+                babyRect.xMax - (portrait ? 155f : 85f),
+                babyRect.y + (portrait ? 30f : 40f),
+                bubbleWidth,
+                bubbleHeight);
+            Fill(bubble, new Color(0.97f, 0.94f, 0.87f, 0.96f));
+            Fill(new Rect(bubble.x + 24f, bubble.yMax, 24f, 18f), new Color(0.97f, 0.94f, 0.87f, 0.96f));
+            var style = LabelStyle(portrait ? 28 : 31, FontStyle.Bold, new Color(0.09f, 0.12f, 0.17f), TextAnchor.MiddleCenter);
+            GUI.Label(bubble, babble, style);
+        }
+
+        private static bool IsSleeping(V2PlayViewModel vm)
+            => vm.SleepStage == V2SleepStage.RemActiveSleep || vm.SleepStage == V2SleepStage.NremDeepSleep;
 
         private void DrawPortraitEvent(V2PlayViewModel vm)
         {
@@ -418,7 +485,9 @@ namespace NotANap.App
 
         private void DrawTab(Rect rect, string label, ActionGroup group)
         {
-            if (GUI.Button(rect, label, _actionGroup == group ? _buttonSelected : _buttonSmall)) _actionGroup = group;
+            GUIStyle normal = _portrait ? _buttonSmall : _tabButton;
+            GUIStyle selected = _portrait ? _buttonSelected : _tabSelected;
+            if (GUI.Button(rect, label, _actionGroup == group ? selected : normal)) _actionGroup = group;
         }
 
         private static V2ActionId[] ActionsFor(ActionGroup group)
@@ -524,7 +593,7 @@ namespace NotANap.App
                 if (card.Disabled) panel.a = 0.52f;
                 Fill(rect, panel);
                 Fill(new Rect(rect.x, rect.y, card.Selected ? 9 : 3, rect.height), card.Selected ? new Color(0.92f, 0.7f, 0.36f) : new Color(0.2f, 0.28f, 0.36f));
-                GUI.Label(new Rect(rect.x + 24, rect.y + 24, 426, 66), $"{card.Emoji} {card.Name}", _headline);
+                GUI.Label(new Rect(rect.x + 24, rect.y + 24, 426, 66), card.Name, _headline);
                 GUI.Label(new Rect(rect.x + 24, rect.y + 105, 426, 150), card.Desc, _body);
                 GUI.Label(new Rect(rect.x + 24, rect.y + 280, 426, 100), $"주의 · {card.Side}", _caption);
                 var oldEnabled = GUI.enabled;
@@ -532,9 +601,11 @@ namespace NotANap.App
                 if (GUI.Button(rect, GUIContent.none, GUIStyle.none)) _flow.ToggleV2Item(card.Id);
                 GUI.enabled = oldEnabled;
             }
+            DrawLockedCandidate(new Rect(48, 1250, cardW, cardH), "옆잠베개", "월령과 제품별 안전 조건 확인 후 해금됩니다.");
+            DrawLockedCandidate(new Rect(558, 1250, cardW, cardH), "토닥이인형", "사용 환경과 안전 기준 확인 후 해금됩니다.");
             var previous = GUI.enabled;
             GUI.enabled = vm.CanStart;
-            if (GUI.Button(new Rect(100, 1650, 880, 120), vm.CanStart ? "이 준비로 밤 시작하기 →" : $"물건을 {vm.Slots}개 골라주세요", _button)) _flow.ConfirmV2Setup();
+            if (GUI.Button(new Rect(100, 1740, 880, 120), vm.CanStart ? "이 준비로 밤 시작하기 →" : $"물건을 {vm.Slots}개 골라주세요", _button)) _flow.ConfirmV2Setup();
             GUI.enabled = previous;
         }
 
