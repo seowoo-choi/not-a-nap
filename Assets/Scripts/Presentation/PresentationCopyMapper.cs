@@ -142,11 +142,11 @@ namespace NotANap.Presentation
 
         public static string OverlayTitle(GameEventId id) => id switch
         {
-            GameEventId.LaydownSucceeded => "🛏️ 눕히기 성공",
-            GameEventId.LaydownFailed => "😱 눕히기 실패",
-            GameEventId.BabyFullyWoke => "😱 아기가 깼다",
-            GameEventId.HungerCueAppeared => "🍼 배꼽시계",
-            GameEventId.NightCompleted => "🌅 아침이 밝았다",
+            GameEventId.LaydownSucceeded => "눕히기 성공",
+            GameEventId.LaydownFailed => "눕히기 실패",
+            GameEventId.BabyFullyWoke => "아기가 깼다",
+            GameEventId.HungerCueAppeared => "배꼽시계",
+            GameEventId.NightCompleted => "아침이 밝았다",
             _ => "…"
         };
 

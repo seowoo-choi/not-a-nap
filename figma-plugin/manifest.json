@@ -1,0 +1,8 @@
+{
+  "name": "NOT A NAP — Developer Storyboard V4.2",
+  "id": "not-a-nap-developer-storyboard-v4",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page"
+}
