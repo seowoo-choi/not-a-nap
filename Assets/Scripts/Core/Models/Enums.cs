@@ -39,6 +39,7 @@ namespace NotANap.Core
         BabyFullyWoke,
         HungerCueAppeared,
         BottleFoundUnsanitized,
+        ParentExhausted,
         LaydownSucceeded,
         LaydownFailed,
         HabitFormed,

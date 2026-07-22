@@ -75,6 +75,7 @@ namespace NotANap.Presentation
             V2ActionId.HoldWhilePreparing => "안고 준비하기",
             V2ActionId.ToggleNoise => "백색소음기 켜기/끄기",
             V2ActionId.CheckMonitor => "베이비 모니터 확인",
+            V2ActionId.CatchBreath => "물 한 잔 마시며 숨 고르기",
             _ => action.ToString()
         };
 
@@ -139,6 +140,7 @@ namespace NotANap.Presentation
             GameEventId.BabyFullyWoke => true,
             GameEventId.HungerCueAppeared => true,
             GameEventId.BottleFoundUnsanitized => true,
+            GameEventId.ParentExhausted => true,
             GameEventId.NightCompleted => true,
             _ => false
         };
@@ -150,6 +152,7 @@ namespace NotANap.Presentation
             GameEventId.BabyFullyWoke => "아기가 깼다",
             GameEventId.HungerCueAppeared => "배꼽시계",
             GameEventId.BottleFoundUnsanitized => "준비해 둔 젖병이 없다",
+            GameEventId.ParentExhausted => "보호자 체력이 바닥났다",
             GameEventId.NightCompleted => "아침이 밝았다",
             _ => "…"
         };
@@ -161,6 +164,7 @@ namespace NotANap.Presentation
             GameEventId.BabyFullyWoke => "겨우 재웠는데… 다시 처음부터다.",
             GameEventId.HungerCueAppeared => "배꼽시계가 울렸다. 아기가 배고파 깬다.",
             GameEventId.BottleFoundUnsanitized => "오늘은 소독된 젖병을 다 썼다. 이번 수유에만 먼저 소독해야 한다.",
+            GameEventId.ParentExhausted => "손에 힘이 들어가지 않는다. 물을 마시고 잠깐 숨을 고른 뒤 다시 돌보자.",
             GameEventId.NightCompleted => "긴 밤이 끝났다. 오늘의 육아일지를 확인하자.",
             _ => string.Empty
         };

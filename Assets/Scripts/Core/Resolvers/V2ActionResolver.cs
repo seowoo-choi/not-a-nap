@@ -139,6 +139,10 @@ namespace NotANap.Core
                         return Reject(outcome, V2ActionBlockReason.ItemUnavailable);
                     outcome.MonitorRead = true;
                     break;
+                case V2ActionId.CatchBreath:
+                    Consume(outcome, config.V2.DefaultActionMinutes, 9);
+                    night.V2.CryIntensity = CoreMath.Clamp(night.V2.CryIntensity + 3, 0, 100);
+                    break;
                 case V2ActionId.Hold:
                 case V2ActionId.Pat:
                     Consume(outcome, config.V2.DefaultActionMinutes, action == V2ActionId.Hold ? -8 : -4);
@@ -369,7 +373,13 @@ namespace NotANap.Core
             GameBalanceConfig config, IRandomSource rng)
         {
             if (!outcome.Accepted) return;
+            double staminaBefore = night.Parent.Stamina;
             night.Parent.Stamina = CoreMath.Clamp(night.Parent.Stamina + outcome.StaminaDelta, 0, 100);
+            if (staminaBefore > 0 && night.Parent.Stamina <= 0 && !night.V2.ExhaustionWarned)
+            {
+                night.V2.ExhaustionWarned = true;
+                outcome.EventIds.Add(GameEventId.ParentExhausted);
+            }
             foreach (var id in outcome.EventIds) night.AddEvent(id);
             if (outcome.ConsumedTime)
                 V2TimeResolver.Advance(run, night, outcome.TimeDeltaMinutes, config, rng);

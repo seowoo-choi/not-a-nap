@@ -201,6 +201,10 @@
   if (await appendReviewNote(environment,
     "확인 결과에 실제 온도·습도 숫자 표시. 권장 범위 20–22°C / 40–60%; 조절 시 범위 안으로 보정.")) changes += 1;
 
+  const stamina = contractContaining(["보호자 체력", "ParentStamina"]);
+  if (await appendReviewNote(stamina,
+    "체력 0 도달 시 ParentExhausted 오버레이. 물 한 잔 마시며 숨 고르기(CatchBreath)로 15분 소모·체력 +9·울음 +3.")) changes += 1;
+
   const diary = contractContaining(["AdvanceNight", "BuildV2Diary", "처음부터 다시"]);
   if (await appendReviewNote(diary,
     "첫째 밤 → 둘째 밤 → 백일째 밤은 같은 RunState로 진행. 마지막 밤 이후에만 처음부터 다시 시작.")) changes += 1;
