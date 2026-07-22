@@ -597,7 +597,7 @@ namespace NotANap.App
             switch (group)
             {
                 case ActionGroup.Diagnose:
-                    return new[] { V2ActionId.CheckDiaper, V2ActionId.CheckHungerSignals, V2ActionId.CheckEnvironment, V2ActionId.CheckMonitor, V2ActionId.CheckLimbRelaxation, V2ActionId.Hesitate };
+                    return new[] { V2ActionId.CheckDiaper, V2ActionId.CheckHungerSignals, V2ActionId.CheckEnvironment, V2ActionId.CheckMonitor, V2ActionId.CheckLimbRelaxation, V2ActionId.Hesitate, V2ActionId.CatchBreath };
                 case ActionGroup.Care:
                     return new[] { V2ActionId.Hold, V2ActionId.Pat, V2ActionId.Pacifier, V2ActionId.ToggleNoise, V2ActionId.Laydown, V2ActionId.ChangeDiaper, V2ActionId.AdjustTemperature, V2ActionId.AdjustHumidity };
                 default:
@@ -773,6 +773,8 @@ namespace NotANap.App
                 return $"습도를 {vm.HumidityPercent:0.#}%로 조절했어요.";
             if (outcome.Action == V2ActionId.SterilizeBottle)
                 return "젖병 소독을 마쳤어요. 이제 평소 수유 준비를 이어가세요.";
+            if (outcome.Action == V2ActionId.CatchBreath)
+                return "물을 마시고 숨을 골랐어요. 체력이 9 회복됐지만 시간은 계속 흘러요.";
             if (outcome.MonitorRead)
                 return $"울음 {vm.CryIntensity:0} · 진정 {vm.Calm:0} · 허기 {vm.Hunger:0}";
             if (outcome.Action == V2ActionId.ToggleNoise)

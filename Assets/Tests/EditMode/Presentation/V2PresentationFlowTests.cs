@@ -100,6 +100,7 @@ namespace NotANap.Presentation.Tests
             Assert.AreEqual("잠시 망설임", PresentationCopyMapper.V2ActionLabel(V2ActionId.Hesitate));
             Assert.AreEqual("백색소음기 켜기/끄기", PresentationCopyMapper.V2ActionLabel(V2ActionId.ToggleNoise));
             Assert.AreEqual("베이비 모니터 확인", PresentationCopyMapper.V2ActionLabel(V2ActionId.CheckMonitor));
+            Assert.AreEqual("물 한 잔 마시며 숨 고르기", PresentationCopyMapper.V2ActionLabel(V2ActionId.CatchBreath));
         }
 
         [Test]

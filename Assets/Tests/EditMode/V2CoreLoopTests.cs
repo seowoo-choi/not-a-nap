@@ -479,5 +479,25 @@ namespace NotANap.Core.Tests
             Assert.IsTrue(V2ActionResolver.Apply(run, night, V2ActionId.CheckMonitor,
                 config, new SequenceRandomSource(0)).MonitorRead);
         }
+
+        [Test]
+        public void ExhaustedParentGetsOneWarningAndCanRecoverByCatchingBreath()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            night.Parent.Stamina = 1;
+
+            var exhausted = V2ActionResolver.Apply(run, night, V2ActionId.Hold,
+                config, new SequenceRandomSource(0));
+            Assert.AreEqual(0, night.Parent.Stamina);
+            CollectionAssert.Contains(exhausted.EventIds, GameEventId.ParentExhausted);
+
+            var recovered = V2ActionResolver.Apply(run, night, V2ActionId.CatchBreath,
+                config, new SequenceRandomSource(0));
+            Assert.IsTrue(recovered.Accepted);
+            Assert.AreEqual(9, night.Parent.Stamina);
+            Assert.AreEqual(config.V2.DefaultActionMinutes * 2, night.V2.ElapsedMinutes);
+        }
     }
 }

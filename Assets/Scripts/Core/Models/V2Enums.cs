@@ -30,7 +30,7 @@ namespace NotANap.Core
         AdjustTemperature, AdjustHumidity, Hesitate,
         SterilizeBottle, PrepareWater, MeasureFormula, MixFormula, CoolBottle,
         CheckBottleTemperature, FeedPreparedBottle, HoldWhilePreparing,
-        ToggleNoise, CheckMonitor
+        ToggleNoise, CheckMonitor, CatchBreath
     }
 
     public enum V2ActionBlockReason { None, BabyNotHeld, BabyNotAsleep, ItemUnavailable }
