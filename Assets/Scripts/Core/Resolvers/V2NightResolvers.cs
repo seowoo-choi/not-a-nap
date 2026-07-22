@@ -37,7 +37,19 @@ namespace NotANap.Core
             night.V2.Feeding.BottleSanitized = true;
             if (capabilities != null) night.V2.ProductCapabilities.UnionWith(capabilities);
             if (night.V2.ProductCapabilities.Contains(ProductCapability.PreSanitizedBottle))
+            {
                 night.V2.Feeding.BottleSanitized = true;
+                night.V2.Feeding.SanitationIncident = false;
+            }
+            // 세 밤 중 둘째 밤에만 발생하는 결정론적 준비 돌발이다.
+            // 사전 소독 제품 능력이 있으면 돌발을 예방한다.
+            if (run.CurrentNightId == NightId.SecondNight &&
+                !night.V2.ProductCapabilities.Contains(ProductCapability.PreSanitizedBottle))
+            {
+                night.V2.Feeding.BottleSanitized = false;
+                night.V2.Feeding.SanitationIncident = true;
+                night.AddEvent(GameEventId.BottleFoundUnsanitized);
+            }
             if (night.V2.ProductCapabilities.Contains(ProductCapability.AutoFormulaPrep))
             {
                 night.V2.Feeding.WaterReady = true;

@@ -76,8 +76,8 @@ namespace NotANap.Presentation
             Night = NightFactory.CreateV2Night(Run, items,
                 profile ?? new BabyProfile { Temperament = Run.Temperament },
                 _config, modifier, capabilities);
-            _eventCursor = Night.Events.Count;
-            PendingOverlay = null;
+            _eventCursor = 0;
+            PendingOverlay = DrainOverlay();
             _diaryBuilt = false;
             _diary = null;
             _v2DiaryBuilt = false;
