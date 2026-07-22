@@ -214,7 +214,7 @@
   if (sterilize) {
     if (await setBadge(sterilize, "EXCEPTION ONLY", { r: 1, g: 0.9, b: 0.68 })) changes += 1;
     if (await appendReviewNote(sterilize,
-      "미소독 돌발 상태(BottleSanitized=false) 전용 화면. 평상시 진입·노출 금지; 완료 후 PrepareWater로 이동.")) changes += 1;
+      "둘째 밤 시작 시 BottleFoundUnsanitized 돌발로 BottleSanitized=false. 평상시 숨김; 소독 완료 후 PrepareWater로 이동.")) changes += 1;
   }
 
   const boardTitle = textNodes(board).find(n => n.name === "BOARD_TITLE" || n.characters.indexOf("스토리보드 V6") >= 0);

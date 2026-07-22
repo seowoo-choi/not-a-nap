@@ -276,6 +276,24 @@ namespace NotANap.Core.Tests
         }
 
         [Test]
+        public void SecondNightCreatesDeterministicUnsanitizedBottleIncident()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            run.CurrentNightId = NightId.SecondNight;
+            var night = Night(run, config);
+
+            Assert.IsFalse(night.V2.Feeding.BottleSanitized);
+            Assert.IsTrue(night.V2.Feeding.SanitationIncident);
+            Assert.IsTrue(night.Events.Any(e => e.Id == GameEventId.BottleFoundUnsanitized));
+
+            var result = V2ActionResolver.Apply(run, night, V2ActionId.SterilizeBottle,
+                config, new SequenceRandomSource(0));
+            Assert.IsTrue(result.Accepted);
+            Assert.IsTrue(night.V2.Feeding.BottleSanitized);
+        }
+
+        [Test]
         public void HoldingWhilePreparingSlowsCryEscalation()
         {
             var config = GameBalanceConfig.Default();

@@ -41,6 +41,25 @@ namespace NotANap.Presentation.Tests
         }
 
         [Test]
+        public void SecondNightShowsSanitationIncidentThenAllowsSterilizing()
+        {
+            var presenter = new GameSessionPresenter(new SystemRandomSource(4));
+            presenter.StartRun();
+            presenter.Run.CurrentNightId = NightId.SecondNight;
+            presenter.StartV2Night(new[] { ItemId.Monitor, ItemId.Noise, ItemId.Pacifier });
+
+            Assert.IsTrue(presenter.InputLocked);
+            Assert.AreEqual("준비해 둔 젖병이 없다", presenter.PendingOverlay.Title);
+            presenter.DismissOverlay();
+            Assert.IsTrue(presenter.BuildV2Play().Actions.Any(a =>
+                a.Action == V2ActionId.SterilizeBottle && a.Enabled));
+
+            presenter.PerformV2Action(V2ActionId.SterilizeBottle);
+            Assert.IsTrue(presenter.Night.V2.Feeding.BottleSanitized);
+            Assert.IsFalse(presenter.BuildV2Play().Actions.Any(a => a.Action == V2ActionId.SterilizeBottle));
+        }
+
+        [Test]
         public void V2Action_ExposesStructuredObservationAndAdvancesConfiguredMinutes()
         {
             var flow = StartV2();

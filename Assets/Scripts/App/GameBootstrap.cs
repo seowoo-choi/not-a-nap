@@ -771,6 +771,8 @@ namespace NotANap.App
                 return $"온도를 {vm.TemperatureCelsius:0.#}°C로 조절했어요.";
             if (outcome.Action == V2ActionId.AdjustHumidity)
                 return $"습도를 {vm.HumidityPercent:0.#}%로 조절했어요.";
+            if (outcome.Action == V2ActionId.SterilizeBottle)
+                return "젖병 소독을 마쳤어요. 이제 평소 수유 준비를 이어가세요.";
             if (outcome.MonitorRead)
                 return $"울음 {vm.CryIntensity:0} · 진정 {vm.Calm:0} · 허기 {vm.Hunger:0}";
             if (outcome.Action == V2ActionId.ToggleNoise)

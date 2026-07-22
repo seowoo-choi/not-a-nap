@@ -38,6 +38,7 @@ namespace NotANap.Core
         SleepingBabyWokenByIntervention,
         BabyFullyWoke,
         HungerCueAppeared,
+        BottleFoundUnsanitized,
         LaydownSucceeded,
         LaydownFailed,
         HabitFormed,

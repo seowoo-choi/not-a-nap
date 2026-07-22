@@ -74,6 +74,7 @@ namespace NotANap.Core
     public sealed class FeedingPreparationState
     {
         public bool BottleSanitized;
+        public bool SanitationIncident;
         public bool WaterReady;
         public bool FormulaMeasured;
         public bool BottleMixed;

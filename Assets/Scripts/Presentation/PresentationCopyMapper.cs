@@ -138,6 +138,7 @@ namespace NotANap.Presentation
             GameEventId.LaydownFailed => true,
             GameEventId.BabyFullyWoke => true,
             GameEventId.HungerCueAppeared => true,
+            GameEventId.BottleFoundUnsanitized => true,
             GameEventId.NightCompleted => true,
             _ => false
         };
@@ -148,6 +149,7 @@ namespace NotANap.Presentation
             GameEventId.LaydownFailed => "눕히기 실패",
             GameEventId.BabyFullyWoke => "아기가 깼다",
             GameEventId.HungerCueAppeared => "배꼽시계",
+            GameEventId.BottleFoundUnsanitized => "준비해 둔 젖병이 없다",
             GameEventId.NightCompleted => "아침이 밝았다",
             _ => "…"
         };
@@ -158,6 +160,7 @@ namespace NotANap.Presentation
             GameEventId.LaydownFailed => "등이 침대에 닿는 순간 센서 발동! 아기가 깼다.",
             GameEventId.BabyFullyWoke => "겨우 재웠는데… 다시 처음부터다.",
             GameEventId.HungerCueAppeared => "배꼽시계가 울렸다. 아기가 배고파 깬다.",
+            GameEventId.BottleFoundUnsanitized => "오늘은 소독된 젖병을 다 썼다. 이번 수유에만 먼저 소독해야 한다.",
             GameEventId.NightCompleted => "긴 밤이 끝났다. 오늘의 육아일지를 확인하자.",
             _ => string.Empty
         };
