@@ -239,6 +239,45 @@ namespace NotANap.Core
         }
     }
 
+    public static class V2SleepIntervalResolver
+    {
+        public static bool Apply(RunState run, NightState night, SleepIntervalChoice choice,
+            GameBalanceConfig config, IRandomSource rng)
+        {
+            WakeScheduler.RequireV2(night);
+            if (night.Over) return false;
+            var stage = night.V2.SleepCycle.Stage;
+            if (stage != V2SleepStage.RemActiveSleep && stage != V2SleepStage.NremDeepSleep)
+                return false;
+
+            switch (choice)
+            {
+                case SleepIntervalChoice.RestTogether:
+                    night.Parent.Stamina = CoreMath.Clamp(night.Parent.Stamina +
+                        config.V2.SleepRestStaminaRecovery, 0, 100);
+                    break;
+                case SleepIntervalChoice.CheckEnvironment:
+                    night.V2.Environment.IsTemperatureChecked = true;
+                    night.V2.Environment.IsHumidityChecked = true;
+                    break;
+                case SleepIntervalChoice.PrepareNextFeed:
+                    night.Parent.Stamina = CoreMath.Clamp(night.Parent.Stamina -
+                        config.V2.SleepPreparationStaminaCost, 0, 100);
+                    night.V2.Feeding.WaterReady = true;
+                    night.V2.Feeding.FormulaMeasured = true;
+                    night.V2.Feeding.BottleMixed = true;
+                    break;
+            }
+
+            int target = night.V2.NextWake != null && !night.V2.NextWake.Triggered
+                ? night.V2.NextWake.AtElapsedMinute
+                : config.V2.NightDurationMinutes;
+            V2TimeResolver.Advance(run, night,
+                Math.Max(0, target - night.V2.ElapsedMinutes), config, rng);
+            return true;
+        }
+    }
+
     public static class NightEvaluationResolver
     {
         public static NightEvaluation Evaluate(NightState night, GameBalanceConfig config)

@@ -80,6 +80,8 @@ namespace NotANap.Core
         public double FeedingCalmGain = 20;
         public double FeedingPreparationStaminaCost = 3;
         public double HoldPreparingExtraStaminaCost = 5;
+        public double SleepRestStaminaRecovery = 15;
+        public double SleepPreparationStaminaCost = 3;
         public int GradeSLongestMinutes = 300;
         public int GradeALongestMinutes = 240;
         public int GradeBLongestMinutes = 180;

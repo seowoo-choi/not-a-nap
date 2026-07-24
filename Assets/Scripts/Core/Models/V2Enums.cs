@@ -12,6 +12,7 @@ namespace NotANap.Core
     public enum VisualGender { Unspecified, Feminine, Masculine, Neutral }
     public enum ProductCapability { AutoFormulaPrep, PreSanitizedBottle, TemperatureControl }
     public enum FeedingPreparationStep { SanitizeBottle, PrepareWater, MeasureFormula, MixFormula, CoolBottle, CheckTemperature }
+    public enum SleepIntervalChoice { RestTogether, CheckEnvironment, PrepareNextFeed }
 
     public enum ObservationSignalId
     {

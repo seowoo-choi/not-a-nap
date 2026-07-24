@@ -151,16 +151,14 @@ namespace NotANap.Presentation
 
         /// <summary>자는 동안 다음 예약 각성 또는 06:00까지 Core 시간을 빠르게 진행한다.</summary>
         public void FastForwardV2Sleep()
+            => ChooseV2SleepInterval(SleepIntervalChoice.RestTogether);
+
+        public bool ChooseV2SleepInterval(SleepIntervalChoice choice)
         {
-            if (Night?.V2 == null || Night.Over) return;
-            var stage = Night.V2.SleepCycle.Stage;
-            if (stage != V2SleepStage.RemActiveSleep && stage != V2SleepStage.NremDeepSleep) return;
-            int target = Night.V2.NextWake != null && !Night.V2.NextWake.Triggered
-                ? Night.V2.NextWake.AtElapsedMinute
-                : _config.V2.NightDurationMinutes;
-            TurnResolver.AdvanceMinutes(Run, Night,
-                Math.Max(0, target - Night.V2.ElapsedMinutes), _config, _rng);
+            if (Night?.V2 == null || Night.Over) return false;
+            if (!V2SleepIntervalResolver.Apply(Run, Night, choice, _config, _rng)) return false;
             PendingOverlay = DrainOverlay();
+            return true;
         }
 
         /// <summary>이벤트 커서 이후 새 이벤트 중 오버레이 후보를 모아 한 개 오버레이로 만든다.</summary>

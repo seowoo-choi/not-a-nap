@@ -33,6 +33,41 @@ namespace NotANap.Core.Tests
         }
 
         [Test]
+        public void SleepIntervalChoicesTradeRecoveryInformationAndPreparation()
+        {
+            var config = GameBalanceConfig.Default();
+
+            var restRun = RunState.Create(Temperament.Soft);
+            var restNight = Night(restRun, config);
+            restNight.Parent.Stamina = 40;
+            V2TimeResolver.BeginSleep(restNight, V2SleepStage.RemActiveSleep);
+            restNight.V2.NextWake = new ScheduledWake { AtElapsedMinute = 30, Cause = WakeCause.Hunger };
+            Assert.IsTrue(V2SleepIntervalResolver.Apply(restRun, restNight,
+                SleepIntervalChoice.RestTogether, config, new SequenceRandomSource(0)));
+            Assert.AreEqual(55, restNight.Parent.Stamina);
+
+            var environmentRun = RunState.Create(Temperament.Soft);
+            var environmentNight = Night(environmentRun, config);
+            V2TimeResolver.BeginSleep(environmentNight, V2SleepStage.RemActiveSleep);
+            environmentNight.V2.NextWake = new ScheduledWake { AtElapsedMinute = 30, Cause = WakeCause.Hunger };
+            V2SleepIntervalResolver.Apply(environmentRun, environmentNight,
+                SleepIntervalChoice.CheckEnvironment, config, new SequenceRandomSource(0));
+            Assert.IsTrue(environmentNight.V2.Environment.IsTemperatureChecked);
+            Assert.IsTrue(environmentNight.V2.Environment.IsHumidityChecked);
+
+            var feedingRun = RunState.Create(Temperament.Soft);
+            var feedingNight = Night(feedingRun, config);
+            double stamina = feedingNight.Parent.Stamina;
+            V2TimeResolver.BeginSleep(feedingNight, V2SleepStage.RemActiveSleep);
+            feedingNight.V2.NextWake = new ScheduledWake { AtElapsedMinute = 30, Cause = WakeCause.Hunger };
+            V2SleepIntervalResolver.Apply(feedingRun, feedingNight,
+                SleepIntervalChoice.PrepareNextFeed, config, new SequenceRandomSource(0));
+            Assert.AreEqual(stamina - config.V2.SleepPreparationStaminaCost, feedingNight.Parent.Stamina);
+            Assert.IsTrue(feedingNight.V2.Feeding.BottleMixed);
+            Assert.AreEqual(V2SleepStage.Awake, feedingNight.V2.SleepCycle.Stage);
+        }
+
+        [Test]
         public void SameSeedSchedulesSameWakeCauseAndMinute()
         {
             var config = GameBalanceConfig.Default();

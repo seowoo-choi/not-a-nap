@@ -470,14 +470,7 @@ namespace NotANap.App
             // 세로 화면에도 가로와 같은 수면 중 시간 보내기 입력을 제공한다(Figma M_SLEEP_FAST_FORWARD).
             if (IsSleeping(vm))
             {
-                var oldFastForward = GUI.enabled;
-                GUI.enabled = oldFastForward && !_flow.InputLocked;
-                if (GUI.Button(new Rect(560, 1212, 472, 80), "잠든 동안 조용히 시간 보내기  ›", _buttonSmall))
-                {
-                    _flow.FastForwardV2Sleep();
-                    _lastResult = null;
-                }
-                GUI.enabled = oldFastForward;
+                DrawSleepIntervalChoices(new Rect(48, 1212, 984, 80), true);
             }
             DrawTab(new Rect(48, 1300, 305, 70), "살펴보기", ActionGroup.Diagnose);
             DrawTab(new Rect(388, 1300, 305, 70), "돌보기", ActionGroup.Care);
@@ -560,11 +553,29 @@ namespace NotANap.App
             }
 
             bool sleeping = vm.SleepStage == V2SleepStage.RemActiveSleep || vm.SleepStage == V2SleepStage.NremDeepSleep;
-            if (sleeping && GUI.Button(new Rect(1460, 908, 378, 56), "잠든 동안 조용히 시간 보내기  ›", _button))
+            if (sleeping) DrawSleepIntervalChoices(new Rect(1460, 790, 378, 174), false);
+        }
+
+        private void DrawSleepIntervalChoices(Rect rect, bool horizontal)
+        {
+            var oldEnabled = GUI.enabled;
+            GUI.enabled = oldEnabled && !_flow.InputLocked;
+            var choices = new[]
             {
-                _flow.FastForwardV2Sleep();
-                _lastResult = null;
+                (SleepIntervalChoice.RestTogether, "같이 쉬기"),
+                (SleepIntervalChoice.CheckEnvironment, "환경 점검"),
+                (SleepIntervalChoice.PrepareNextFeed, "다음 수유 준비")
+            };
+            for (int i = 0; i < choices.Length; i++)
+            {
+                Rect button = horizontal
+                    ? new Rect(rect.x + i * (rect.width / 3f), rect.y, rect.width / 3f - 10, rect.height)
+                    : new Rect(rect.x, rect.y + i * 58, rect.width, 50);
+                if (GUI.Button(button, choices[i].Item2, _buttonSmall) &&
+                    _flow.ChooseV2SleepInterval(choices[i].Item1))
+                    _lastResult = null;
             }
+            GUI.enabled = oldEnabled;
         }
 
         private void DrawEventPanel(V2PlayViewModel vm)
@@ -838,7 +849,7 @@ namespace NotANap.App
                 default:
                     if (vm.CryIntensity > 35) return "얼굴이 붉어지고 울음이 커졌다";
                     if (vm.CryIntensity > 0) return "조금 불편한 듯 몸을 꼼지락거린다";
-                    return "울지 않고 조용히 주변을 본다";
+                    return "울지 않고 아빠를 빤히 바라본다";
             }
         }
 
