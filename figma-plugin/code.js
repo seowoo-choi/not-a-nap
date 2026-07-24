@@ -157,18 +157,22 @@
   }
 
   async function upsertActionSummary() {
+    const panelWidth = 2200;
+    const panelHeight = 1160;
     let panel = board.findOne(n => n.type === "FRAME" && n.name === "_REVIEW_ACTIONS_SUMMARY");
     if (!panel) {
       panel = figma.createFrame();
       panel.name = "_REVIEW_ACTIONS_SUMMARY";
-      panel.resize(2200, 720);
+      panel.resize(panelWidth, panelHeight);
       panel.x = 80;
       panel.y = board.height + 80;
       panel.fills = [{ type: "SOLID", color: { r: 0.055, g: 0.09, b: 0.13 } }];
       panel.cornerRadius = 32;
       board.appendChild(panel);
-      board.resize(board.width, board.height + 880);
     }
+    panel.resize(panelWidth, panelHeight);
+    const requiredBoardHeight = panel.y + panelHeight + 80;
+    if (board.height < requiredBoardHeight) board.resize(board.width, requiredBoardHeight);
 
     let title = panel.findOne(n => n.type === "TEXT" && n.name === "ACTION_SUMMARY_TITLE");
     if (!title) {
@@ -192,7 +196,7 @@
       body.lineHeight = { value: 38, unit: "PIXELS" };
       body.fills = [{ type: "SOLID", color: { r: 0.82, g: 0.86, b: 0.91 } }];
       body.textAutoResize = "HEIGHT";
-      body.resize(2080, 500);
+      body.resize(2080, 920);
       body.x = 56;
       body.y = 120;
       panel.appendChild(body);
@@ -201,8 +205,13 @@
       "P0 · #13  맨손 안기와 아기띠 착용/해제 행동 분리\n" +
       "P0 · #15  여름 23°C / 겨울 26°C 계절 시나리오\n" +
       "P1 · #18  코드의 수면 포지셔너 명칭을 암막 커튼으로 교체\n" +
-      "P1 · #20-3  관찰 뒤에 근거·권장 범위를 단계적으로 안내\n\n" +
-      "단일 기준 · docs/figma-review-actions.md\n" +
+      "P1 · #20-2  원인별 관찰 신호를 결정론적 시드로 변주\n" +
+      "P1 · #20-3  관찰 → 근거 → 권장 행동을 단계적으로 안내\n\n" +
+      "결정 · #20-4  광고로 안전 아이템·수면 버프 제공은 제외\n" +
+      "완료 · #4 #5 #6 #8–#12 #14 #16 #17 #19 #20-1 #21 #23\n" +
+      "유지 · #7 #22 #24\n\n" +
+      "전체 댓글별 처리표\n" +
+      "https://github.com/seowoo-choi/not-a-nap/blob/codex/fair-sleep-guidance/docs/figma-review-actions.md\n\n" +
       "완료 조건 · 코드 반영 + Unity 테스트 통과 + Figma 계약 동기화");
     return true;
   }

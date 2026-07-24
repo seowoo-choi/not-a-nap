@@ -15,6 +15,7 @@
 
 - 원본 V6 보드는 보존합니다. 싱크 보드가 없을 때만 같은 페이지 오른쪽에 최초 1회 복제합니다.
 - 이후 실행은 가장 최신 `MOBILE_QA_STORYBOARD_V6_CODE_SYNC_*` 보드를 그 자리에서 업데이트하며 새 보드를 만들지 않습니다.
+- 최신 싱크 보드의 `REVIEW ACTIONS · 다음 구현` 영역에 전체 댓글 처리표 링크와 P0/P1 액션을 갱신합니다.
 - `Presenter.TryExecuteV2Action`을 실제 진입점인 `GameFlowController.ActV2`로 교체합니다.
 - `M_ITEM_SCROLL`의 가상 `SelectItem` 계약을 실제 `ToggleV2Item(ItemId)` 계약으로 교체합니다.
 - 현재 코드에 연결된 아기 상태 비주얼 계약을 `IMPLEMENTED`로 갱신합니다.
