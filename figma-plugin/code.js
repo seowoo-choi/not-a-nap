@@ -125,15 +125,16 @@
     return true;
   }
 
-  async function appendReviewNote(contract, message) {
+  async function appendReviewNote(contract, message, key) {
     if (!contract) return false;
-    const existing = textNodes(contract).find(n => n.name === "CODE_SYNC_REVIEW_NOTE");
+    const noteName = "CODE_SYNC_REVIEW_NOTE" + (key ? "__" + key : "");
+    const existing = textNodes(contract).find(n => n.name === noteName);
     if (existing) {
       await setText(existing, message);
       return true;
     }
     const note = figma.createText();
-    note.name = "CODE_SYNC_REVIEW_NOTE";
+    note.name = noteName;
     note.fontName = fallbackBold ? fallbackBold.fontName : fallback.fontName;
     note.fontSize = 16;
     note.characters = message;
@@ -141,7 +142,9 @@
     note.textAutoResize = "HEIGHT";
     note.resize(Math.max(240, contract.width - 64), 60);
     note.x = 32;
-    note.y = contract.height - 88;
+    const reviewNoteCount = textNodes(contract).filter(n =>
+      n.name.indexOf("CODE_SYNC_REVIEW_NOTE") === 0).length;
+    note.y = contract.height - 88 - reviewNoteCount * 72;
     contract.appendChild(note);
     return true;
   }
@@ -149,6 +152,9 @@
   let changes = 0;
   changes += await replaceAll(board, "Presenter.TryExecuteV2Action 호출", "GameFlowController.ActV2 호출");
   changes += await replaceAll(board, "Presenter.TryExecuteV2Action", "GameFlowController.ActV2");
+  changes += await replaceAll(board, "수면 포지셔너", "암막 커튼");
+  changes += await replaceAll(board, "젖을 찾는 듯 고개를 움직인다", "입가를 건드린 쪽으로 고개를 돌리고 입을 벌린다");
+  changes += await replaceAll(board, "준비해 둔 작은 일이 새벽에는 큰 도움이 된다.", "미리 소독해뒀다면 덜 기다렸을 텐데. 다음 밤에는 먼저 준비해두자.");
 
   const visualImplemented = [
     "M_PLAY_AWAKE_CALM", "M_FUSS_SOFT", "M_CRY_HARD", "M_HUNGER_EARLY",
@@ -176,12 +182,27 @@
 
   const unlock = contractFor("M_UNLOCK_CANDIDATES");
   if (await setBadge(unlock, "IMPLEMENTED", green)) changes += 1;
-  if (await appendReviewNote(unlock, "세 후보 모두 현재 코드에서 선택 불가 카드로 표시됨: 옆잠베개 / 수면 포지셔너 / 토닥이인형.")) changes += 1;
+  if (await appendReviewNote(unlock,
+    "사용자가 이해하기 어려운 장비는 제거하고 암막 커튼으로 교체. 세 후보는 안전·제품 검토 전까지 선택 불가.",
+    "UNLOCK")) changes += 1;
 
   // 2026-07-22 플레이테스트 피드백을 개발 계약에 동기화한다.
-  const laydown = contractContaining(["V2ActionId.Laydown", "Laydown"]);
+  const laydown = contractFor("M_LIMBS_RELAXED");
   if (await appendReviewNote(laydown,
-    "선행 조건: Held=true + REM/NREM 수면. 아직 잠들지 않았으면 시간·각성 이벤트 없이 거부(BabyNotAsleep).")) changes += 1;
+    "선행 조건: Held=true + REM/NREM. 품에서 잠든 경우만 눕히기 제안. 침대에서 토닥여 잠들면 ‘그대로 지켜보기’ 안내.",
+    "LAYDOWN")) changes += 1;
+
+  const hold = contractFor("M_TAB_CARE_PERSIST");
+  if (await setBadge(hold, "REVIEW REQUIRED", { r: 1, g: 0.9, b: 0.68 })) changes += 1;
+  if (await appendReviewNote(hold,
+    "품에 안기=맨손 안기(Baby.Held=true). 아기띠 선택 시 별도 착용/해제 행동. 수유 중 안기는 HoldContext.Feeding으로 분리.",
+    "HOLD")) changes += 1;
+
+  const pat = contractFor("M_TAB_CARE_PERSIST");
+  if (await setBadge(pat, "REVIEW REQUIRED", { r: 1, g: 0.9, b: 0.68 })) changes += 1;
+  if (await appendReviewNote(pat,
+    "침대 토닥임과 품 안 토닥임을 Held로 구분. 침대에서 잠들면 다시 눕히기 안내 금지.",
+    "PAT")) changes += 1;
 
   const diaperWet = contractFor("M_DIAPER_CHECK_WET");
   if (await setBadge(diaperWet, "IMPLEMENTED", green)) changes += 1;
@@ -193,32 +214,39 @@
   if (await appendReviewNote(diaperClean,
     "CheckDiaper 결과 DiaperCheckResult.Clean → 다른 신호 확인 안내. 안전한 배제 검사라 오판 0.")) changes += 1;
 
-  const hunger = contractContaining(["CheckHungerSignals", "HungerSignalStage"]);
+  const hunger = contractFor("M_HUNGER_LATE");
   if (await appendReviewNote(hunger,
-    "배고픔 각성은 HungerLateThreshold 이상. 확인 결과는 없음/초기/활성/후기 신호와 수유 필요 여부를 명시.")) changes += 1;
+    "배고픔 결과는 없음/초기/활성/후기. Active에 ‘입가를 건드린 쪽으로 고개를 돌리고 입을 벌림’ 루팅 반사를 명시.",
+    "ROOTING")) changes += 1;
 
-  const environment = contractContaining(["CheckEnvironment", "AdjustHumidity", "AdjustTemperature"]);
+  const environment = contractFor("M_ENVIRONMENT_CHECK");
   if (await appendReviewNote(environment,
-    "확인 결과에 실제 온도·습도 숫자 표시. 권장 범위 20–22°C / 40–60%; 조절 시 범위 안으로 보정.")) changes += 1;
+    "방 온도·습도는 실제 숫자로 표시해 사용자가 판단. 아기 체온 확인은 별도 Diagnose 행동·상태로 분리 필요.",
+    "BODY_TEMPERATURE")) changes += 1;
 
-  const stamina = contractContaining(["보호자 체력", "ParentStamina"]);
+  const stamina = contractFor("M_PLAY_AWAKE_CALM");
   if (await appendReviewNote(stamina,
-    "체력 0 도달 시 ParentExhausted 오버레이. 물 한 잔 마시며 숨 고르기(CatchBreath)로 15분 소모·체력 +9·울음 +3.")) changes += 1;
+    "체력 0 도달 시 ParentExhausted 오버레이. 물 한 잔 마시며 숨 고르기(CatchBreath)로 15분 소모·체력 +9·울음 +3.",
+    "STAMINA")) changes += 1;
 
-  const diary = contractContaining(["AdvanceNight", "BuildV2Diary", "처음부터 다시"]);
+  const diary = contractFor("M_DAWN_OVERLAY");
   if (await appendReviewNote(diary,
-    "첫째 밤 → 둘째 밤 → 백일째 밤은 같은 RunState로 진행. 마지막 밤 이후에만 처음부터 다시 시작.")) changes += 1;
+    "일지 중심: 오늘 알아차린 신호 / 통했던 반응 / 다음 밤에 기억할 한 가지 / 부모 성장 응원. 등급은 보조 정보. 다음에는 젖병을 미리 소독해두자처럼 구체적으로 기록.",
+    "DIARY")) changes += 1;
 
   // 평소 젖병은 이미 소독되어 있다. 소독 화면/행동은 예외 상태에서만 살아난다.
-  const feeding = contractContaining(["PrepareWater", "MeasureFormula", "FeedPreparedBottle"]);
+  const feeding = contractFor("M_TAB_FEED_PERSIST");
+  if (await setBadge(feeding, "REVIEW REQUIRED", { r: 1, g: 0.9, b: 0.68 })) changes += 1;
   if (await appendReviewNote(feeding,
-    "기본값 BottleSanitized=true. 일반 수유 준비는 물 준비부터 시작하며 젖병 소독 버튼은 숨김.")) changes += 1;
+    "수유를 3단계로 축소: 분유 준비(물+계량+혼합) → 식히고 온도 확인 → 수유. 안고 기다리기는 체력↔울음 트레이드오프.",
+    "FEEDING_FLOW")) changes += 1;
 
-  const sterilize = contractContaining(["SterilizeBottle", "젖병 소독"]);
+  const sterilize = contractFor("M_FEED_SANITIZED");
   if (sterilize) {
     if (await setBadge(sterilize, "EXCEPTION ONLY", { r: 1, g: 0.9, b: 0.68 })) changes += 1;
     if (await appendReviewNote(sterilize,
-      "둘째 밤 시작 시 BottleFoundUnsanitized 돌발로 BottleSanitized=false. 평상시 숨김; 소독 완료 후 PrepareWater로 이동.")) changes += 1;
+      "둘째 밤 시작 시 BottleFoundUnsanitized 돌발로 BottleSanitized=false. 평상시 숨김; 소독 완료 후 PrepareWater로 이동.",
+      "STERILIZE_EXCEPTION")) changes += 1;
   }
 
   const boardTitle = textNodes(board).find(n => n.name === "BOARD_TITLE" || n.characters.indexOf("스토리보드 V6") >= 0);

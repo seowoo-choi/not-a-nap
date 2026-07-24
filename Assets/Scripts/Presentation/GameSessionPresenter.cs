@@ -293,13 +293,16 @@ namespace NotANap.Presentation
                 ParentStamina = Night.Parent.Stamina,
                 CryIntensity = v2.CryIntensity,
                 Hunger = Night.Baby.Hunger,
+                BabyHeld = Night.Baby.Held,
                 IsLimbRelaxed = v2.SleepCycle.IsLimbRelaxed,
                 IsBreathingRegular = v2.SleepCycle.IsBreathingRegular,
                 DeepSleepObserved = v2.SleepCycle.DeepSleepObserved,
                 TemperatureCelsius = v2.Environment.TemperatureCelsius,
                 HumidityPercent = v2.Environment.HumidityPercent,
+                BabyTemperatureCelsius = v2.Environment.BabyTemperatureCelsius,
                 TemperatureChecked = v2.Environment.IsTemperatureChecked,
                 HumidityChecked = v2.Environment.IsHumidityChecked,
+                BabyTemperatureChecked = v2.Environment.IsBabyTemperatureChecked,
                 FeedingReady = v2.Feeding.IsReadyToFeed,
                 HasNoise = Night.HasItem(ItemId.Noise) && !Night.NoiseDisabled,
                 NoiseOn = Night.Wearing.Noise,
@@ -310,6 +313,10 @@ namespace NotANap.Presentation
             {
                 // 이미 끝난 일상 준비는 화면에서 감춘다. 미소독 돌발 상태에서만 노출된다.
                 if (action == V2ActionId.SterilizeBottle && v2.Feeding.BottleSanitized) continue;
+                // 실제 플레이는 분유 준비 → 식히고 온도 확인 → 수유의 3단계만 노출한다.
+                if (action == V2ActionId.MeasureFormula || action == V2ActionId.MixFormula ||
+                    action == V2ActionId.CheckBottleTemperature || action == V2ActionId.HoldWhilePreparing)
+                    continue;
                 vm.Actions.Add(new V2ActionButtonViewModel
                 {
                     Action = action,
@@ -325,6 +332,11 @@ namespace NotANap.Presentation
             if (action == V2ActionId.Pacifier) return Night.HasItem(ItemId.Pacifier);
             if (action == V2ActionId.ToggleNoise) return Night.HasItem(ItemId.Noise) && !Night.NoiseDisabled;
             if (action == V2ActionId.CheckMonitor) return Night.HasItem(ItemId.Monitor);
+            if (action == V2ActionId.Laydown)
+                return Night.Baby.Held &&
+                    (Night.V2.SleepCycle.Stage == V2SleepStage.RemActiveSleep ||
+                     Night.V2.SleepCycle.Stage == V2SleepStage.NremDeepSleep);
+            if (action == V2ActionId.CheckBodyTemperature) return Night.V2.CryIntensity >= 45;
             return true;
         }
 
@@ -351,7 +363,16 @@ namespace NotANap.Presentation
                 MisdiagnosisCount = m.MisdiagnosisCount,
                 UnsafeChoiceCount = m.UnsafeChoiceCount,
                 ParentStaminaAtDawn = m.ParentStaminaAtDawn,
-                HasNextNight = Run.CurrentNightId != NightId.HundredthNight
+                HasNextNight = Run.CurrentNightId != NightId.HundredthNight,
+                LearnedSignal = m.CorrectFirstChecks > 0
+                    ? $"오늘은 {m.CorrectFirstChecks}번 아기의 신호를 먼저 알아차렸다."
+                    : "오늘은 서두르기보다 아기의 작은 신호를 다시 살펴보는 법을 배웠다.",
+                NextNightNote = m.MisdiagnosisCount > 0
+                    ? "다음 밤에는 바로 달래기 전에 기저귀·배고픔·환경을 차례로 확인하자."
+                    : "다음 밤에도 관찰한 신호에 맞는 반응을 하나씩 이어가자.",
+                Encouragement = m.ParentStaminaAtDawn >= 30
+                    ? "아기와 보호자 모두를 돌보는 지속 가능한 밤에 가까워지고 있다."
+                    : "힘든 밤을 버틴 것도 돌봄이다. 다음에는 보호자의 숨 고르기도 먼저 챙기자."
             };
         }
 

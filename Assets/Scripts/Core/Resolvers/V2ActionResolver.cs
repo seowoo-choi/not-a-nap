@@ -89,6 +89,12 @@ namespace NotANap.Core
                     RegisterCheck(run, night, night.V2.Diagnosis.ActiveCause == WakeCause.Humidity
                         ? WakeCause.Humidity : WakeCause.Temperature, outcome, config, true);
                     break;
+                case V2ActionId.CheckBodyTemperature:
+                    Consume(outcome, config.V2.DiagnosisActionMinutes, -2);
+                    night.V2.Environment.IsBabyTemperatureChecked = true;
+                    if (night.V2.Diagnosis.ActiveCause == WakeCause.PainOrCondition)
+                        RegisterCheck(run, night, WakeCause.PainOrCondition, outcome, config, false);
+                    break;
                 case V2ActionId.AdjustTemperature:
                     Consume(outcome, config.V2.DefaultActionMinutes, -config.V2.EnvironmentAdjustmentStaminaCost);
                     night.V2.Environment.TemperatureCelsius = CoreMath.Clamp(
@@ -144,38 +150,34 @@ namespace NotANap.Core
                     night.V2.CryIntensity = CoreMath.Clamp(night.V2.CryIntensity + 3, 0, 100);
                     break;
                 case V2ActionId.Hold:
-                case V2ActionId.Pat:
-                    Consume(outcome, config.V2.DefaultActionMinutes, action == V2ActionId.Hold ? -8 : -4);
+                    Consume(outcome, config.V2.DefaultActionMinutes, -8);
+                    night.Baby.Held = true;
                     night.Baby.Calm = CoreMath.Clamp(night.Baby.Calm +
                         12 * night.V2.Modifier.ComfortActionModifier, 0, 100);
                     night.Baby.Sleep = CoreMath.Clamp(night.Baby.Sleep +
-                        (action == V2ActionId.Hold ? config.V2.HoldSleepGain : config.V2.PatSleepGain) *
+                        config.V2.HoldSleepGain *
                         night.V2.Modifier.SleepGainMultiplier, 0, 100);
-                    if (!night.V2.Diagnosis.CauseResolved &&
-                        (night.V2.Diagnosis.ActiveCause == WakeCause.NaturalCycle ||
-                         night.V2.Diagnosis.ActiveCause == WakeCause.MoroReflex))
-                        ResolveCause(night, outcome);
-                    if (!night.V2.Diagnosis.CauseResolved && night.V2.Diagnosis.ActiveCause == WakeCause.Diaper)
-                        ApplyMisdiagnosis(night, outcome, config);
-                    else if (night.V2.Diagnosis.CauseResolved)
-                    {
-                        if (night.Baby.Calm >= config.V2.SleepStartCalmThreshold)
-                        {
-                            V2TimeResolver.BeginSleep(night, V2SleepStage.RemActiveSleep);
-                            if (night.V2.NextWake == null || night.V2.NextWake.Triggered)
-                                WakeScheduler.Schedule(night, config, rng);
-                        }
-                        else if (night.Baby.Calm >= config.V2.DrowsyCalmThreshold)
-                            V2TimeResolver.SetDrowsy(night);
-                    }
+                    ApplyComfort(run, night, outcome, config, rng);
+                    break;
+                case V2ActionId.Pat:
+                    Consume(outcome, config.V2.DefaultActionMinutes, -4);
+                    night.Baby.Calm = CoreMath.Clamp(night.Baby.Calm +
+                        12 * night.V2.Modifier.ComfortActionModifier, 0, 100);
+                    night.Baby.Sleep = CoreMath.Clamp(night.Baby.Sleep +
+                        config.V2.PatSleepGain *
+                        night.V2.Modifier.SleepGainMultiplier, 0, 100);
+                    ApplyComfort(run, night, outcome, config, rng);
                     break;
                 case V2ActionId.SterilizeBottle:
                     Prepare(night, outcome, config, FeedingPreparationStep.SanitizeBottle);
                     night.V2.Feeding.BottleSanitized = true;
                     break;
                 case V2ActionId.PrepareWater:
+                    // 실제 플레이의 첫 단계는 물·계량·혼합을 묶은 '분유 준비'다.
                     Prepare(night, outcome, config, FeedingPreparationStep.PrepareWater);
                     night.V2.Feeding.WaterReady = true;
+                    night.V2.Feeding.FormulaMeasured = true;
+                    night.V2.Feeding.BottleMixed = true;
                     break;
                 case V2ActionId.MeasureFormula:
                     Prepare(night, outcome, config, FeedingPreparationStep.MeasureFormula);
@@ -188,8 +190,13 @@ namespace NotANap.Core
                     break;
                 case V2ActionId.CoolBottle:
                     if (!night.V2.Feeding.BottleMixed) return Reject(outcome);
+                    // 두 번째 단계에서 식힘과 온도 확인을 함께 끝낸다.
                     Prepare(night, outcome, config, FeedingPreparationStep.CoolBottle);
                     night.V2.Feeding.BottleCooled = true;
+                    night.V2.Feeding.TemperatureChecked = true;
+                    if (night.V2.Feeding.IsReadyToFeed)
+                        AddTrace(run, night, outcome, CoreTraceIds.FeedingPreparationCompleted,
+                            ActionId.CheckBottleTemperature);
                     break;
                 case V2ActionId.CheckBottleTemperature:
                     if (!night.V2.Feeding.BottleCooled) return Reject(outcome);
@@ -210,6 +217,28 @@ namespace NotANap.Core
 
             ApplyOutcomeAndTime(run, night, outcome, config, rng);
             return outcome;
+        }
+
+        private static void ApplyComfort(RunState run, NightState night, V2ActionOutcome outcome,
+            GameBalanceConfig config, IRandomSource rng)
+        {
+                    if (!night.V2.Diagnosis.CauseResolved &&
+                        (night.V2.Diagnosis.ActiveCause == WakeCause.NaturalCycle ||
+                         night.V2.Diagnosis.ActiveCause == WakeCause.MoroReflex))
+                        ResolveCause(night, outcome);
+                    if (!night.V2.Diagnosis.CauseResolved && night.V2.Diagnosis.ActiveCause == WakeCause.Diaper)
+                        ApplyMisdiagnosis(night, outcome, config);
+                    else if (night.V2.Diagnosis.CauseResolved)
+                    {
+                        if (night.Baby.Calm >= config.V2.SleepStartCalmThreshold)
+                        {
+                            V2TimeResolver.BeginSleep(night, V2SleepStage.RemActiveSleep);
+                            if (night.V2.NextWake == null || night.V2.NextWake.Triggered)
+                                WakeScheduler.Schedule(night, config, rng);
+                        }
+                        else if (night.Baby.Calm >= config.V2.DrowsyCalmThreshold)
+                            V2TimeResolver.SetDrowsy(night);
+                    }
         }
 
         public static V2ActionOutcome ApplyDecisionTimeout(RunState run, NightState night,

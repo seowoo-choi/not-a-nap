@@ -481,6 +481,59 @@ namespace NotANap.Core.Tests
         }
 
         [Test]
+        public void HoldAndPatKeepDistinctPhysicalContexts()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var cribRun = RunState.Create(Temperament.Soft);
+            var held = Night(run, config);
+            var crib = Night(cribRun, config);
+
+            V2ActionResolver.Apply(run, held, V2ActionId.Hold, config, new SequenceRandomSource(0));
+            V2ActionResolver.Apply(cribRun, crib, V2ActionId.Pat,
+                config, new SequenceRandomSource(0));
+
+            Assert.IsTrue(held.Baby.Held, "품에 안기는 실제 Held 상태를 만들어야 한다.");
+            Assert.IsFalse(crib.Baby.Held, "침대 토닥임은 아기를 자동으로 품에 들지 않는다.");
+        }
+
+        [Test]
+        public void FeedingPreparationUsesThreePlayableStages()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+
+            V2ActionResolver.Apply(run, night, V2ActionId.PrepareWater,
+                config, new SequenceRandomSource(0));
+            Assert.IsTrue(night.V2.Feeding.WaterReady);
+            Assert.IsTrue(night.V2.Feeding.FormulaMeasured);
+            Assert.IsTrue(night.V2.Feeding.BottleMixed);
+            Assert.IsFalse(night.V2.Feeding.IsReadyToFeed);
+
+            V2ActionResolver.Apply(run, night, V2ActionId.CoolBottle,
+                config, new SequenceRandomSource(0));
+            Assert.IsTrue(night.V2.Feeding.BottleCooled);
+            Assert.IsTrue(night.V2.Feeding.TemperatureChecked);
+            Assert.IsTrue(night.V2.Feeding.IsReadyToFeed);
+        }
+
+        [Test]
+        public void BodyTemperatureCheckIsSeparateFromRoomEnvironment()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+
+            V2ActionResolver.Apply(run, night, V2ActionId.CheckBodyTemperature,
+                config, new SequenceRandomSource(0));
+
+            Assert.IsTrue(night.V2.Environment.IsBabyTemperatureChecked);
+            Assert.IsFalse(night.V2.Environment.IsTemperatureChecked);
+            Assert.AreEqual(36.7, night.V2.Environment.BabyTemperatureCelsius, 0.001);
+        }
+
+        [Test]
         public void ExhaustedParentGetsOneWarningAndCanRecoverByCatchingBreath()
         {
             var config = GameBalanceConfig.Default();

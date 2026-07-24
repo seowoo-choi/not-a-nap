@@ -97,6 +97,9 @@ namespace NotANap.Presentation.Tests
             Assert.AreEqual("조심히 눕히기", PresentationCopyMapper.V2ActionLabel(V2ActionId.Laydown));
             Assert.AreEqual("기저귀 갈기", PresentationCopyMapper.V2ActionLabel(V2ActionId.ChangeDiaper));
             Assert.AreEqual("온도·습도", PresentationCopyMapper.V2ActionLabel(V2ActionId.CheckEnvironment));
+            Assert.AreEqual("아기 체온 확인", PresentationCopyMapper.V2ActionLabel(V2ActionId.CheckBodyTemperature));
+            Assert.AreEqual("분유 준비", PresentationCopyMapper.V2ActionLabel(V2ActionId.PrepareWater));
+            Assert.AreEqual("식히고 온도 확인", PresentationCopyMapper.V2ActionLabel(V2ActionId.CoolBottle));
             Assert.AreEqual("잠시 망설임", PresentationCopyMapper.V2ActionLabel(V2ActionId.Hesitate));
             Assert.AreEqual("백색소음기 켜기/끄기", PresentationCopyMapper.V2ActionLabel(V2ActionId.ToggleNoise));
             Assert.AreEqual("베이비 모니터 확인", PresentationCopyMapper.V2ActionLabel(V2ActionId.CheckMonitor));
