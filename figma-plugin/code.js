@@ -155,6 +155,7 @@
   changes += await replaceAll(board, "수면 포지셔너", "암막 커튼");
   changes += await replaceAll(board, "젖을 찾는 듯 고개를 움직인다", "입가를 건드린 쪽으로 고개를 돌리고 입을 벌린다");
   changes += await replaceAll(board, "준비해 둔 작은 일이 새벽에는 큰 도움이 된다.", "미리 소독해뒀다면 덜 기다렸을 텐데. 다음 밤에는 먼저 준비해두자.");
+  changes += await replaceAll(board, "울지 않고 조용히 주변을 본다", "울지 않고 아빠를 빤히 바라본다");
 
   const visualImplemented = [
     "M_PLAY_AWAKE_CALM", "M_FUSS_SOFT", "M_CRY_HARD", "M_HUNGER_EARLY",
@@ -173,6 +174,9 @@
   const fastForward = contractFor("M_SLEEP_FAST_FORWARD");
   if (await setBadge(fastForward, "IMPLEMENTED", green)) changes += 1;
   if (await replaceValue(fastForward, ["Presenter.FastForwardV2Sleep", "FastForwardV2Sleep"], "GameFlowController.FastForwardV2Sleep")) changes += 1;
+  if (await appendReviewNote(fastForward,
+    "다음 구현안: 아기가 자는 동안 ① 같이 쉬기(시간 경과·보호자 체력 회복) ② 수면 환경 점검(수치 확인) ③ 다음 수유 준비(준비 완료·소량 체력 소모) 중 하나를 선택. 세 선택 모두 다음 각성까지 진행하며 아기를 깨우지 않는다.",
+    "SLEEP_INTERVAL_CHOICE")) changes += 1;
 
   const item = contractFor("M_ITEM_SCROLL");
   if (await replaceValue(item, ["SelectItem"], "— (ItemId 사용)")) changes += 1;
@@ -197,6 +201,11 @@
   if (await appendReviewNote(hold,
     "품에 안기=맨손 안기(Baby.Held=true). 아기띠 선택 시 별도 착용/해제 행동. 수유 중 안기는 HoldContext.Feeding으로 분리.",
     "HOLD")) changes += 1;
+
+  const awakeCopy = contractFor("M_PLAY_AWAKE_CALM");
+  if (await appendReviewNote(awakeCopy,
+    "아기 상태 문구는 전지적 설명 대신 아빠가 보고 들을 수 있는 관찰로 작성. 기본 문구: ‘울지 않고 아빠를 빤히 바라본다.’",
+    "FATHER_PERSPECTIVE")) changes += 1;
 
   const pat = contractFor("M_TAB_CARE_PERSIST");
   if (await setBadge(pat, "REVIEW REQUIRED", { r: 1, g: 0.9, b: 0.68 })) changes += 1;
