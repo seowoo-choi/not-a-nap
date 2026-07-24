@@ -22,11 +22,18 @@
     return;
   }
 
-  const board = source.clone();
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-  board.name = "MOBILE_QA_STORYBOARD_V6_CODE_SYNC_" + stamp;
-  board.x = source.x + source.width + 480;
-  board.y = source.y;
+  // 두 번째 실행부터는 보드를 계속 복제하지 않고 가장 최신 CODE_SYNC 보드를 갱신한다.
+  const existingSyncBoards = allFrames
+    .filter(n => n.name.indexOf("MOBILE_QA_STORYBOARD_V6_CODE_SYNC_") === 0)
+    .sort((a, b) => b.name.localeCompare(a.name));
+  const board = existingSyncBoards[0] || source.clone();
+  const created = existingSyncBoards.length === 0;
+  if (created) {
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    board.name = "MOBILE_QA_STORYBOARD_V6_CODE_SYNC_" + stamp;
+    board.x = source.x + source.width + 480;
+    board.y = source.y;
+  }
 
   async function loadTextFonts(node) {
     if (!node || node.type !== "TEXT") return;
@@ -259,12 +266,14 @@
   }
 
   const boardTitle = textNodes(board).find(n => n.name === "BOARD_TITLE" || n.characters.indexOf("스토리보드 V6") >= 0);
-  if (boardTitle) {
+  if (boardTitle && boardTitle.characters.indexOf("CODE SYNC") < 0) {
     await setText(boardTitle, boardTitle.characters.replace("스토리보드 V6", "스토리보드 V6 · CODE SYNC"));
     changes += 1;
   }
 
   figma.currentPage.selection = [board];
   figma.viewport.scrollAndZoomIntoView([board]);
-  figma.closePlugin("V6 코드 계약 동기화 완료 · 원본 보존 · " + changes + "개 항목 갱신");
+  figma.closePlugin("V6 코드 계약 동기화 완료 · " +
+    (created ? "싱크 보드 최초 생성" : "기존 최신 싱크 보드 갱신") +
+    " · " + changes + "개 항목 갱신");
 })();
