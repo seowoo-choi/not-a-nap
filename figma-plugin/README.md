@@ -2,6 +2,8 @@
 
 `MOBILE_QA_STORYBOARD_V6`의 화면 디자인은 유지하고, 현재 Unity 코드가 더 최신인 개발 계약만 동기화하는 Figma 개발 플러그인입니다.
 
+코멘트 후속 액션의 단일 기준은 [`docs/figma-review-actions.md`](../docs/figma-review-actions.md)입니다.
+
 ## 실행
 
 1. Figma Desktop에서 V6 보드가 있는 파일을 엽니다.

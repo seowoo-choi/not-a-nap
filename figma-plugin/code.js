@@ -156,7 +156,59 @@
     return true;
   }
 
+  async function upsertActionSummary() {
+    let panel = board.findOne(n => n.type === "FRAME" && n.name === "_REVIEW_ACTIONS_SUMMARY");
+    if (!panel) {
+      panel = figma.createFrame();
+      panel.name = "_REVIEW_ACTIONS_SUMMARY";
+      panel.resize(2200, 720);
+      panel.x = 80;
+      panel.y = board.height + 80;
+      panel.fills = [{ type: "SOLID", color: { r: 0.055, g: 0.09, b: 0.13 } }];
+      panel.cornerRadius = 32;
+      board.appendChild(panel);
+      board.resize(board.width, board.height + 880);
+    }
+
+    let title = panel.findOne(n => n.type === "TEXT" && n.name === "ACTION_SUMMARY_TITLE");
+    if (!title) {
+      title = figma.createText();
+      title.name = "ACTION_SUMMARY_TITLE";
+      title.fontName = fallbackBold ? fallbackBold.fontName : fallback.fontName;
+      title.fontSize = 34;
+      title.fills = [{ type: "SOLID", color: { r: 0.95, g: 0.96, b: 0.98 } }];
+      title.x = 56;
+      title.y = 48;
+      panel.appendChild(title);
+    }
+    await setText(title, "REVIEW ACTIONS · 다음 구현");
+
+    let body = panel.findOne(n => n.type === "TEXT" && n.name === "ACTION_SUMMARY_BODY");
+    if (!body) {
+      body = figma.createText();
+      body.name = "ACTION_SUMMARY_BODY";
+      body.fontName = fallback ? fallback.fontName : fallbackBold.fontName;
+      body.fontSize = 24;
+      body.lineHeight = { value: 38, unit: "PIXELS" };
+      body.fills = [{ type: "SOLID", color: { r: 0.82, g: 0.86, b: 0.91 } }];
+      body.textAutoResize = "HEIGHT";
+      body.resize(2080, 500);
+      body.x = 56;
+      body.y = 120;
+      panel.appendChild(body);
+    }
+    await setText(body,
+      "P0 · #13  맨손 안기와 아기띠 착용/해제 행동 분리\n" +
+      "P0 · #15  여름 23°C / 겨울 26°C 계절 시나리오\n" +
+      "P1 · #18  코드의 수면 포지셔너 명칭을 암막 커튼으로 교체\n" +
+      "P1 · #20-3  관찰 뒤에 근거·권장 범위를 단계적으로 안내\n\n" +
+      "단일 기준 · docs/figma-review-actions.md\n" +
+      "완료 조건 · 코드 반영 + Unity 테스트 통과 + Figma 계약 동기화");
+    return true;
+  }
+
   let changes = 0;
+  if (await upsertActionSummary()) changes += 1;
   changes += await replaceAll(board, "Presenter.TryExecuteV2Action 호출", "GameFlowController.ActV2 호출");
   changes += await replaceAll(board, "Presenter.TryExecuteV2Action", "GameFlowController.ActV2");
   changes += await replaceAll(board, "수면 포지셔너", "암막 커튼");
