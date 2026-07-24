@@ -174,13 +174,16 @@ namespace NotANap.Presentation
         public double ParentStamina;
         public double CryIntensity;
         public double Hunger;
+        public bool BabyHeld;
         public bool IsLimbRelaxed;
         public bool IsBreathingRegular;
         public bool DeepSleepObserved;
         public double TemperatureCelsius;
         public double HumidityPercent;
+        public double BabyTemperatureCelsius;
         public bool TemperatureChecked;
         public bool HumidityChecked;
+        public bool BabyTemperatureChecked;
         public bool FeedingReady;
         public bool HasNoise;
         public bool NoiseOn;
@@ -220,5 +223,8 @@ namespace NotANap.Presentation
         public int UnsafeChoiceCount;
         public double ParentStaminaAtDawn;
         public bool HasNextNight;
+        public string LearnedSignal;
+        public string NextNightNote;
+        public string Encouragement;
     }
 }

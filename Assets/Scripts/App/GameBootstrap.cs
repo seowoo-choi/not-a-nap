@@ -597,11 +597,11 @@ namespace NotANap.App
             switch (group)
             {
                 case ActionGroup.Diagnose:
-                    return new[] { V2ActionId.CheckDiaper, V2ActionId.CheckHungerSignals, V2ActionId.CheckEnvironment, V2ActionId.CheckMonitor, V2ActionId.CheckLimbRelaxation, V2ActionId.Hesitate, V2ActionId.CatchBreath };
+                    return new[] { V2ActionId.CheckDiaper, V2ActionId.CheckHungerSignals, V2ActionId.CheckEnvironment, V2ActionId.CheckBodyTemperature, V2ActionId.CheckMonitor, V2ActionId.CheckLimbRelaxation, V2ActionId.Hesitate, V2ActionId.CatchBreath };
                 case ActionGroup.Care:
                     return new[] { V2ActionId.Hold, V2ActionId.Pat, V2ActionId.Pacifier, V2ActionId.ToggleNoise, V2ActionId.Laydown, V2ActionId.ChangeDiaper, V2ActionId.AdjustTemperature, V2ActionId.AdjustHumidity };
                 default:
-                    return new[] { V2ActionId.SterilizeBottle, V2ActionId.PrepareWater, V2ActionId.MeasureFormula, V2ActionId.MixFormula, V2ActionId.CoolBottle, V2ActionId.CheckBottleTemperature, V2ActionId.HoldWhilePreparing, V2ActionId.FeedPreparedBottle };
+                    return new[] { V2ActionId.SterilizeBottle, V2ActionId.PrepareWater, V2ActionId.CoolBottle, V2ActionId.FeedPreparedBottle };
             }
         }
 
@@ -726,8 +726,9 @@ namespace NotANap.App
             GUI.Label(new Rect(110, 640, 860, 120), $"총 수면 {FormatDuration(vm.TotalSleepMinutes)} · 깨어남 {vm.WakeCount}회\n남은 체력 {vm.ParentStaminaAtDawn:0}", _body);
             Panel(new Rect(60, 880, 960, 550));
             GUI.Label(new Rect(110, 930, 860, 48), "육아일지", _caption);
-            GUI.Label(new Rect(110, 1010, 860, 180), "완벽하게 재우는 밤은 없었다.\n그래도 우리 가족이 계속할 수 있는 방법을 조금 배웠다.", _headline);
-            GUI.Label(new Rect(110, 1240, 860, 100), "오늘의 선택은 다음 밤에 돌아옵니다.", _body);
+            GUI.Label(new Rect(110, 1010, 860, 130), vm.LearnedSignal, _headline);
+            GUI.Label(new Rect(110, 1160, 860, 100), vm.NextNightNote, _body);
+            GUI.Label(new Rect(110, 1280, 860, 100), vm.Encouragement, _body);
             string nextLabel = vm.HasNextNight ? NextNightButtonLabel(vm.NightId) : "처음부터 다시 보기";
             if (GUI.Button(new Rect(100, 1600, 880, 120), nextLabel, _button))
             {
@@ -760,13 +761,15 @@ namespace NotANap.App
                 switch (outcome.HungerSignalStage)
                 {
                     case HungerSignalStage.Late: return "입을 찾고 빠르게 숨 쉬며 배고픈 울음을 내요. 수유가 필요해요.";
-                    case HungerSignalStage.Active: return "고개를 돌리고 보호자 쪽으로 몸을 기울여요. 배고픔 신호예요.";
+                    case HungerSignalStage.Active: return "입가를 건드린 쪽으로 고개를 돌리고 입을 벌려요. 배고픔 신호예요.";
                     case HungerSignalStage.Early: return "입맛을 다시고 손을 빨아요. 초기 배고픔 신호예요.";
                     default: return "지금은 배고픔 신호가 보이지 않아요.";
                 }
             }
             if (outcome.Action == V2ActionId.CheckEnvironment)
                 return $"온도 {vm.TemperatureCelsius:0.#}°C · 습도 {vm.HumidityPercent:0.#}% (권장 20–22°C · 40–60%)";
+            if (outcome.Action == V2ActionId.CheckBodyTemperature)
+                return $"아기 체온 {vm.BabyTemperatureCelsius:0.0}°C";
             if (outcome.Action == V2ActionId.AdjustTemperature)
                 return $"온도를 {vm.TemperatureCelsius:0.#}°C로 조절했어요.";
             if (outcome.Action == V2ActionId.AdjustHumidity)
@@ -799,7 +802,9 @@ namespace NotANap.App
             if (vm.SleepStage == V2SleepStage.NremDeepSleep && !vm.DeepSleepObserved)
                 return "깊은 수면이에요.\n팔다리 이완을 확인해보세요.";
             if (vm.SleepStage == V2SleepStage.NremDeepSleep)
-                return "팔다리 힘이 빠졌어요.\n이제 눕히기를 시도할 수 있어요.";
+                return vm.BabyHeld
+                    ? "팔다리 힘이 빠졌어요.\n이제 눕히기를 시도할 수 있어요."
+                    : "침대에서 깊이 잠들었어요.\n그대로 지켜봐주세요.";
             if (vm.CryIntensity > 45) return "울음이 커지고 있어요.\n자극을 줄이고 천천히 반응하세요.";
             if (vm.Calm < vm.DrowsyCalmThreshold)
                 return $"진정도 {vm.Calm:0} / {vm.SleepStartCalmThreshold:0}\n안기나 토닥이기로 달래주세요.";
@@ -811,7 +816,8 @@ namespace NotANap.App
             if (!vm.CauseResolved) return "먼저 깨어난 원인을 확인해주세요";
             if (vm.SleepStage == V2SleepStage.RemActiveSleep) return "활동 수면 · 아직 눕히기엔 일러요";
             if (vm.SleepStage == V2SleepStage.NremDeepSleep && !vm.DeepSleepObserved) return "깊은 수면 · 팔다리 이완을 확인하세요";
-            if (vm.SleepStage == V2SleepStage.NremDeepSleep) return "깊은 수면 확인 · 이제 눕혀도 좋아요";
+            if (vm.SleepStage == V2SleepStage.NremDeepSleep)
+                return vm.BabyHeld ? "깊은 수면 확인 · 이제 눕혀도 좋아요" : "침대에서 깊이 잠듦 · 그대로 지켜봐요";
             if (vm.Calm < vm.DrowsyCalmThreshold)
                 return $"진정도 {vm.Calm:0} / {vm.SleepStartCalmThreshold:0} · 안기 또는 토닥이기";
             return $"진정도 {vm.Calm:0} / {vm.SleepStartCalmThreshold:0} · 한 번 더 달래주세요";

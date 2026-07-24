@@ -32,6 +32,7 @@ namespace NotANap.Core
             };
             night.V2.Environment.TemperatureCelsius = 21;
             night.V2.Environment.HumidityPercent = 50;
+            night.V2.Environment.BabyTemperatureCelsius = 36.7;
             // 가정에서 젖병은 평소 세척·소독해 둔 상태가 기본이다.
             // 돌발 상황이 이 값을 false로 바꾼 밤에만 소독 행동이 필요하다.
             night.V2.Feeding.BottleSanitized = true;

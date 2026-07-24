@@ -67,8 +67,10 @@ namespace NotANap.Core
     {
         public double TemperatureCelsius;
         public double HumidityPercent;
+        public double BabyTemperatureCelsius;
         public bool IsTemperatureChecked;
         public bool IsHumidityChecked;
+        public bool IsBabyTemperatureChecked;
     }
 
     public sealed class FeedingPreparationState

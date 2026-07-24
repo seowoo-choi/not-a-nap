@@ -26,7 +26,7 @@ namespace NotANap.Core
     public enum V2ActionId
     {
         Hold, Pat, Laydown, Pacifier, CheckLimbRelaxation,
-        CheckDiaper, ChangeDiaper, CheckHungerSignals, CheckEnvironment,
+        CheckDiaper, ChangeDiaper, CheckHungerSignals, CheckEnvironment, CheckBodyTemperature,
         AdjustTemperature, AdjustHumidity, Hesitate,
         SterilizeBottle, PrepareWater, MeasureFormula, MixFormula, CoolBottle,
         CheckBottleTemperature, FeedPreparedBottle, HoldWhilePreparing,
