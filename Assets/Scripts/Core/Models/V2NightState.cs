@@ -129,6 +129,10 @@ namespace NotANap.Core
         public ScheduledWake NextWake;
         public double CryIntensity;
         public bool HoldWhilePreparing;
+        public bool HeadSupported;
+        public double CaregiverComposure = 50;
+        public int GentleObservationCount;
+        public readonly List<ObservationSignalId> VisibleSignals = new List<ObservationSignalId>();
         public bool ExhaustionWarned;
         public readonly HashSet<ProductCapability> ProductCapabilities = new HashSet<ProductCapability>();
     }

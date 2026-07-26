@@ -14,6 +14,9 @@ namespace NotANap.Core
         public HungerSignalStage HungerSignalStage;
         public DiaperCheckResult DiaperCheckResult;
         public bool MonitorRead;
+        public bool HeadSupported;
+        public double ComposureDelta;
+        public string ActivityLocation;
         public readonly List<ObservationSignalId> ObservedSignals = new List<ObservationSignalId>();
         public readonly List<FeedingPreparationStep> MissingPreparationSteps = new List<FeedingPreparationStep>();
         public readonly List<GameEventId> EventIds = new List<GameEventId>();

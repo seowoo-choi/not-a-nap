@@ -573,7 +573,43 @@ namespace NotANap.Core.Tests
                 config, new SequenceRandomSource(0));
 
             Assert.IsTrue(held.Baby.Held, "품에 안기는 실제 Held 상태를 만들어야 한다.");
+            Assert.IsTrue(held.V2.HeadSupported, "안기는 동안 영아의 목과 머리를 받친 상태여야 한다.");
             Assert.IsFalse(crib.Baby.Held, "침대 토닥임은 아기를 자동으로 품에 들지 않는다.");
+        }
+
+        [Test]
+        public void CatchBreathBuildsComposureAndMakesBodySignalsVisible()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Hungry);
+            var night = Night(run, config);
+            night.Baby.Hunger = 70;
+            double before = night.V2.CaregiverComposure;
+
+            var result = V2ActionResolver.Apply(run, night, V2ActionId.CatchBreath,
+                config, new SequenceRandomSource(0));
+
+            Assert.Greater(night.V2.CaregiverComposure, before);
+            Assert.AreEqual(1, night.V2.GentleObservationCount);
+            CollectionAssert.Contains(result.ObservedSignals, ObservationSignalId.LipSmacking);
+            CollectionAssert.Contains(night.V2.VisibleSignals, ObservationSignalId.LipSmacking);
+        }
+
+        [Test]
+        public void KitchenPreparationConsumesTimeWhileBabyStateContinues()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            double hunger = night.Baby.Hunger;
+
+            var result = V2ActionResolver.Apply(run, night, V2ActionId.PrepareWater,
+                config, new SequenceRandomSource(0));
+
+            Assert.AreEqual("주방", result.ActivityLocation);
+            Assert.AreEqual(config.V2.PreparationActionMinutes, result.TimeDeltaMinutes);
+            Assert.Greater(night.V2.ElapsedMinutes, 0);
+            Assert.Greater(night.Baby.Hunger, hunger);
         }
 
         [Test]

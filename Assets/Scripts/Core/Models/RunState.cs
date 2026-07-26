@@ -9,6 +9,7 @@ namespace NotANap.Core
     {
         public NightId CurrentNightId = NightId.FirstNight;
         public Temperament Temperament = Temperament.Soft;
+        public CaregiverStyle CaregiverStyle = CaregiverStyle.Observant;
         public MemoryState Memory = new MemoryState();
         public TraceState Traces = new TraceState();
         /// <summary>누적 습관 설명 (기억 분석 카드·엔딩 습관 목록용).</summary>
@@ -41,6 +42,12 @@ namespace NotANap.Core
 
         public static RunState Create(Temperament temperament)
             => new RunState { Temperament = temperament };
+
+        public void ConfigureCarePair(CaregiverStyle caregiverStyle, Temperament temperament)
+        {
+            CaregiverStyle = caregiverStyle;
+            Temperament = temperament ?? Temperament.Soft;
+        }
 
         /// <summary>기질 무작위 선택. 원본: prototype newRun().</summary>
         public static RunState CreateRandom(IRandomSource rng)

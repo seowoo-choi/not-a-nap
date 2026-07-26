@@ -91,7 +91,7 @@ namespace NotANap.Presentation.Tests
         [Test]
         public void V2ActionLabels_MatchMobileStoryboardCopy()
         {
-            Assert.AreEqual("품에 안기", PresentationCopyMapper.V2ActionLabel(V2ActionId.Hold));
+            Assert.AreEqual("목을 받치고 품에 안기", PresentationCopyMapper.V2ActionLabel(V2ActionId.Hold));
             Assert.AreEqual("천천히 토닥이기", PresentationCopyMapper.V2ActionLabel(V2ActionId.Pat));
             Assert.AreEqual("쪽쪽이 건네기", PresentationCopyMapper.V2ActionLabel(V2ActionId.Pacifier));
             Assert.AreEqual("조심히 눕히기", PresentationCopyMapper.V2ActionLabel(V2ActionId.Laydown));
@@ -103,7 +103,40 @@ namespace NotANap.Presentation.Tests
             Assert.AreEqual("잠시 망설임", PresentationCopyMapper.V2ActionLabel(V2ActionId.Hesitate));
             Assert.AreEqual("백색소음기 켜기/끄기", PresentationCopyMapper.V2ActionLabel(V2ActionId.ToggleNoise));
             Assert.AreEqual("베이비 모니터 확인", PresentationCopyMapper.V2ActionLabel(V2ActionId.CheckMonitor));
-            Assert.AreEqual("물 한 잔 마시며 숨 고르기", PresentationCopyMapper.V2ActionLabel(V2ActionId.CatchBreath));
+            Assert.AreEqual("숨 고르고 신호 기다리기", PresentationCopyMapper.V2ActionLabel(V2ActionId.CatchBreath));
+        }
+
+        [Test]
+        public void FirstNightSetup_ConfiguresCaregiverAndBabyWithoutACompatibilityScore()
+        {
+            var flow = new GameFlowController(new SystemRandomSource(1));
+            flow.StartGame();
+
+            flow.SelectCaregiverStyle(CaregiverStyle.Methodical);
+            flow.SelectBabyTemperament(Temperament.Sensitive);
+            var vm = flow.BuildV2Setup();
+
+            Assert.AreEqual(CaregiverStyle.Methodical, flow.Session.Run.CaregiverStyle);
+            Assert.AreSame(Temperament.Sensitive, flow.Session.Run.Temperament);
+            Assert.AreEqual("차례로 확인하는 보호자", vm.CaregiverStyleName);
+            StringAssert.Contains("적응할 시간", vm.PairGuidance);
+        }
+
+        [Test]
+        public void DiaryCentersLearningCaregiverGrowthAndSharedNight()
+        {
+            var flow = StartV2();
+            TurnResolver.AdvanceMinutes(flow.Session.Run, flow.Session.Night, 540,
+                GameBalanceConfig.Default(), new SystemRandomSource(8));
+            flow.ActV2(V2ActionId.Hesitate);
+
+            var diary = flow.BuildV2Diary();
+
+            StringAssert.Contains("신호", diary.LearnedSignal);
+            StringAssert.Contains("보호자", diary.CaregiverGrowth);
+            StringAssert.Contains("엄마", diary.MotherInsight);
+            StringAssert.Contains("함께", diary.CompanionMessage);
+            StringAssert.Contains("정답보다", diary.ShareCardText);
         }
 
         [Test]
@@ -149,6 +182,27 @@ namespace NotANap.Presentation.Tests
             Assert.AreEqual(ScreenState.Setup, flow.Screen);
             Assert.AreEqual(NightId.SecondNight, flow.Session.Run.CurrentNightId);
             Assert.AreEqual(1, flow.Session.Run.NightResults.Count);
+        }
+
+        [Test]
+        public void FirstNightOverlayDismissAndDiaryButtonReachPlayableSecondNight()
+        {
+            var flow = StartV2();
+            TurnResolver.AdvanceMinutes(flow.Session.Run, flow.Session.Night, 540,
+                GameBalanceConfig.Default(), new SystemRandomSource(8));
+            flow.ActV2(V2ActionId.Hesitate);
+            if (flow.PendingOverlay != null) flow.DismissOverlay();
+            Assert.AreEqual(ScreenState.Diary, flow.Screen);
+            Assert.IsTrue(flow.AdvanceFromV2Diary());
+
+            flow.ToggleV2Item(ItemId.Monitor);
+            flow.ToggleV2Item(ItemId.Noise);
+            flow.ToggleV2Item(ItemId.Pacifier);
+            flow.ConfirmV2Setup();
+
+            Assert.AreEqual(ScreenState.Play, flow.Screen);
+            Assert.AreEqual(NightId.SecondNight, flow.Session.Night.NightId);
+            Assert.IsNotNull(flow.Session.Night.V2);
         }
     }
 }

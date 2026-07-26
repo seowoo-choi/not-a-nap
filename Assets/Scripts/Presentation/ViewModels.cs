@@ -18,6 +18,12 @@ namespace NotANap.Presentation
         public int Slots;
         public int SelectedCount;
         public bool CanStart;
+        public bool IsFirstNight;
+        public CaregiverStyle CaregiverStyle;
+        public string CaregiverStyleName;
+        public string CaregiverStyleDescription;
+        public string TemperamentName;
+        public string PairGuidance;
         public List<ItemCardViewModel> Cards = new List<ItemCardViewModel>();
     }
 
@@ -172,6 +178,7 @@ namespace NotANap.Presentation
         public double DrowsyCalmThreshold;
         public double SleepStartCalmThreshold;
         public double ParentStamina;
+        public double CaregiverComposure;
         public double CryIntensity;
         public double Hunger;
         public bool BabyHeld;
@@ -190,6 +197,9 @@ namespace NotANap.Presentation
         public bool HasNoise;
         public bool NoiseOn;
         public bool HasMonitor;
+        public bool HeadSupported;
+        public string CurrentSignal;
+        public string CaregiverReflection;
         public NightGrade? Grade;
         public readonly List<V2ActionButtonViewModel> Actions = new List<V2ActionButtonViewModel>();
     }
@@ -228,5 +238,9 @@ namespace NotANap.Presentation
         public string LearnedSignal;
         public string NextNightNote;
         public string Encouragement;
+        public string CaregiverGrowth;
+        public string MotherInsight;
+        public string CompanionMessage;
+        public string ShareCardText;
     }
 }

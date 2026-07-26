@@ -68,6 +68,18 @@ namespace NotANap.Presentation
             ToggleItem(id);
         }
 
+        public void SelectCaregiverStyle(CaregiverStyle style)
+        {
+            if (Screen != ScreenState.Setup || Session.Run.CurrentNightId != NightId.FirstNight) return;
+            Session.ConfigureCarePair(style, Session.Run.Temperament);
+        }
+
+        public void SelectBabyTemperament(Temperament temperament)
+        {
+            if (Screen != ScreenState.Setup || Session.Run.CurrentNightId != NightId.FirstNight) return;
+            Session.ConfigureCarePair(Session.Run.CaregiverStyle, temperament);
+        }
+
         /// <summary>밤을 정확히 한 번 생성하고 PLAY로 이동. 슬롯 미충족이면 무시.</summary>
         public void ConfirmSetup()
         {
