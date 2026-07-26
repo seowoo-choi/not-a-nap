@@ -32,6 +32,8 @@ namespace NotANap.App
 
         private Font _font;
         private Texture2D _room;
+        private Texture2D _kitchenRoom;
+        private Texture2D _bathroomRoom;
         private readonly Dictionary<ItemId, Texture2D> _itemArt = new Dictionary<ItemId, Texture2D>();
         private GUIStyle _display;
         private GUIStyle _headline;
@@ -47,9 +49,6 @@ namespace NotANap.App
         private Texture2D _lockIcon;
         private Texture2D _itemGlow;
         private Texture2D _itemShadow;
-        private Texture2D _hudGlass;
-        private Texture2D _hudWarm;
-        private Texture2D _hudSelected;
         private ItemId? _setupFocus;
 
         private System.Random _ambientRandom;
@@ -91,6 +90,8 @@ namespace NotANap.App
             _babyVisual = new BabyVisualPresenter();
             _audio = GameFeelAudio.Attach(gameObject);
             _room = Resources.Load<Texture2D>("Art/nursery-night-empty");
+            _kitchenRoom = Resources.Load<Texture2D>("Art/kitchen-night");
+            _bathroomRoom = Resources.Load<Texture2D>("Art/bathroom-night");
             LoadItemArt(ItemId.Carrier, "carrier");
             LoadItemArt(ItemId.Pacifier, "pacifier");
             LoadItemArt(ItemId.Noise, "noise");
@@ -119,9 +120,6 @@ namespace NotANap.App
             _speechBubble = RoundedTexture(new Color(0.97f, 0.94f, 0.87f, 0.98f), 14);
             _itemGlow = RoundedTexture(new Color(1f, 0.69f, 0.27f, 0.2f), 48);
             _itemShadow = RoundedTexture(new Color(0f, 0f, 0f, 0.44f), 28);
-            _hudGlass = RoundedTexture(new Color(0.025f, 0.045f, 0.075f, 0.76f), 14);
-            _hudWarm = RoundedTexture(new Color(0.32f, 0.19f, 0.09f, 0.88f), 14);
-            _hudSelected = RoundedTexture(new Color(0.72f, 0.43f, 0.16f, 0.96f), 14);
         }
 
         private GUIStyle LabelStyle(int size, FontStyle weight, Color color, TextAnchor align = TextAnchor.UpperLeft)
@@ -299,20 +297,23 @@ namespace NotANap.App
         private void DrawTitle()
         {
             if (_portrait) { DrawPortraitTitle(); return; }
-            Fill(new Rect(0, 0, LandscapeWidth, LandscapeHeight), new Color(0.01f, 0.025f, 0.05f, 0.34f));
-            GUI.Label(new Rect(470, 220, 980, 110), "NOT A NAP", _title);
-            GUI.Label(new Rect(650, 328, 620, 56), "백일의 밤", Centered(_headline));
-            GUI.Label(new Rect(610, 445, 700, 100), "오늘 밤은 아빠 차례다.\n울음보다 먼저 오는 신호를 읽어보자.", Centered(_body));
-            if (GUI.Button(new Rect(760, 690, 400, 78), "첫째 밤 시작하기", _button))
+            Fill(new Rect(0, 0, LandscapeWidth, LandscapeHeight), new Color(0.01f, 0.02f, 0.035f, 0.24f));
+            GUI.Label(new Rect(470, 174, 980, 110), "NOT A NAP", new GUIStyle(_title) { fontSize = 88 });
+            GUI.Label(new Rect(650, 282, 620, 56), "백일의 밤", Centered(_headline));
+            Fill(new Rect(830, 356, 260, 3), new Color(0.93f, 0.66f, 0.29f, 0.84f));
+            GUI.Label(new Rect(610, 405, 700, 100),
+                "오늘 밤은 아빠 차례다.\n울음보다 먼저 오는 신호를 읽어보자.", Centered(_body));
+            if (DrawPrimaryButton(new Rect(750, 650, 420, 82), "첫째 밤 시작하기  →"))
                 _flow.StartGame();
-            GUI.Label(new Rect(700, 790, 520, 32), "약 5분 · 정답보다 서로의 리듬을 알아가는 밤", Centered(_caption));
+            GUI.Label(new Rect(650, 762, 620, 34),
+                "약 5분 · 정답보다 서로의 리듬을 알아가는 밤", Centered(_caption));
         }
 
         private void DrawSetup()
         {
             var vm = _flow.BuildV2Setup();
             if (_portrait) { DrawPortraitSetup(vm); return; }
-            Fill(new Rect(0, 0, LandscapeWidth, LandscapeHeight), new Color(0.015f, 0.035f, 0.065f, 0.46f));
+            Fill(new Rect(0, 0, LandscapeWidth, LandscapeHeight), new Color(0.01f, 0.02f, 0.035f, 0.34f));
             GUI.Label(new Rect(90, 64, 900, 56), $"{vm.NightLabel}  ·  밤 준비", _display);
             GUI.Label(new Rect(1450, 75, 360, 44), $"가져갈 물건  {vm.SelectedCount} / {vm.Slots}", Right(_headline));
             if (vm.IsFirstNight)
@@ -334,15 +335,12 @@ namespace NotANap.App
                 DrawSetupItemDetail(new Rect(130, 748, 1120, 174), focused, false);
             GUI.Label(new Rect(130, 930, 940, 34), "소품을 눌러 오늘 밤의 진열대에 올리세요.", _caption);
 
-            var oldEnabled = GUI.enabled;
-            GUI.enabled = vm.CanStart;
             string next = vm.CanStart ? "이 준비로 밤 시작하기  →" : $"물건을 {vm.Slots}개 골라주세요";
-            if (GUI.Button(new Rect(1300, 900, 520, 82), next, _button))
+            if (DrawPrimaryButton(new Rect(1300, 900, 520, 82), next, vm.CanStart))
             {
                 _audio?.PlayUi();
                 _flow.ConfirmV2Setup();
             }
-            GUI.enabled = oldEnabled;
         }
 
         private void DrawCollectibleItem(Rect area, ItemCardViewModel card, bool portrait)
@@ -432,7 +430,7 @@ namespace NotANap.App
 
         private void DrawSetupItemDetail(Rect rect, ItemCardViewModel card, bool portrait)
         {
-            Fill(rect, new Color(0.025f, 0.05f, 0.08f, 0.78f));
+            DrawGlassPanel(rect, 0.72f);
             Fill(new Rect(rect.x, rect.y, 6f, rect.height), card.Selected
                 ? new Color(1f, 0.72f, 0.32f)
                 : new Color(0.48f, 0.57f, 0.66f));
@@ -478,12 +476,10 @@ namespace NotANap.App
             bool active = action.Action == V2ActionId.ToggleCarrier && vm.CarrierOn ||
                           action.Action == V2ActionId.ToggleNoise && vm.NoiseOn;
             bool hovered = rect.Contains(Event.current.mousePosition);
-            GUI.DrawTexture(rect, active ? _hudSelected : _hudGlass, ScaleMode.StretchToFill, true);
+            DrawGlassPanel(rect, hovered ? 0.82f : 0.66f, active);
             if (hovered)
-                Fill(new Rect(rect.x + 2, rect.y + 2, rect.width - 4, 3),
-                    new Color(1f, 0.76f, 0.38f, 0.82f));
-            Fill(new Rect(rect.x, rect.yMax - 2, rect.width, 2),
-                active ? new Color(1f, 0.78f, 0.4f, 0.9f) : new Color(0.83f, 0.69f, 0.46f, 0.28f));
+                Fill(new Rect(rect.x + 8, rect.y + 5, rect.width - 16, 3),
+                    new Color(1f, 0.76f, 0.38f, 0.72f));
             bool clicked = GUI.Button(rect, GUIContent.none, GUIStyle.none);
             float iconSize = rect.height - (portrait ? 18f : 14f);
             if (item.HasValue)
@@ -492,7 +488,9 @@ namespace NotANap.App
             {
                 var sigil = new Rect(rect.x + 12f, rect.y + (rect.height - iconSize * 0.72f) * 0.5f,
                     iconSize * 0.72f, iconSize * 0.72f);
-                GUI.DrawTexture(sigil, active ? _hudWarm : _hudSelected, ScaleMode.StretchToFill, true);
+                Fill(sigil, active
+                    ? new Color(0.96f, 0.68f, 0.3f, 0.98f)
+                    : new Color(0.62f, 0.34f, 0.12f, 0.94f));
                 GUI.Label(sigil, ActionSigil(action.Action),
                     LabelStyle(portrait ? 25 : 19, FontStyle.Bold, Color.white, TextAnchor.MiddleCenter));
                 iconSize = sigil.width + 10f;
@@ -592,26 +590,24 @@ namespace NotANap.App
 
         private void DrawTopBar(V2PlayViewModel vm)
         {
-            GUI.DrawTexture(new Rect(34, 28, 246, 66), _hudGlass, ScaleMode.StretchToFill, true);
-            GUI.Label(new Rect(58, 34, 200, 54), vm.Clock, LabelStyle(42, FontStyle.Bold,
-                new Color(0.98f, 0.91f, 0.76f), TextAnchor.MiddleCenter));
-            GUI.DrawTexture(new Rect(1560, 28, 326, 66), _hudGlass, ScaleMode.StretchToFill, true);
-            GUI.Label(new Rect(1580, 38, 286, 44), $"새벽까지 {FormatDuration(vm.RemainingMinutes)}",
-                LabelStyle(24, FontStyle.Bold, new Color(0.94f, 0.9f, 0.82f), TextAnchor.MiddleCenter));
-            DrawProgress(new Rect(1592, 84, 262, 4),
+            GUI.Label(new Rect(48, 36, 250, 60), vm.Clock, LabelStyle(46, FontStyle.Bold,
+                new Color(0.98f, 0.91f, 0.76f)));
+            Fill(new Rect(48, 96, 170, 3), new Color(0.96f, 0.67f, 0.28f, 0.84f));
+            GUI.Label(new Rect(1498, 42, 370, 42), $"새벽까지 {FormatDuration(vm.RemainingMinutes)}",
+                LabelStyle(24, FontStyle.Bold, new Color(0.94f, 0.9f, 0.82f), TextAnchor.MiddleRight));
+            DrawProgress(new Rect(1606, 91, 262, 4),
                 1f - vm.RemainingMinutes / 540f, new Color(0.94f, 0.67f, 0.3f));
         }
 
         private void DrawPortraitPlay(V2PlayViewModel vm)
         {
             DrawPlayScene(vm, new Rect(0, 0, PortraitWidth, 1120), true);
-            GUI.DrawTexture(new Rect(34, 28, 230, 80), _hudGlass, ScaleMode.StretchToFill, true);
-            GUI.Label(new Rect(48, 35, 202, 66), vm.Clock, LabelStyle(47, FontStyle.Bold,
-                new Color(0.98f, 0.91f, 0.76f), TextAnchor.MiddleCenter));
-            GUI.DrawTexture(new Rect(680, 28, 366, 80), _hudGlass, ScaleMode.StretchToFill, true);
-            GUI.Label(new Rect(700, 45, 326, 48), $"새벽까지 {FormatDuration(vm.RemainingMinutes)}",
-                LabelStyle(28, FontStyle.Bold, new Color(0.94f, 0.9f, 0.82f), TextAnchor.MiddleCenter));
-            DrawProgress(new Rect(720, 98, 286, 5), 1f - vm.RemainingMinutes / 540f,
+            GUI.Label(new Rect(54, 76, 250, 74), vm.Clock, LabelStyle(51, FontStyle.Bold,
+                new Color(0.98f, 0.91f, 0.76f)));
+            Fill(new Rect(54, 148, 172, 4), new Color(0.96f, 0.67f, 0.28f, 0.84f));
+            GUI.Label(new Rect(650, 83, 374, 52), $"새벽까지 {FormatDuration(vm.RemainingMinutes)}",
+                LabelStyle(29, FontStyle.Bold, new Color(0.94f, 0.9f, 0.82f), TextAnchor.MiddleRight));
+            DrawProgress(new Rect(735, 145, 289, 5), 1f - vm.RemainingMinutes / 540f,
                 new Color(0.94f, 0.67f, 0.3f));
             DrawPortraitStatusOrnaments(vm);
             DrawSceneFeedback(vm, new Rect(58, 912, 964, 118), true);
@@ -620,29 +616,33 @@ namespace NotANap.App
 
         private void DrawPlayScene(V2PlayViewModel vm, Rect rect, bool portrait)
         {
-            DrawRoomFocusBackdrop(vm.CaregiverLocation, rect);
-            Fill(rect, RoomFocusTint(vm.CaregiverLocation));
+            var backdropRect = portrait
+                ? new Rect(0, 0, PortraitWidth, PortraitHeight)
+                : rect;
+            DrawRoomFocusBackdrop(vm.CaregiverLocation, backdropRect);
+            Fill(backdropRect, RoomFocusTint(vm.CaregiverLocation));
 
             bool babyVisible = vm.BabyLocation == vm.CaregiverLocation;
             if (babyVisible)
             {
-                float babySize = portrait ? 470f : 570f;
+                float babySize = portrait ? 430f : 540f;
                 var babyRect = new Rect(
                     rect.center.x - babySize * 0.5f,
-                    portrait ? 250f : 100f,
+                    portrait ? 286f : 120f,
                     babySize, babySize);
+                GUI.DrawTexture(new Rect(babyRect.center.x - babySize * 0.24f,
+                    babyRect.yMax - babySize * 0.12f, babySize * 0.48f, babySize * 0.09f),
+                    _itemShadow, ScaleMode.StretchToFill, true);
                 DrawAnimatedBaby(vm, babyRect);
                 DrawSignalMotionCue(vm, babyRect, portrait);
                 DrawBabbleBubble(vm, babyRect, portrait);
             }
             else
             {
-                GUI.DrawTexture(new Rect(rect.center.x - 270, portrait ? 370 : 260, 540, 110),
-                    _hudGlass, ScaleMode.StretchToFill, true);
-                GUI.Label(new Rect(rect.center.x - 240, portrait ? 385 : 275, 480, 80),
-                    "아기는 아기방에 있어요.\n필요한 물건을 챙겨 돌아가세요.",
-                    LabelStyle(portrait ? 28 : 24, FontStyle.Bold,
-                        new Color(0.94f, 0.91f, 0.85f), TextAnchor.MiddleCenter));
+                GUI.Label(new Rect(rect.center.x - 300, portrait ? 400 : 300, 600, 80),
+                    RoomFocusObjective(vm),
+                    LabelStyle(portrait ? 31 : 26, FontStyle.Bold,
+                        new Color(0.98f, 0.88f, 0.7f), TextAnchor.MiddleCenter));
             }
 
             DrawSignalRibbon(vm, portrait);
@@ -653,9 +653,9 @@ namespace NotANap.App
         {
             float width = portrait ? 760f : 700f;
             float x = portrait ? 46f : 52f;
-            float y = portrait ? 138f : 118f;
+            float y = portrait ? 176f : 118f;
             float height = portrait ? 104f : 84f;
-            GUI.DrawTexture(new Rect(x, y, width, height), _hudGlass, ScaleMode.StretchToFill, true);
+            DrawGlassPanel(new Rect(x, y, width, height), 0.62f);
             Fill(new Rect(x, y + 12, 4, height - 24),
                 vm.CauseResolved ? new Color(0.45f, 0.8f, 0.61f) : new Color(0.96f, 0.64f, 0.3f));
             GUI.Label(new Rect(x + 24, y + 10, width - 48, portrait ? 35 : 28),
@@ -670,7 +670,7 @@ namespace NotANap.App
 
         private void DrawRoomRibbon(V2PlayViewModel vm, bool portrait)
         {
-            float y = portrait ? 690f : 132f;
+            float y = portrait ? 720f : 132f;
             float x = portrait ? 120f : 1546f;
             float buttonWidth = portrait ? 270f : 106f;
             float buttonHeight = portrait ? 62f : 50f;
@@ -689,7 +689,7 @@ namespace NotANap.App
                 HomeLocation location = locations[i];
                 bool current = vm.CaregiverLocation == location;
                 var room = new Rect(x + i * (buttonWidth + gap), y, buttonWidth, buttonHeight);
-                GUI.DrawTexture(room, current ? _hudSelected : _hudGlass, ScaleMode.StretchToFill, true);
+                DrawGlassPanel(room, current ? 0.82f : 0.58f, current);
                 string marker = vm.BabyLocation == location ? "  · 아기" : "";
                 GUI.Label(room, HomeLocationLabel(location) + marker,
                     LabelStyle(portrait ? 27 : 16, FontStyle.Bold,
@@ -737,11 +737,11 @@ namespace NotANap.App
 
         private void DrawStatusOrnament(Rect rect, string label, string value, float progress, Color color, bool portrait)
         {
-            GUI.DrawTexture(rect, _hudGlass, ScaleMode.StretchToFill, true);
+            DrawGlassPanel(rect, portrait ? 0.5f : 0.56f);
             Fill(new Rect(rect.x + 12, rect.y + 14, 5, rect.height - 28), color);
-            GUI.Label(new Rect(rect.x + 30, rect.y + 9, rect.width - 110, 30), label,
+            GUI.Label(new Rect(rect.x + 30, rect.y + 8, rect.width - 112, portrait ? 42 : 32), label,
                 LabelStyle(portrait ? 27 : 16, FontStyle.Bold, new Color(0.76f, 0.81f, 0.85f)));
-            GUI.Label(new Rect(rect.xMax - 100, rect.y + 8, 80, 38), value,
+            GUI.Label(new Rect(rect.xMax - 106, rect.y + 7, 86, portrait ? 46 : 38), value,
                 LabelStyle(portrait ? 35 : 23, FontStyle.Bold,
                     new Color(0.98f, 0.94f, 0.86f), TextAnchor.UpperRight));
             DrawProgress(new Rect(rect.x + 30, rect.yMax - (portrait ? 25 : 21), rect.width - 52,
@@ -750,7 +750,7 @@ namespace NotANap.App
 
         private void DrawSceneFeedback(V2PlayViewModel vm, Rect rect, bool portrait)
         {
-            GUI.DrawTexture(rect, _hudGlass, ScaleMode.StretchToFill, true);
+            DrawGlassPanel(rect, 0.64f);
             string title = vm.CauseResolved ? "작은 숨소리가 방 안에 이어진다." : "무엇이 불편한 걸까?";
             string detail = BabyStepHint(vm);
             var outcome = _lastResult?.Outcome;
@@ -776,7 +776,7 @@ namespace NotANap.App
 
         private void DrawLandscapeCommandDeck(V2PlayViewModel vm)
         {
-            Fill(new Rect(0, 780, LandscapeWidth, 300), new Color(0.012f, 0.025f, 0.045f, 0.78f));
+            Fill(new Rect(0, 780, LandscapeWidth, 300), new Color(0.012f, 0.025f, 0.045f, 0.56f));
             Fill(new Rect(0, 780, LandscapeWidth, 2), new Color(0.84f, 0.62f, 0.31f, 0.72f));
 
             GUI.Label(new Rect(48, 806, 300, 40),
@@ -801,7 +801,7 @@ namespace NotANap.App
         private void DrawCommandTab(Rect rect, string label, ActionGroup group, bool enabled)
         {
             bool selected = _actionGroup == group;
-            GUI.DrawTexture(rect, selected ? _hudSelected : _hudGlass, ScaleMode.StretchToFill, true);
+            DrawGlassPanel(rect, selected ? 0.82f : 0.58f, selected);
             GUI.Label(rect, label, LabelStyle(_portrait ? 28 : 18, FontStyle.Bold,
                 selected ? Color.white : new Color(0.78f, 0.81f, 0.83f), TextAnchor.MiddleCenter));
             var old = GUI.enabled;
@@ -909,31 +909,14 @@ namespace NotANap.App
 
         private void DrawRoomFocusBackdrop(HomeLocation location, Rect rect)
         {
-            if (_room != null)
+            Texture2D backdrop = location switch
             {
-                Rect crop = location switch
-                {
-                    HomeLocation.Kitchen => new Rect(0.42f, 0.02f, 0.5f, 0.88f),
-                    HomeLocation.Bathroom => new Rect(0.68f, 0.02f, 0.3f, 0.88f),
-                    _ => new Rect(0.05f, 0.02f, 0.64f, 0.9f)
-                };
-                GUI.DrawTextureWithTexCoords(rect, _room, crop, true);
-            }
-            if (location == HomeLocation.Kitchen)
-            {
-                Fill(new Rect(rect.x, rect.yMax - rect.height * 0.25f, rect.width, rect.height * 0.25f),
-                    new Color(0.13f, 0.075f, 0.035f, 0.74f));
-                Fill(new Rect(rect.x + rect.width * 0.08f, rect.yMax - rect.height * 0.38f,
-                    rect.width * 0.34f, rect.height * 0.12f), new Color(0.34f, 0.22f, 0.12f, 0.72f));
-            }
-            else if (location == HomeLocation.Bathroom)
-            {
-                for (int i = 1; i < 6; i++)
-                    Fill(new Rect(rect.x, rect.y + rect.height * i / 6f, rect.width, 2f),
-                        new Color(0.55f, 0.72f, 0.75f, 0.15f));
-                Fill(new Rect(rect.x, rect.yMax - rect.height * 0.2f, rect.width, rect.height * 0.2f),
-                    new Color(0.04f, 0.11f, 0.13f, 0.7f));
-            }
+                HomeLocation.Kitchen => _kitchenRoom,
+                HomeLocation.Bathroom => _bathroomRoom,
+                _ => _room
+            };
+            if (backdrop != null)
+                GUI.DrawTexture(rect, backdrop, ScaleMode.ScaleAndCrop, true);
         }
 
         private void DrawMiniMapRoom(Rect room, string name, HomeLocation location, V2PlayViewModel vm, bool portrait)
@@ -1016,6 +999,15 @@ namespace NotANap.App
                 ? "탕온계를 챙겼어요 · 목욕용품"
                 : "탕온계 · 목욕용품",
             _ => "침대 · 베이비 모니터 · 아기의 숨소리"
+        };
+
+        private static string RoomFocusObjective(V2PlayViewModel vm) => vm.CaregiverLocation switch
+        {
+            HomeLocation.Kitchen => "분유와 물을 준비할 수 있어요",
+            HomeLocation.Bathroom => vm.BathThermometerRetrieved
+                ? "탕온계를 챙겼어요"
+                : "세면대 위 탕온계를 챙길 수 있어요",
+            _ => "아기에게 돌아왔어요"
         };
 
         private void DrawSignalMotionCue(V2PlayViewModel vm, Rect babyRect, bool portrait)
@@ -1174,7 +1166,7 @@ namespace NotANap.App
 
         private void DrawPortraitActions(V2PlayViewModel vm)
         {
-            Fill(new Rect(0, 1060, PortraitWidth, 860), new Color(0.012f, 0.025f, 0.045f, 0.62f));
+            Fill(new Rect(0, 1060, PortraitWidth, 860), new Color(0.012f, 0.025f, 0.045f, 0.46f));
             Fill(new Rect(0, 1060, PortraitWidth, 3), new Color(0.84f, 0.62f, 0.31f, 0.72f));
             GUI.Label(new Rect(48, 1090, 700, 52),
                 vm.ParentStamina <= 0 ? "먼저 숨을 고르세요" :
@@ -1455,12 +1447,16 @@ namespace NotANap.App
 
         private void DrawPortraitTitle()
         {
-            Fill(new Rect(0, 0, PortraitWidth, PortraitHeight), new Color(0.01f, 0.025f, 0.05f, 0.48f));
-            GUI.Label(new Rect(90, 350, 900, 130), "NOT A NAP", new GUIStyle(_title) { fontSize = 96 });
-            GUI.Label(new Rect(190, 500, 700, 80), "백일의 밤", Centered(_headline));
-            GUI.Label(new Rect(140, 690, 800, 160), "오늘 밤은 아빠 차례다.\n울음보다 먼저 오는 신호를 읽어보자.", Centered(_body));
-            if (GUI.Button(new Rect(140, 1110, 800, 120), "첫째 밤 시작하기", _button)) _flow.StartGame();
-            GUI.Label(new Rect(140, 1260, 800, 60), "약 5분 · 정답보다 서로의 리듬을 알아가는 밤", Centered(_caption));
+            Fill(new Rect(0, 0, PortraitWidth, PortraitHeight), new Color(0.01f, 0.02f, 0.035f, 0.3f));
+            GUI.Label(new Rect(90, 270, 900, 130), "NOT A NAP", new GUIStyle(_title) { fontSize = 92 });
+            GUI.Label(new Rect(190, 414, 700, 80), "백일의 밤", Centered(_headline));
+            Fill(new Rect(410, 520, 260, 4), new Color(0.93f, 0.66f, 0.29f, 0.84f));
+            GUI.Label(new Rect(140, 595, 800, 160),
+                "오늘 밤은 아빠 차례다.\n울음보다 먼저 오는 신호를 읽어보자.", Centered(_body));
+            if (DrawPrimaryButton(new Rect(140, 1030, 800, 120), "첫째 밤 시작하기  →"))
+                _flow.StartGame();
+            GUI.Label(new Rect(140, 1190, 800, 60),
+                "약 5분 · 정답보다 서로의 리듬을 알아가는 밤", Centered(_caption));
         }
 
         private void DrawCarePairSetup(SetupViewModel vm, bool portrait)
@@ -1491,24 +1487,19 @@ namespace NotANap.App
 
         private void DrawCareStyleButton(Rect rect, string label, CaregiverStyle value, CaregiverStyle selected)
         {
-            Color old = GUI.backgroundColor;
-            if (value == selected) GUI.backgroundColor = new Color(0.53f, 0.75f, 0.63f);
-            if (GUI.Button(rect, label, _buttonSmall)) _flow.SelectCaregiverStyle(value);
-            GUI.backgroundColor = old;
+            if (DrawChoiceButton(rect, label, value == selected))
+                _flow.SelectCaregiverStyle(value);
         }
 
         private void DrawTemperamentButton(Rect rect, string label, Temperament value, SetupViewModel vm)
         {
-            Color old = GUI.backgroundColor;
-            if (ReferenceEquals(value, _flow.Session.Run.Temperament))
-                GUI.backgroundColor = new Color(0.91f, 0.7f, 0.36f);
-            if (GUI.Button(rect, label, _buttonSmall)) _flow.SelectBabyTemperament(value);
-            GUI.backgroundColor = old;
+            if (DrawChoiceButton(rect, label, ReferenceEquals(value, _flow.Session.Run.Temperament)))
+                _flow.SelectBabyTemperament(value);
         }
 
         private void DrawPortraitSetup(SetupViewModel vm)
         {
-            Fill(new Rect(0, 0, PortraitWidth, PortraitHeight), new Color(0.015f, 0.035f, 0.065f, 0.52f));
+            Fill(new Rect(0, 0, PortraitWidth, PortraitHeight), new Color(0.01f, 0.02f, 0.035f, 0.36f));
             GUI.Label(new Rect(48, 55, 750, 74), $"{vm.NightLabel} · 밤 준비", _display);
             if (vm.IsFirstNight) DrawCarePairSetup(vm, true);
             else GUI.Label(new Rect(48, 145, 984, 100), $"“{vm.TemperamentHint}” · {vm.CaregiverStyleName}", _body);
@@ -1526,14 +1517,12 @@ namespace NotANap.App
             if (focused != null)
                 DrawSetupItemDetail(new Rect(48, 1218, 984, 230), focused, true);
             GUI.Label(new Rect(48, 1470, 984, 55), "소품을 눌러 오늘 밤의 진열대에 올리세요.", _caption);
-            var previous = GUI.enabled;
-            GUI.enabled = vm.CanStart;
-            if (GUI.Button(new Rect(100, 1710, 880, 120), vm.CanStart ? "밤 시작하기 →" : $"물건을 {vm.Slots}개 골라주세요", _button))
+            if (DrawPrimaryButton(new Rect(100, 1710, 880, 120),
+                vm.CanStart ? "밤 시작하기  →" : $"물건을 {vm.Slots}개 골라주세요", vm.CanStart))
             {
                 _audio?.PlayUi();
                 _flow.ConfirmV2Setup();
             }
-            GUI.enabled = previous;
         }
 
         private void DrawPortraitDiary(V2DiaryViewModel vm)
@@ -1747,6 +1736,50 @@ namespace NotANap.App
         private static string FormatDuration(int minutes) => minutes >= 60 ? $"{minutes / 60}시간 {minutes % 60:00}분" : $"{minutes}분";
 
         private void Panel(Rect rect, float alpha = 0.94f) => Fill(rect, new Color(0.035f, 0.065f, 0.105f, alpha));
+
+        private static void DrawGlassPanel(Rect rect, float alpha = 0.7f, bool selected = false)
+        {
+            Fill(rect, selected
+                ? new Color(0.35f, 0.19f, 0.07f, Mathf.Max(alpha, 0.78f))
+                : new Color(0.015f, 0.025f, 0.04f, alpha));
+            Color edge = selected
+                ? new Color(0.96f, 0.67f, 0.28f, 0.94f)
+                : new Color(0.78f, 0.69f, 0.55f, 0.28f);
+            Fill(new Rect(rect.x, rect.y, rect.width, 2f), edge);
+            Fill(new Rect(rect.x, rect.yMax - 2f, rect.width, 2f), edge);
+            Fill(new Rect(rect.x, rect.y, 2f, rect.height), edge);
+            Fill(new Rect(rect.xMax - 2f, rect.y, 2f, rect.height), edge);
+        }
+
+        private bool DrawPrimaryButton(Rect rect, string label, bool enabled = true)
+        {
+            var old = GUI.enabled;
+            GUI.enabled = old && enabled;
+            Fill(rect, enabled
+                ? new Color(0.72f, 0.4f, 0.12f, 0.96f)
+                : new Color(0.05f, 0.07f, 0.1f, 0.72f));
+            Fill(new Rect(rect.x, rect.y, rect.width, 3f),
+                enabled ? new Color(1f, 0.78f, 0.42f) : new Color(0.35f, 0.38f, 0.42f));
+            Fill(new Rect(rect.x, rect.yMax - 3f, rect.width, 3f),
+                enabled ? new Color(0.42f, 0.2f, 0.06f) : new Color(0.2f, 0.22f, 0.25f));
+            GUI.Label(rect, label, LabelStyle(_portrait ? 34 : 27, FontStyle.Bold,
+                enabled ? Color.white : new Color(0.55f, 0.57f, 0.6f), TextAnchor.MiddleCenter));
+            bool clicked = GUI.Button(rect, GUIContent.none, GUIStyle.none);
+            GUI.enabled = old;
+            return clicked;
+        }
+
+        private bool DrawChoiceButton(Rect rect, string label, bool selected, bool enabled = true)
+        {
+            DrawGlassPanel(rect, selected ? 0.86f : 0.58f, selected);
+            GUI.Label(rect, label, LabelStyle(_portrait ? 27 : 19, FontStyle.Bold,
+                selected ? Color.white : new Color(0.82f, 0.84f, 0.85f), TextAnchor.MiddleCenter));
+            var old = GUI.enabled;
+            GUI.enabled = old && enabled;
+            bool clicked = GUI.Button(rect, GUIContent.none, GUIStyle.none);
+            GUI.enabled = old;
+            return clicked;
+        }
 
         private static void Fill(Rect rect, Color color)
         {
