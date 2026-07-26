@@ -198,6 +198,10 @@ namespace NotANap.Presentation
         public bool NoiseOn;
         public bool HasMonitor;
         public bool HeadSupported;
+        public HomeLocation CaregiverLocation;
+        public HomeLocation BabyLocation;
+        public bool BabyAccompaniesCaregiver;
+        public bool BathThermometerRetrieved;
         public string CurrentSignal;
         public string CaregiverReflection;
         public NightGrade? Grade;

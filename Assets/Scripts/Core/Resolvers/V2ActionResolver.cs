@@ -61,6 +61,8 @@ namespace NotANap.Core
             WakeScheduler.RequireV2(night);
             var outcome = new V2ActionOutcome { Action = action, Accepted = true };
             if (night.Over) return Reject(outcome);
+            var locationBlock = LocationBlockReason(night, action);
+            if (locationBlock != V2ActionBlockReason.None) return Reject(outcome, locationBlock);
 
             switch (action)
             {
@@ -243,6 +245,28 @@ namespace NotANap.Core
 
             ApplyOutcomeAndTime(run, night, outcome, config, rng);
             return outcome;
+        }
+
+        private static V2ActionBlockReason LocationBlockReason(NightState night, V2ActionId action)
+        {
+            var location = night.V2.CaregiverLocation;
+            bool withBaby = night.Baby.Held || location == HomeLocation.Nursery;
+            if (action == V2ActionId.SterilizeBottle || action == V2ActionId.PrepareWater ||
+                action == V2ActionId.MeasureFormula || action == V2ActionId.MixFormula ||
+                action == V2ActionId.CoolBottle || action == V2ActionId.CheckBottleTemperature)
+                return location == HomeLocation.Kitchen
+                    ? V2ActionBlockReason.None : V2ActionBlockReason.WrongLocation;
+            if (action == V2ActionId.CheckEnvironment || action == V2ActionId.AdjustTemperature ||
+                action == V2ActionId.AdjustHumidity || action == V2ActionId.ToggleNoise ||
+                action == V2ActionId.Laydown)
+                return location == HomeLocation.Nursery
+                    ? V2ActionBlockReason.None : V2ActionBlockReason.WrongLocation;
+            if (action == V2ActionId.CheckBodyTemperature && !night.V2.BathThermometerRetrieved)
+                return V2ActionBlockReason.ToolRequired;
+            if (action != V2ActionId.CheckMonitor && action != V2ActionId.CatchBreath &&
+                action != V2ActionId.Hesitate && !withBaby)
+                return V2ActionBlockReason.WrongLocation;
+            return V2ActionBlockReason.None;
         }
 
         private static void ChangeComposure(NightState night, V2ActionOutcome outcome, double delta)

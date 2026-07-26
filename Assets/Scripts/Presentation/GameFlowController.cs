@@ -135,6 +135,14 @@ namespace NotANap.Presentation
             return true;
         }
 
+        public HomeMoveOutcome MoveToHomeLocation(HomeLocation destination)
+        {
+            if (Screen != ScreenState.Play) return new HomeMoveOutcome();
+            var outcome = Session.MoveToHomeLocation(destination);
+            if (Session.PendingOverlay == null && Session.Night.Over) GoTo(ScreenState.Diary);
+            return outcome;
+        }
+
         /// <summary>오버레이를 닫는다. 밤이 끝났으면 DIARY로 전환(한 번만).</summary>
         public void DismissOverlay()
         {

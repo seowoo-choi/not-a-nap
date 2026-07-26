@@ -19,6 +19,7 @@ namespace NotANap.App
         private GameFlowController _flow;
         private BabyVisualPresenter _babyVisual;
         private V2PresentationActionResult _lastResult;
+        private HomeMoveOutcome _lastMove;
         private int _timedEncounterSequence = -1;
         private float _decisionDeadline;
         private bool _timeoutSent;
@@ -317,27 +318,73 @@ namespace NotANap.App
 
         private void DrawBabyStateVisual(V2PlayViewModel vm, Rect rect)
         {
-            if (_room != null)
-                GUI.DrawTexture(rect, _room, ScaleMode.ScaleAndCrop, true);
-            else
-                Fill(rect, new Color(0.025f, 0.055f, 0.1f));
-            Fill(rect, new Color(0.01f, 0.025f, 0.05f, 0.38f));
-            var babyRect = new Rect(rect.x + rect.width * 0.5f - 175, rect.y + 14, 350, 350);
-            DrawAnimatedBaby(vm, babyRect);
-            DrawSignalMotionCue(vm, babyRect, true);
-            DrawBabbleBubble(vm, babyRect, true);
-
-            string state = BabyStateHeadline(vm);
-            GUI.Label(new Rect(rect.x + 45, rect.y + 340, rect.width - 90, 48), state, Centered(_headline));
-            GUI.Label(new Rect(rect.x + 60, rect.y + 392, rect.width - 120, 38), vm.CurrentSignal, Centered(_body));
+            DrawHomeMap(vm, rect, true);
         }
 
         private void DrawLandscapeBaby(V2PlayViewModel vm)
         {
-            var babyRect = new Rect(690, 210, 520, 520);
+            DrawHomeMap(vm, new Rect(448, 132, 934, 620), false);
+        }
+
+        private void DrawHomeMap(V2PlayViewModel vm, Rect rect, bool portrait)
+        {
+            Panel(rect, 0.96f);
+            float gap = portrait ? 10f : 14f;
+            var nursery = new Rect(rect.x + gap, rect.y + gap, rect.width * 0.57f - gap * 1.5f, rect.height - gap * 2);
+            var kitchen = new Rect(nursery.xMax + gap, rect.y + gap, rect.xMax - nursery.xMax - gap * 2, (rect.height - gap * 3) * 0.53f);
+            var bathroom = new Rect(nursery.xMax + gap, kitchen.yMax + gap, kitchen.width, rect.yMax - kitchen.yMax - gap * 2);
+
+            DrawMapRoom(nursery, "아기방", "침대 · 베이비 모니터", HomeLocation.Nursery, vm);
+            DrawMapRoom(kitchen, "주방", "젖병 소독기 · 분유포트", HomeLocation.Kitchen, vm);
+            DrawMapRoom(bathroom, "욕실", vm.BathThermometerRetrieved ? "탕온계 챙김 ✓" : "탕온계 · 목욕용품", HomeLocation.Bathroom, vm);
+
+            Rect babyRoom = vm.BabyLocation == HomeLocation.Kitchen ? kitchen :
+                vm.BabyLocation == HomeLocation.Bathroom ? bathroom : nursery;
+            float babySize = portrait ? 155f : 230f;
+            var babyRect = new Rect(
+                babyRoom.center.x - babySize * 0.5f,
+                babyRoom.center.y - babySize * 0.45f,
+                babySize, babySize);
             DrawAnimatedBaby(vm, babyRect);
-            DrawSignalMotionCue(vm, babyRect, false);
-            DrawBabbleBubble(vm, babyRect, false);
+            DrawSignalMotionCue(vm, babyRect, portrait);
+            DrawBabbleBubble(vm, babyRect, portrait);
+
+            var stateOverlay = new Rect(rect.x + 30, rect.y + 20, nursery.width - 50, portrait ? 90 : 105);
+            Fill(stateOverlay, new Color(0.025f, 0.06f, 0.105f, 0.92f));
+            GUI.Label(new Rect(stateOverlay.x + 18, stateOverlay.y + 8, stateOverlay.width - 36, 38),
+                $"아기의 지금 · {BabyStateHeadline(vm)}", _caption);
+            GUI.Label(new Rect(stateOverlay.x + 18, stateOverlay.y + 45, stateOverlay.width - 36, stateOverlay.height - 50),
+                vm.CurrentSignal, portrait ? _caption : _body);
+
+            string together = vm.BabyAccompaniesCaregiver
+                ? "아기를 안고 함께 이동 중"
+                : "아기는 아기방 · 보호자만 이동";
+            GUI.Label(new Rect(rect.x + 28, rect.yMax - 42, nursery.width - 45, 30), together, _caption);
+        }
+
+        private void DrawMapRoom(Rect room, string name, string items, HomeLocation location, V2PlayViewModel vm)
+        {
+            bool current = vm.CaregiverLocation == location;
+            Fill(room, current
+                ? new Color(0.13f, 0.22f, 0.26f, 0.98f)
+                : new Color(0.045f, 0.075f, 0.11f, 0.94f));
+            Fill(new Rect(room.x, room.y, room.width, current ? 5 : 2),
+                current ? new Color(0.49f, 0.82f, 0.6f) : new Color(0.22f, 0.3f, 0.38f));
+            GUI.Label(new Rect(room.x + 16, room.y + 12, room.width - 32, 34),
+                current ? $"● {name}" : name, _headline);
+            GUI.Label(new Rect(room.x + 16, room.y + 52, room.width - 32, 50), items, _caption);
+
+            int minutes = HomeMovementResolver.TravelMinutes(vm.CaregiverLocation, location);
+            var old = GUI.enabled;
+            GUI.enabled = old && !current && !_flow.InputLocked;
+            string label = current ? "현재 위치" : $"이동 · {minutes}분";
+            if (GUI.Button(new Rect(room.x + 16, room.yMax - 56, room.width - 32, 42), label,
+                current ? _buttonSelected : _buttonSmall))
+            {
+                _lastMove = _flow.MoveToHomeLocation(location);
+                _lastResult = null;
+            }
+            GUI.enabled = old;
         }
 
         private void DrawSignalMotionCue(V2PlayViewModel vm, Rect babyRect, bool portrait)
@@ -483,6 +530,12 @@ namespace NotANap.App
             {
                 title = outcome.Accepted ? "당신의 선택이 밤을 바꿨어요." : "아직 그 행동을 할 수 없어요.";
                 detail = OutcomeDetail(vm, outcome, detail);
+            }
+            else if (_lastMove != null && _lastMove.Accepted)
+            {
+                title = _lastMove.BabyAccompanied ? "아기를 안전하게 안고 함께 이동했어요." : "보호자가 필요한 물건을 가지러 이동했어요.";
+                detail = $"{HomeLocationLabel(_lastMove.From)} → {HomeLocationLabel(_lastMove.To)} · {_lastMove.TimeDeltaMinutes}분 경과" +
+                    (_lastMove.RetrievedBathThermometer ? " · 탕온계를 챙겼어요." : "");
             }
             GUI.Label(new Rect(82, 1002, 900, 52), title, _headline);
             GUI.Label(new Rect(82, 1062, 900, 76), detail, _body);
@@ -831,6 +884,13 @@ namespace NotANap.App
         private static string NextNightButtonLabel(NightId night)
             => night == NightId.FirstNight ? "둘째 밤 준비하기 →" : "백일째 밤 준비하기 →";
 
+        private static string HomeLocationLabel(HomeLocation location) => location switch
+        {
+            HomeLocation.Kitchen => "주방",
+            HomeLocation.Bathroom => "욕실",
+            _ => "아기방"
+        };
+
         private static string OutcomeDetail(V2PlayViewModel vm, V2ActionOutcome outcome, string fallback)
         {
             if (outcome.BlockReason == V2ActionBlockReason.BabyNotHeld)
@@ -841,6 +901,10 @@ namespace NotANap.App
                 return "이 물건을 가져오지 않아 사용할 수 없어요.";
             if (outcome.BlockReason == V2ActionBlockReason.CarrierAlreadyWorn)
                 return "아기띠를 먼저 벗으면 맨손으로 안을 수 있어요.";
+            if (outcome.BlockReason == V2ActionBlockReason.WrongLocation)
+                return "집 지도를 보고 이 행동에 필요한 방으로 이동해주세요.";
+            if (outcome.BlockReason == V2ActionBlockReason.ToolRequired)
+                return "욕실에서 탕온계를 먼저 챙겨주세요.";
             if (outcome.ActivityLocation == "주방")
                 return $"주방에 다녀오며 {outcome.TimeDeltaMinutes}분이 흘렀어요. 그동안에도 아기의 상태는 계속 변해요.";
             if (outcome.HeadSupported)

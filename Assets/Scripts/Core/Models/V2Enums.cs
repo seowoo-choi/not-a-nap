@@ -15,6 +15,7 @@ namespace NotANap.Core
     public enum SleepIntervalChoice { RestTogether, CheckEnvironment, PrepareNextFeed }
     public enum RoomSeason { Summer, Winter }
     public enum CaregiverStyle { Responsive, Observant, Methodical }
+    public enum HomeLocation { Nursery, Kitchen, Bathroom }
 
     public enum ObservationSignalId
     {
@@ -38,7 +39,8 @@ namespace NotANap.Core
 
     public enum V2ActionBlockReason
     {
-        None, BabyNotHeld, BabyNotAsleep, ItemUnavailable, CarrierAlreadyWorn
+        None, BabyNotHeld, BabyNotAsleep, ItemUnavailable, CarrierAlreadyWorn,
+        WrongLocation, ToolRequired
     }
 
     public static class CoreTraceIds
