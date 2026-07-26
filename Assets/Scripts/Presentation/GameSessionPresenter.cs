@@ -373,6 +373,8 @@ namespace NotANap.Presentation
 
         private bool IsV2ActionAvailable(V2ActionId action)
         {
+            if (Night.Parent.Stamina <= 0)
+                return action == V2ActionId.CatchBreath;
             var location = Night.V2.CaregiverLocation;
             bool withBaby = Night.Baby.Held || location == HomeLocation.Nursery;
             if (action == V2ActionId.SterilizeBottle || action == V2ActionId.PrepareWater ||

@@ -55,6 +55,19 @@ jobs:
         shell: bash
         run: |
           test -f Builds/WebGL/index.html
+          # A stale index mixed with another build used to request missing
+          # loader/data/wasm files. Verify the complete generated set before upload.
+          for file in \
+            Build/WebGL.loader.js \
+            Build/WebGL.framework.js \
+            Build/WebGL.data \
+            Build/WebGL.wasm
+          do
+            test -f "Builds/WebGL/$file" || {
+              echo "Missing WebGL artifact referenced by the generated build: $file"
+              exit 1
+            }
+          done
           # Unity reuses stable WebGL filenames between deployments. Without a
           # version query, a browser can combine an older data/wasm response
           # with the latest index and leave the canvas blank after navigation.

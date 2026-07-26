@@ -715,5 +715,33 @@ namespace NotANap.Core.Tests
             Assert.AreEqual(9, night.Parent.Stamina);
             Assert.AreEqual(config.V2.DefaultActionMinutes * 2, night.V2.ElapsedMinutes);
         }
+
+        [Test]
+        public void ExhaustedParentCannotAdvanceTimeByRepeatingActionsOrMovingRooms()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            night.Parent.Stamina = 0;
+            int elapsedBefore = night.V2.ElapsedMinutes;
+
+            var blocked = V2ActionResolver.Apply(run, night, V2ActionId.Hold,
+                config, new SequenceRandomSource(0));
+            var move = HomeMovementResolver.MoveTo(run, night, HomeLocation.Kitchen,
+                config, new SequenceRandomSource(0));
+
+            Assert.IsFalse(blocked.Accepted);
+            Assert.AreEqual(V2ActionBlockReason.CaregiverExhausted, blocked.BlockReason);
+            Assert.IsFalse(blocked.ConsumedTime);
+            Assert.IsFalse(move.Accepted);
+            Assert.AreEqual(HomeLocation.Nursery, night.V2.CaregiverLocation);
+            Assert.AreEqual(elapsedBefore, night.V2.ElapsedMinutes);
+
+            var recovered = V2ActionResolver.Apply(run, night, V2ActionId.CatchBreath,
+                config, new SequenceRandomSource(0));
+            Assert.IsTrue(recovered.Accepted);
+            Assert.Greater(night.Parent.Stamina, 0);
+            Assert.Greater(night.V2.ElapsedMinutes, elapsedBefore);
+        }
     }
 }
