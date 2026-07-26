@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 9c548c4d781c9441f894d283e06f322c
+guid: 7cf3db9d4cf03463399402ba670155e5
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 2476915593485364887
-    second: nursery-night-empty_0
+      213: 7850915548868775468
+    second: kitchen-night_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -34,7 +34,7 @@ TextureImporter:
   cubemapConvolution: 0
   seamlessCubemap: 0
   textureFormat: 1
-  maxTextureSize: 2048
+  maxTextureSize: 1024
   textureSettings:
     serializedVersion: 2
     filterMode: 1
@@ -98,14 +98,14 @@ TextureImporter:
     forceMaximumCompressionQuality_BC6H_BC7: 0
   - serializedVersion: 4
     buildTarget: WebGL
-    maxTextureSize: 2048
+    maxTextureSize: 1024
     resizeAlgorithm: 0
     textureFormat: -1
     textureCompression: 1
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
-    overridden: 0
+    overridden: 1
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: nursery-night-empty_0
+      name: kitchen-night_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 2048
-        height: 1152
+        width: 1600
+        height: 900
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 79e2258eb95cf5220800000000000000
-      internalID: 2476915593485364887
+      spriteID: c2e0ae3881e04fc60800000000000000
+      internalID: 7850915548868775468
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      nursery-night-empty_0: 2476915593485364887
+      kitchen-night_0: 7850915548868775468
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
