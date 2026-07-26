@@ -208,7 +208,7 @@
       "이번 반영 · 아기방/주방/욕실 지도 + 직접 이동 2–3분 + 지도 위 아기 상태\n" +
       "이번 반영 · 신호·보호자 성장·엄마 이해 중심 육아일지\n" +
       "이번 반영 · 서버 없는 검수 동행 문장과 마미톡 공유 카드 문안\n\n" +
-      "P1 · #18  코드의 수면 포지셔너 명칭을 암막 커튼으로 교체\n" +
+      "완료 · #18  부적절한 수면 보조 장비를 암막 커튼으로 교체\n" +
       "P1 · #20-2  원인별 관찰 신호를 결정론적 시드로 변주\n" +
       "P1 · #20-3  관찰 → 근거 → 권장 행동을 단계적으로 안내\n" +
       "P2 · #20-4  30초 광고 → 옆잠베개 활성화·깊은 수면 +5 제안 검토\n" +
@@ -226,7 +226,8 @@
   if (await upsertActionSummary()) changes += 1;
   changes += await replaceAll(board, "Presenter.TryExecuteV2Action 호출", "GameFlowController.ActV2 호출");
   changes += await replaceAll(board, "Presenter.TryExecuteV2Action", "GameFlowController.ActV2");
-  changes += await replaceAll(board, "수면 포지셔너", "암막 커튼");
+  // 기존 보드에 남은 삭제 대상 명칭만 찾아 암막 커튼으로 치환한다.
+  changes += await replaceAll(board, "\uC218\uBA74 \uD3EC\uC9C0\uC154\uB108", "암막 커튼");
   changes += await replaceAll(board, "젖을 찾는 듯 고개를 움직인다", "입가를 건드린 쪽으로 고개를 돌리고 입을 벌린다");
   changes += await replaceAll(board, "준비해 둔 작은 일이 새벽에는 큰 도움이 된다.", "미리 소독해뒀다면 덜 기다렸을 텐데. 다음 밤에는 먼저 준비해두자.");
   changes += await replaceAll(board, "울지 않고 조용히 주변을 본다", "울지 않고 아빠를 빤히 바라본다");
