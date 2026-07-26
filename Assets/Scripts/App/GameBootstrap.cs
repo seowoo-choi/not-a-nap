@@ -221,7 +221,7 @@ namespace NotANap.App
                 DrawItemCard(rect, card, vm.SelectedCount, vm.Slots);
             }
             DrawLockedCandidate(new Rect(90, 770, 540, 135), "옆잠베개", "안전 검토 전 게임 판정·광고 보상에서 제외");
-            DrawLockedCandidate(new Rect(670, 770, 540, 135), "수면 포지셔너", "안전 수면 지침 검토 전 선택 불가");
+            DrawLockedCandidate(new Rect(670, 770, 540, 135), "암막 커튼", "빛 환경 효과 검토 전 선택 불가");
             DrawLockedCandidate(new Rect(1250, 770, 540, 135), "토닥이인형", "제품별 사용 환경 검토 전 선택 불가");
 
             var oldEnabled = GUI.enabled;
@@ -845,7 +845,7 @@ namespace NotANap.App
             }
             // 후속 해금 후보 3종은 Figma M_UNLOCK_CANDIDATES와 동일하게 전부 노출한다(선택 불가).
             DrawLockedCandidate(new Rect(48, 1215, 984, 125), "옆잠베개", "안전 검토 전 게임 판정·광고 보상 제외");
-            DrawLockedCandidate(new Rect(48, 1350, 984, 125), "수면 포지셔너", "안전 수면 지침 검토 전 선택 불가");
+            DrawLockedCandidate(new Rect(48, 1350, 984, 125), "암막 커튼", "빛 환경 효과 검토 전 선택 불가");
             DrawLockedCandidate(new Rect(48, 1485, 984, 125), "토닥이인형", "제품별 사용 환경 검토 전 선택 불가");
             var previous = GUI.enabled;
             GUI.enabled = vm.CanStart;

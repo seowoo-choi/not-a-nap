@@ -124,7 +124,7 @@ REM/NREM은 정지 그림만 바꾸지 않고 최소 2프레임 또는 Smart Ani
 - 실제 선택 가능 여부는 `V2NightFactory.IsSelectableItem()`과 P0-4 아이템 계약을 따른다.
 - 효과가 연결되지 않은 Carrier/Noise/Monitor를 최종 카드로 확정하지 않는다. P0-4에서 효과 연결 또는 임시 제거를 먼저 결정한다.
 - `ItemId.Bouncer`는 V1 LEGACY이며 신규 카드에서 숨긴다.
-- 옆잠베개·수면 포지셔너·토닥이인형은 `UNLOCK_CANDIDATE / NOT PLAYABLE` 그룹으로 분리한다.
+- 옆잠베개·암막 커튼·토닥이인형은 `UNLOCK_CANDIDATE / NOT PLAYABLE` 그룹으로 분리한다.
 - 안전·월령·제품 지침이 확정되기 전에는 수면 성공률, 모로반사 감소, 재입면 보너스를 표시하지 않는다.
 
 ## 7. PLAY 35장 재작성 목록
