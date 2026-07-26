@@ -228,7 +228,7 @@ namespace NotANap.Presentation
         public static string OverlayTitle(GameEventId id) => id switch
         {
             GameEventId.LaydownSucceeded => "눕히기 성공",
-            GameEventId.LaydownFailed => "아직 품이 필요한 순간",
+            GameEventId.LaydownFailed => "등이 닿자 움찔",
             GameEventId.BabyFullyWoke => "아기가 깼다",
             GameEventId.HungerCueAppeared => "배꼽시계",
             GameEventId.BottleFoundUnsanitized => "준비해 둔 젖병이 없다",
@@ -239,13 +239,13 @@ namespace NotANap.Presentation
 
         public static string OverlayLine(GameEventId id) => id switch
         {
-            GameEventId.LaydownSucceeded => "숨을 죽이고… 아기가 침대에서 계속 잔다.",
-            GameEventId.LaydownFailed => "등이 침대에 닿는 순간 센서 발동! 아기가 깼다.",
-            GameEventId.BabyFullyWoke => "겨우 재웠는데… 다시 처음부터다.",
-            GameEventId.HungerCueAppeared => "배꼽시계가 울렸다. 아기가 배고파 깬다.",
-            GameEventId.BottleFoundUnsanitized => "오늘은 소독된 젖병을 다 썼다. 이번 수유에만 먼저 소독해야 한다.",
-            GameEventId.ParentExhausted => "지금은 행동을 서두르지 않아도 괜찮아요. 물을 마시고 숨을 고르면 다시 돌볼 수 있어요.",
-            GameEventId.NightCompleted => "긴 밤이 끝났다. 오늘의 육아일지를 확인하자.",
+            GameEventId.LaydownSucceeded => "침대에서도 고른 숨이 이어진다.",
+            GameEventId.LaydownFailed => "등이 닿자 몸이 움찔하며 눈을 떴다.",
+            GameEventId.BabyFullyWoke => "호흡이 빨라지고 눈이 다시 떠졌다.",
+            GameEventId.HungerCueAppeared => "입을 찾고 손을 빠는 움직임이 커진다.",
+            GameEventId.BottleFoundUnsanitized => "쓸 수 있는 젖병이 없다. 먼저 소독해야 한다.",
+            GameEventId.ParentExhausted => "손에 힘이 빠진다. 먼저 숨을 고르자.",
+            GameEventId.NightCompleted => "창밖이 밝아온다.",
             _ => string.Empty
         };
     }
