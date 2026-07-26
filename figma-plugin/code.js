@@ -4,8 +4,15 @@
 
 (async () => {
   const fonts = await figma.listAvailableFontsAsync();
-  const fallback = fonts.find(f => f.fontName.family === "Inter" && f.fontName.style === "Regular");
-  const fallbackBold = fonts.find(f => f.fontName.family === "Inter" && f.fontName.style === "Bold");
+  const preferredFamilies = ["Noto Sans KR", "Pretendard", "Apple SD Gothic Neo", "Inter"];
+  const fallback = preferredFamilies
+    .map(family => fonts.find(f => f.fontName.family === family &&
+      ["Regular", "Medium"].includes(f.fontName.style)))
+    .find(Boolean) || fonts[0];
+  const fallbackBold = preferredFamilies
+    .map(family => fonts.find(f => f.fontName.family === family &&
+      ["Bold", "Semi Bold", "Semibold"].includes(f.fontName.style)))
+    .find(Boolean) || fallback;
   if (fallback) await figma.loadFontAsync(fallback.fontName);
   if (fallbackBold) await figma.loadFontAsync(fallbackBold.fontName);
 
@@ -219,12 +226,12 @@
     room.y = y;
 
     addMapText(room, "ROOM_NAME", active ? "● " + name : name,
-      18, 16, width - 36, 24, true, { r: 0.94, g: 0.96, b: 0.98 });
+      10, 8, width - 20, 16, true, { r: 0.94, g: 0.96, b: 0.98 });
     addMapText(room, "ROOM_ITEMS", items,
-      18, 54, width - 36, 17, false, { r: 0.63, g: 0.7, b: 0.78 });
+      10, Math.max(32, height * 0.42), width - 20, 13, false, { r: 0.63, g: 0.7, b: 0.78 });
     addMapText(room, "ROOM_MOVE",
       active ? "현재 위치" : (name === "아기방" ? "이동 · 2분" : "이동 · 2–3분"),
-      18, height - 48, width - 36, 17, true,
+      10, height - 26, width - 20, 12, true,
       active ? { r: 0.49, g: 0.82, b: 0.6 } : { r: 0.91, g: 0.7, b: 0.36 });
     return room;
   }
