@@ -246,5 +246,19 @@ namespace NotANap.Presentation
         public string MotherInsight;
         public string CompanionMessage;
         public string ShareCardText;
+        public readonly List<string> HabitNotes = new List<string>();
+        public readonly List<string> HabitEffects = new List<string>();
+    }
+
+    public sealed class EndingViewModel
+    {
+        public EndingId Id;
+        public bool IsSuccess;
+        public string Title;
+        public string Subtitle;
+        public string Symbol;
+        public int MetConditionCount;
+        public int RequiredConditionCount;
+        public readonly List<string> MetConditions = new List<string>();
     }
 }

@@ -180,6 +180,7 @@ namespace NotANap.App
                 case ScreenState.Setup: DrawSetup(); break;
                 case ScreenState.Play: DrawPlay(); break;
                 case ScreenState.Diary: DrawDiary(); break;
+                case ScreenState.Ending: DrawEnding(); break;
             }
             GUI.matrix = oldMatrix;
         }
@@ -869,7 +870,7 @@ namespace NotANap.App
             switch (group)
             {
                 case ActionGroup.Diagnose:
-                    return new[] { V2ActionId.CheckDiaper, V2ActionId.CheckHungerSignals, V2ActionId.CheckEnvironment, V2ActionId.CheckBodyTemperature, V2ActionId.CheckMonitor, V2ActionId.CheckLimbRelaxation, V2ActionId.Hesitate, V2ActionId.CatchBreath };
+                    return new[] { V2ActionId.CheckDiaper, V2ActionId.CheckHungerSignals, V2ActionId.CheckEnvironment, V2ActionId.CheckMonitor, V2ActionId.CheckLimbRelaxation, V2ActionId.Hesitate, V2ActionId.CatchBreath };
                 case ActionGroup.Care:
                     return new[] { V2ActionId.Hold, V2ActionId.ToggleCarrier, V2ActionId.Pat, V2ActionId.Pacifier, V2ActionId.ToggleNoise, V2ActionId.Laydown, V2ActionId.ChangeDiaper, V2ActionId.AdjustTemperature, V2ActionId.AdjustHumidity };
                 default:
@@ -929,14 +930,14 @@ namespace NotANap.App
             GUI.Label(new Rect(770, 245, 980, 36), "육아일지", _caption);
             GUI.Label(new Rect(770, 300, 940, 85), vm.LearnedSignal, _headline);
             GUI.Label(new Rect(770, 405, 940, 70), vm.CaregiverGrowth, _body);
-            GUI.Label(new Rect(770, 495, 940, 85), vm.MotherInsight, _body);
-            GUI.Label(new Rect(770, 605, 940, 80), vm.CompanionMessage, _caption);
-            GUI.Label(new Rect(770, 705, 940, 90), vm.ShareCardText, _body);
-            string nextLabel = vm.HasNextNight ? NextNightButtonLabel(vm.NightId) : "처음부터 다시 보기";
+            DrawLandscapeHabitNotes(vm, 770, 490);
+            GUI.Label(new Rect(770, 625, 940, 62), vm.NextNightNote, _body);
+            GUI.Label(new Rect(770, 700, 940, 62), vm.ShareCardText, _caption);
+            string nextLabel = vm.HasNextNight ? NextNightButtonLabel(vm.NightId) : "엔딩 보기 →";
             if (GUI.Button(new Rect(1290, 920, 520, 76), nextLabel, _button))
             {
                 if (vm.HasNextNight) _flow.AdvanceFromV2Diary();
-                else _flow = new GameFlowController(new SystemRandomSource(Environment.TickCount));
+                else _flow.AdvanceToEnding();
                 _lastResult = null;
                 _actionGroup = ActionGroup.Diagnose;
                 _timedEncounterSequence = -1;
@@ -1046,15 +1047,14 @@ namespace NotANap.App
             Panel(new Rect(60, 880, 960, 700));
             GUI.Label(new Rect(110, 930, 860, 48), "육아일지", _caption);
             GUI.Label(new Rect(110, 1010, 860, 130), vm.LearnedSignal, _headline);
-            GUI.Label(new Rect(110, 1160, 860, 100), vm.NextNightNote, _body);
-            GUI.Label(new Rect(110, 1270, 860, 70), vm.CaregiverGrowth, _body);
-            GUI.Label(new Rect(110, 1350, 860, 90), vm.MotherInsight, _body);
-            GUI.Label(new Rect(110, 1460, 860, 100), vm.CompanionMessage, _caption);
-            string nextLabel = vm.HasNextNight ? NextNightButtonLabel(vm.NightId) : "처음부터 다시 보기";
+            DrawPortraitHabitNotes(vm, 110, 1140);
+            GUI.Label(new Rect(110, 1375, 860, 90), vm.NextNightNote, _body);
+            GUI.Label(new Rect(110, 1470, 860, 90), vm.ShareCardText, _caption);
+            string nextLabel = vm.HasNextNight ? NextNightButtonLabel(vm.NightId) : "엔딩 보기 →";
             if (GUI.Button(new Rect(100, 1730, 880, 110), nextLabel, _button))
             {
                 if (vm.HasNextNight) _flow.AdvanceFromV2Diary();
-                else _flow = new GameFlowController(new SystemRandomSource(Environment.TickCount));
+                else _flow.AdvanceToEnding();
                 _lastResult = null;
                 _actionGroup = ActionGroup.Diagnose;
                 _timedEncounterSequence = -1;
@@ -1064,6 +1064,63 @@ namespace NotANap.App
 
         private static string NextNightButtonLabel(NightId night)
             => night == NightId.FirstNight ? "둘째 밤 준비하기 →" : "백일째 밤 준비하기 →";
+
+        private void DrawLandscapeHabitNotes(V2DiaryViewModel vm, float x, float y)
+        {
+            GUI.Label(new Rect(x, y, 940, 28), "오늘 형성된 습관", _caption);
+            for (int i = 0; i < vm.HabitNotes.Count && i < 2; i++)
+                GUI.Label(new Rect(x, y + 35 + i * 48, 940, 45),
+                    $"• {vm.HabitNotes[i]}  {vm.HabitEffects[i]}", _body);
+        }
+
+        private void DrawPortraitHabitNotes(V2DiaryViewModel vm, float x, float y)
+        {
+            GUI.Label(new Rect(x, y, 860, 35), "오늘 형성된 습관", _caption);
+            for (int i = 0; i < vm.HabitNotes.Count && i < 2; i++)
+                GUI.Label(new Rect(x, y + 45 + i * 86, 860, 82),
+                    $"• {vm.HabitNotes[i]}\n  {vm.HabitEffects[i]}", _body);
+        }
+
+        private void DrawEnding()
+        {
+            var vm = _flow.BuildEnding();
+            float width = _portrait ? PortraitWidth : LandscapeWidth;
+            float height = _portrait ? PortraitHeight : LandscapeHeight;
+            Fill(new Rect(0, 0, width, height), new Color(0.01f, 0.025f, 0.05f, 0.88f));
+            float panelWidth = _portrait ? 920 : 1180;
+            float panelHeight = _portrait ? 1180 : 720;
+            float x = (width - panelWidth) * 0.5f;
+            float y = (height - panelHeight) * 0.5f;
+            Color accent = vm.IsSuccess
+                ? new Color(0.53f, 0.75f, 0.63f)
+                : new Color(0.86f, 0.58f, 0.36f);
+            Panel(new Rect(x, y, panelWidth, panelHeight));
+            Fill(new Rect(x, y, panelWidth, 8), accent);
+            var statusStyle = Centered(_caption);
+            statusStyle.normal.textColor = accent;
+            var symbolStyle = Centered(new GUIStyle(_title) { fontSize = _portrait ? 110 : 84 });
+            symbolStyle.normal.textColor = accent;
+            GUI.Label(new Rect(x + 60, y + 55, panelWidth - 120, 80),
+                $"백일의 밤 · {PresentationCopyMapper.EndingStatusLabel(vm.IsSuccess)}", statusStyle);
+            GUI.Label(new Rect(x + 60, y + 140, panelWidth - 120, 130), vm.Symbol, symbolStyle);
+            GUI.Label(new Rect(x + 60, y + 275, panelWidth - 120, 90), vm.Title, Centered(_display));
+            GUI.Label(new Rect(x + 110, y + 380, panelWidth - 220, 120), vm.Subtitle, Centered(_body));
+            GUI.Label(new Rect(x + 110, y + 515, panelWidth - 220, 55),
+                $"{PresentationCopyMapper.EndingStatusLabel(vm.IsSuccess)}의 조건  {vm.MetConditionCount} / {vm.RequiredConditionCount}",
+                Centered(_headline));
+            GUI.Label(new Rect(x + 110, y + 580, panelWidth - 220, 130),
+                vm.MetConditions.Count > 0 ? string.Join("  ·  ", vm.MetConditions) : "다음 밤에 다시 이어갈 신호를 남겼어요.",
+                Centered(_caption));
+            if (GUI.Button(new Rect(x + panelWidth * 0.2f, y + panelHeight - 135, panelWidth * 0.6f, 82),
+                "처음부터 다시 보기", _button))
+            {
+                _flow = new GameFlowController(new SystemRandomSource(Environment.TickCount));
+                _lastResult = null;
+                _actionGroup = ActionGroup.Diagnose;
+                _timedEncounterSequence = -1;
+                _actionEncounterSequence = -1;
+            }
+        }
 
         private static string HomeLocationLabel(HomeLocation location) => location switch
         {
@@ -1111,7 +1168,7 @@ namespace NotANap.App
                 }
             }
             if (outcome.Action == V2ActionId.CheckEnvironment)
-                return $"온도 {vm.TemperatureCelsius:0.#}°C · 습도 {vm.HumidityPercent:0.#}% (권장 20–22°C · 40–60%)";
+                return $"온도 {vm.TemperatureCelsius:0.#}°C · 습도 {vm.HumidityPercent:0.#}%";
             if (outcome.Action == V2ActionId.CheckBodyTemperature)
                 return $"아기 체온 {vm.BabyTemperatureCelsius:0.0}°C";
             if (outcome.Action == V2ActionId.AdjustTemperature)

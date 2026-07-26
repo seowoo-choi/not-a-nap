@@ -5,7 +5,7 @@ using NotANap.Core;
 namespace NotANap.Presentation
 {
     /// <summary>
-    /// TITLE → SETUP → PLAY → DIARY 화면 흐름만 담당하는 Presentation 전용 상태 머신.
+    /// TITLE → SETUP → PLAY → DIARY → ENDING 화면 흐름만 담당하는 Presentation 전용 상태 머신.
     /// 게임 판정은 전혀 하지 않고 GameSessionPresenter를 통해서만 Core를 부른다.
     /// </summary>
     public sealed class GameFlowController
@@ -158,6 +158,16 @@ namespace NotANap.Presentation
 
         public DiaryViewModel BuildDiary() => Session.BuildDiary();
         public V2DiaryViewModel BuildV2Diary() => Session.BuildV2Diary();
+        public EndingViewModel BuildEnding() => Session.BuildEnding();
+
+        public bool AdvanceToEnding()
+        {
+            if (Screen != ScreenState.Diary ||
+                Session.Run.CurrentNightId != NightId.HundredthNight) return false;
+            Session.BuildEnding();
+            GoTo(ScreenState.Ending);
+            return true;
+        }
 
         public bool AdvanceFromV2Diary()
         {
