@@ -42,6 +42,29 @@ namespace NotANap.Presentation.Tests
         }
 
         [Test]
+        public void FeedingPreparationStateIsExposedForDiegeticKitchenObjects()
+        {
+            var flow = StartV2();
+            var feeding = flow.Session.Night.V2.Feeding;
+            feeding.BottleSanitized = true;
+            feeding.WaterReady = true;
+            feeding.FormulaMeasured = true;
+            feeding.BottleMixed = true;
+            feeding.BottleCooled = false;
+            feeding.TemperatureChecked = false;
+
+            var vm = flow.BuildV2Play();
+
+            Assert.IsTrue(vm.BottleSanitized);
+            Assert.IsTrue(vm.FeedingWaterReady);
+            Assert.IsTrue(vm.FormulaMeasured);
+            Assert.IsTrue(vm.BottleMixed);
+            Assert.IsFalse(vm.BottleCooled);
+            Assert.IsFalse(vm.BottleTemperatureChecked);
+            Assert.IsFalse(vm.FeedingReady);
+        }
+
+        [Test]
         public void SecondNightShowsSanitationIncidentThenAllowsSterilizing()
         {
             var presenter = new GameSessionPresenter(new SystemRandomSource(4));

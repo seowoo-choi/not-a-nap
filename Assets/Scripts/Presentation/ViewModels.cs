@@ -203,6 +203,12 @@ namespace NotANap.Presentation
         public bool HumidityChecked;
         public bool BabyTemperatureChecked;
         public bool FeedingReady;
+        public bool BottleSanitized;
+        public bool FeedingWaterReady;
+        public bool FormulaMeasured;
+        public bool BottleMixed;
+        public bool BottleCooled;
+        public bool BottleTemperatureChecked;
         public bool HasCarrier;
         public bool CarrierOn;
         public bool HasNoise;

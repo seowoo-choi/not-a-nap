@@ -29,7 +29,6 @@ namespace NotANap.App
         private int _actionEncounterSequence = -1;
         private bool _portrait;
         private float _nextKeyboardMoveAt;
-        private bool _babyContextOpen;
         private bool _directHintSeen;
         private V2ActionId? _roomObjectAction;
         private float _roomObjectAnimationStarted = -10f;
@@ -629,7 +628,6 @@ namespace NotANap.App
             DrawLandscapeStatusOrnaments(vm);
             DrawEchoSource(vm, new Rect(390, 548, 1140, 126), false);
             DrawSceneFeedback(vm, new Rect(390, 686, 1140, 76), false);
-            DrawLandscapeCommandDeck(vm);
 
             if (_flow.PendingOverlay != null) DrawOverlay(_flow.PendingOverlay);
         }
@@ -660,7 +658,6 @@ namespace NotANap.App
             DrawPortraitStatusOrnaments(vm);
             DrawEchoSource(vm, new Rect(58, 772, 964, 132), true);
             DrawSceneFeedback(vm, new Rect(58, 912, 964, 118), true);
-            DrawPortraitActions(vm);
         }
 
         private void DrawEchoSource(V2PlayViewModel vm, Rect rect, bool portrait)
@@ -704,10 +701,8 @@ namespace NotANap.App
             }
             else
             {
-                GUI.Label(new Rect(rect.center.x - 300, portrait ? 400 : 300, 600, 80),
-                    RoomFocusObjective(vm),
-                    LabelStyle(portrait ? 31 : 26, FontStyle.Bold,
-                        new Color(0.98f, 0.88f, 0.7f), TextAnchor.MiddleCenter));
+                // 방 안의 실제 오브젝트가 목표와 어포던스를 설명한다.
+                // 중앙 안내 문구를 겹치지 않아 직접조작 장면을 가리지 않는다.
             }
 
             DrawDirectRoomObjects(vm, portrait);
@@ -719,89 +714,73 @@ namespace NotANap.App
         private void DrawBabyDirectInteraction(V2PlayViewModel vm, Rect babyRect, bool portrait)
         {
             if (_flow.InputLocked || RoomTransitionActive()) return;
-            bool canPat = DirectAction(vm, V2ActionId.Pat) != null;
-            bool inviteTouch = canPat && vm.CauseResolved && !IsSleeping(vm) &&
-                               vm.Calm < vm.SleepStartCalmThreshold && vm.ParentStamina > 0;
             float pulse = (Mathf.Sin(Time.unscaledTime * 4.2f) + 1f) * .5f;
-            if (inviteTouch)
-            {
-                var glow = new Rect(babyRect.center.x + babyRect.width * .08f,
-                    babyRect.y + babyRect.height * .3f, babyRect.width * .26f, babyRect.height * .3f);
-                var old = GUI.color;
-                GUI.color = new Color(1f, .72f, .32f, .2f + pulse * .45f);
-                GUI.DrawTexture(glow, _itemGlow, ScaleMode.StretchToFill, true);
-                GUI.color = old;
-                DrawCareSparkles(glow.center, .55f + pulse * .45f, 3);
-            }
-
             if (!_directHintSeen)
             {
-                var hint = new Rect(babyRect.center.x - (portrait ? 190f : 210f),
-                    babyRect.yMax + 8f, portrait ? 380f : 420f, portrait ? 52f : 48f);
-                DrawGlassPanel(hint, .78f);
-                GUI.Label(hint, "아기를 직접 만져 돌봐주세요",
-                    OverlayLabelStyle(portrait ? 22 : 19, FontStyle.Bold,
+                var hint = new Rect(babyRect.center.x - (portrait ? 230f : 250f),
+                    babyRect.yMax + 6f, portrait ? 460f : 500f, portrait ? 56f : 50f);
+                GUI.Label(hint, "반짝이는 몸의 신호를 직접 만져보세요",
+                    OverlayLabelStyle(portrait ? 23 : 20, FontStyle.Bold,
                         new Color(1f, .86f, .62f), TextAnchor.MiddleCenter));
             }
 
-            if (GUI.Button(babyRect, GUIContent.none, GUIStyle.none))
-            {
-                _babyContextOpen = !_babyContextOpen;
-                _directHintSeen = true;
-                _audio.PlayUi();
-            }
-            if (!_babyContextOpen) return;
+            var mouth = new Rect(babyRect.x + babyRect.width * .38f,
+                babyRect.y + babyRect.height * .17f, babyRect.width * .24f, babyRect.height * .2f);
+            var back = new Rect(babyRect.x + babyRect.width * .58f,
+                babyRect.y + babyRect.height * .3f, babyRect.width * .25f, babyRect.height * .34f);
+            var chest = new Rect(babyRect.x + babyRect.width * .27f,
+                babyRect.y + babyRect.height * .32f, babyRect.width * .3f, babyRect.height * .31f);
+            var diaper = new Rect(babyRect.x + babyRect.width * .34f,
+                babyRect.y + babyRect.height * .58f, babyRect.width * .33f, babyRect.height * .23f);
+            var limbs = new Rect(babyRect.x + babyRect.width * .16f,
+                babyRect.y + babyRect.height * .68f, babyRect.width * .68f, babyRect.height * .2f);
+            var mattress = new Rect(babyRect.x + babyRect.width * .08f,
+                babyRect.yMax - babyRect.height * .08f, babyRect.width * .84f, babyRect.height * .17f);
 
-            var direct = new List<V2ActionId>();
-            if (vm.RevealedCause == WakeCause.Hunger)
-            {
-                direct.Add(V2ActionId.FeedPreparedBottle);
-                direct.Add(V2ActionId.CheckHungerSignals);
-            }
-            else if (vm.RevealedCause == WakeCause.Diaper)
-            {
-                direct.Add(V2ActionId.ChangeDiaper);
-                direct.Add(V2ActionId.CheckDiaper);
-            }
+            V2ActionId mouthAction = vm.FeedingReady && vm.RevealedCause == WakeCause.Hunger
+                ? V2ActionId.FeedPreparedBottle
+                : !vm.CauseResolved ? V2ActionId.CheckHungerSignals : V2ActionId.Pacifier;
+            V2ActionId diaperAction = vm.RevealedCause == WakeCause.Diaper
+                ? V2ActionId.ChangeDiaper : V2ActionId.CheckDiaper;
+
+            DrawBodyHotspot(vm, back, V2ActionId.Pat, "등을 토닥", pulse, portrait);
+            DrawBodyHotspot(vm, chest, V2ActionId.Hold, "품에 안기", 1f - pulse, portrait);
+            DrawBodyHotspot(vm, mouth, mouthAction,
+                mouthAction == V2ActionId.FeedPreparedBottle ? "준비한 분유 수유" :
+                mouthAction == V2ActionId.Pacifier ? "쪽쪽이 건네기" : "입과 손 신호 보기",
+                pulse, portrait);
+            DrawBodyHotspot(vm, diaper, diaperAction,
+                diaperAction == V2ActionId.ChangeDiaper ? "기저귀 갈기" : "기저귀 살피기",
+                1f - pulse, portrait);
+            DrawBodyHotspot(vm, limbs, V2ActionId.CheckLimbRelaxation,
+                "팔다리 힘 살피기", pulse * .8f, portrait);
             if (IsSleeping(vm))
+                DrawBodyHotspot(vm, mattress, V2ActionId.Laydown,
+                    "침대로 천천히", pulse, portrait);
+        }
+
+        private void DrawBodyHotspot(V2PlayViewModel vm, Rect rect, V2ActionId id,
+            string label, float pulse, bool portrait)
+        {
+            var action = DirectAction(vm, id);
+            if (action == null) return;
+            bool hovered = rect.Contains(Event.current.mousePosition);
+            var old = GUI.color;
+            GUI.color = new Color(1f, .72f, .3f, hovered ? .72f : .14f + pulse * .25f);
+            GUI.DrawTexture(rect, _itemGlow, ScaleMode.StretchToFill, true);
+            GUI.color = old;
+            if (hovered)
             {
-                direct.Add(V2ActionId.CheckLimbRelaxation);
-                direct.Add(V2ActionId.Laydown);
+                var caption = new Rect(rect.center.x - (portrait ? 115f : 105f),
+                    rect.y - (portrait ? 43f : 35f), portrait ? 230f : 210f,
+                    portrait ? 42f : 34f);
+                GUI.Label(caption, label, OverlayLabelStyle(portrait ? 21 : 17,
+                    FontStyle.Bold, new Color(1f, .9f, .68f), TextAnchor.MiddleCenter));
             }
-            direct.Add(V2ActionId.Pat);
-            direct.Add(V2ActionId.Hold);
-            direct.Add(V2ActionId.Pacifier);
-            direct.Add(V2ActionId.CheckHungerSignals);
-            direct.Add(V2ActionId.CheckDiaper);
-            direct.Add(V2ActionId.CheckLimbRelaxation);
-            direct.Add(V2ActionId.ChangeDiaper);
-            direct.Add(V2ActionId.FeedPreparedBottle);
-            var available = new List<V2ActionButtonViewModel>();
-            foreach (var id in direct)
+            if (GUI.Button(rect, GUIContent.none, GUIStyle.none))
             {
-                var action = DirectAction(vm, id);
-                if (action != null && !available.Exists(candidate => candidate.Action == id))
-                    available.Add(action);
-            }
-            int shown = Mathf.Min(available.Count, 6);
-            float chipWidth = portrait ? 210f : 190f;
-            float chipHeight = portrait ? 64f : 54f;
-            for (int i = 0; i < shown; i++)
-            {
-                float angle = Mathf.Lerp(25f, 155f, shown == 1 ? .5f : i / (float)(shown - 1)) * Mathf.Deg2Rad;
-                float radius = portrait ? 300f : 350f;
-                var chip = new Rect(babyRect.center.x + Mathf.Cos(angle) * radius - chipWidth * .5f,
-                    babyRect.center.y + Mathf.Sin(angle) * radius - chipHeight * .5f,
-                    chipWidth, chipHeight);
-                DrawGlassPanel(chip, .94f, available[i].Action == V2ActionId.Pat);
-                GUI.Label(chip, available[i].Label,
-                    OverlayLabelStyle(portrait ? 22 : 18, FontStyle.Bold, Color.white,
-                        TextAnchor.MiddleCenter));
-                if (GUI.Button(chip, GUIContent.none, GUIStyle.none))
-                {
-                    PerformV2Action(available[i].Action);
-                    if (available[i].Action != V2ActionId.Pat) _babyContextOpen = false;
-                }
+                _directHintSeen = true;
+                PerformV2Action(id);
             }
         }
 
@@ -814,15 +793,7 @@ namespace NotANap.App
             switch (vm.CaregiverLocation)
             {
                 case HomeLocation.Kitchen:
-                    DrawRoomObject(vm, V2ActionId.SterilizeBottle,
-                        portrait ? new Rect(90, 500, 210, 260) : new Rect(410, 245, 210, 240),
-                        "젖병", ItemId.Monitor, portrait);
-                    DrawRoomObject(vm, V2ActionId.PrepareWater,
-                        portrait ? new Rect(345, 455, 220, 285) : new Rect(690, 220, 220, 270),
-                        "분유와 물", ItemId.Pacifier, portrait);
-                    DrawRoomObject(vm, V2ActionId.CoolBottle,
-                        portrait ? new Rect(610, 480, 210, 270) : new Rect(980, 235, 210, 250),
-                        "식히는 젖병", ItemId.Noise, portrait);
+                    DrawKitchenPreparation(vm, portrait);
                     break;
                 case HomeLocation.Bathroom:
                     DrawRoomObject(vm, V2ActionId.CheckBodyTemperature,
@@ -839,9 +810,156 @@ namespace NotANap.App
                     DrawRoomObject(vm, V2ActionId.ToggleCarrier,
                         portrait ? new Rect(840, 490, 170, 220) : new Rect(1280, 250, 180, 210),
                         vm.CarrierOn ? "아기띠 벗기" : "아기띠", ItemId.Carrier, portrait);
+                    DrawRoomObject(vm, V2ActionId.CheckMonitor,
+                        portrait ? new Rect(70, 300, 145, 170) : new Rect(350, 100, 145, 155),
+                        "베이비 모니터 살피기", ItemId.Monitor, portrait);
                     break;
             }
+            if (IsSleeping(vm)) DrawSleepSceneChoices(portrait);
             DrawRoomPickupAnimation(vm, portrait);
+        }
+
+        private void DrawSleepSceneChoices(bool portrait)
+        {
+            Rect rest = portrait ? new Rect(110, 1230, 190, 150) : new Rect(520, 785, 180, 135);
+            Rect environment = portrait ? new Rect(445, 1230, 190, 150) : new Rect(850, 785, 180, 135);
+            Rect feed = portrait ? new Rect(780, 1230, 190, 150) : new Rect(1180, 785, 180, 135);
+            DrawSleepProp(rest, "같이 눈 붙이기", "◡", SleepIntervalChoice.RestTogether, portrait);
+            DrawSleepProp(environment, "방 상태 둘러보기", "◌", SleepIntervalChoice.CheckEnvironment, portrait);
+            DrawSleepProp(feed, "다음 수유 챙기기", "♢", SleepIntervalChoice.PrepareNextFeed, portrait);
+        }
+
+        private void DrawSleepProp(Rect rect, string label, string symbol,
+            SleepIntervalChoice choice, bool portrait)
+        {
+            float pulse = (Mathf.Sin(Time.unscaledTime * 2.4f + (int)choice) + 1f) * .5f;
+            var old = GUI.color;
+            GUI.color = new Color(.55f, .8f, .95f, .18f + pulse * .28f);
+            GUI.DrawTexture(rect, _itemGlow, ScaleMode.StretchToFill, true);
+            GUI.color = old;
+            GUI.Label(new Rect(rect.x, rect.y, rect.width, rect.height * .62f), symbol,
+                OverlayLabelStyle(portrait ? 62 : 52, FontStyle.Bold,
+                    new Color(.72f, .9f, 1f), TextAnchor.MiddleCenter));
+            GUI.Label(new Rect(rect.x - 30, rect.yMax - 42, rect.width + 60, 38), label,
+                OverlayLabelStyle(portrait ? 19 : 16, FontStyle.Bold,
+                    new Color(.9f, .94f, .96f), TextAnchor.MiddleCenter));
+            if (GUI.Button(rect, GUIContent.none, GUIStyle.none) &&
+                _flow.ChooseV2SleepInterval(choice))
+            {
+                _lastResult = null;
+                _audio.PlayUi();
+                TriggerImpact(new Color(.36f, .62f, .78f, .22f), 1.5f, .22f);
+            }
+        }
+
+        private void DrawKitchenPreparation(V2PlayViewModel vm, bool portrait)
+        {
+            Rect powder = portrait ? new Rect(170, 435, 220, 270) : new Rect(520, 205, 220, 260);
+            Rect bottle = portrait ? new Rect(445, 420, 190, 310) : new Rect(825, 190, 190, 295);
+            Rect cooling = portrait ? new Rect(700, 470, 230, 235) : new Rect(1110, 250, 250, 215);
+
+            DrawFormulaTin(powder, vm.FormulaMeasured, portrait);
+            DrawFeedingBottleState(bottle, vm, portrait);
+            DrawCoolingBasin(cooling, vm.BottleCooled, portrait);
+
+            if (!vm.BottleSanitized)
+                DrawSceneActionHotspot(vm, bottle, V2ActionId.SterilizeBottle,
+                    "젖병을 씻고 소독하기", portrait);
+            else if (!vm.BottleMixed)
+                DrawSceneActionHotspot(vm, powder, V2ActionId.PrepareWater,
+                    "분유가루를 떠서 물에 섞기", portrait);
+            else if (!vm.BottleCooled)
+                DrawSceneActionHotspot(vm, cooling, V2ActionId.CoolBottle,
+                    "젖병을 물에 담가 식히기", portrait);
+
+            string state = !vm.BottleSanitized ? "젖병을 먼저 소독해야 해요" :
+                !vm.BottleMixed ? "빈 젖병 · 분유가루가 기다리고 있어요" :
+                !vm.BottleCooled ? "분유가 채워졌어요 · 이제 식혀주세요" :
+                "수유 준비 완료 · 아기에게 가져가세요";
+            GUI.Label(new Rect(portrait ? 120 : 500, portrait ? 735 : 500,
+                    portrait ? 840 : 900, portrait ? 58 : 46), state,
+                OverlayLabelStyle(portrait ? 25 : 21, FontStyle.Bold,
+                    vm.FeedingReady ? new Color(.55f, .92f, .67f) : new Color(1f, .86f, .62f),
+                    TextAnchor.MiddleCenter));
+        }
+
+        private void DrawFormulaTin(Rect rect, bool measured, bool portrait)
+        {
+            Fill(new Rect(rect.x + rect.width * .12f, rect.y + rect.height * .16f,
+                rect.width * .76f, rect.height * .68f),
+                new Color(.88f, .67f, .28f, .98f));
+            Fill(new Rect(rect.x + rect.width * .08f, rect.y + rect.height * .12f,
+                rect.width * .84f, rect.height * .13f),
+                new Color(.96f, .87f, .62f, .98f));
+            GUI.Label(new Rect(rect.x, rect.y + rect.height * .33f, rect.width, rect.height * .22f),
+                "분유", OverlayLabelStyle(portrait ? 31 : 27, FontStyle.Bold,
+                    Color.white, TextAnchor.MiddleCenter));
+            if (measured)
+                GUI.Label(new Rect(rect.x, rect.yMax - 48, rect.width, 42), "한 스푼 덜었어요",
+                    OverlayLabelStyle(portrait ? 19 : 16, FontStyle.Bold,
+                        new Color(.56f, .96f, .7f), TextAnchor.MiddleCenter));
+        }
+
+        private void DrawFeedingBottleState(Rect rect, V2PlayViewModel vm, bool portrait)
+        {
+            float width = rect.width * .46f;
+            var body = new Rect(rect.center.x - width * .5f, rect.y + rect.height * .2f,
+                width, rect.height * .68f);
+            GUI.DrawTexture(body, _diaperCloth, ScaleMode.StretchToFill, true);
+            float fill = vm.BottleMixed ? .72f : vm.FeedingWaterReady ? .42f : .06f;
+            Color liquid = vm.BottleCooled
+                ? new Color(.94f, .78f, .42f, .9f)
+                : new Color(.98f, .68f, .28f, .88f);
+            Fill(new Rect(body.x + 8f, body.yMax - (body.height - 16f) * fill - 8f,
+                body.width - 16f, (body.height - 16f) * fill), liquid);
+            GUI.DrawTexture(new Rect(body.center.x - body.width * .2f,
+                body.y - body.height * .15f, body.width * .4f, body.height * .24f),
+                _caregiverHand, ScaleMode.StretchToFill, true);
+            string label = !vm.BottleSanitized ? "미소독" :
+                !vm.BottleMixed ? "비어 있음" :
+                !vm.BottleCooled ? "분유 채움" : "먹일 준비 완료";
+            GUI.Label(new Rect(rect.x, rect.yMax - 32, rect.width, 38), label,
+                OverlayLabelStyle(portrait ? 20 : 17, FontStyle.Bold,
+                    vm.FeedingReady ? new Color(.56f, .96f, .7f) : new Color(1f, .88f, .68f),
+                    TextAnchor.MiddleCenter));
+        }
+
+        private void DrawCoolingBasin(Rect rect, bool cooled, bool portrait)
+        {
+            Fill(new Rect(rect.x + rect.width * .06f, rect.y + rect.height * .45f,
+                rect.width * .88f, rect.height * .34f),
+                new Color(.35f, .68f, .82f, .82f));
+            Fill(new Rect(rect.x, rect.y + rect.height * .38f, rect.width, rect.height * .12f),
+                new Color(.72f, .88f, .94f, .94f));
+            GUI.Label(new Rect(rect.x, rect.yMax - 38, rect.width, 38),
+                cooled ? "알맞게 식었어요" : "식힘 물",
+                OverlayLabelStyle(portrait ? 20 : 17, FontStyle.Bold,
+                    Color.white, TextAnchor.MiddleCenter));
+        }
+
+        private void DrawSceneActionHotspot(V2PlayViewModel vm, Rect rect, V2ActionId id,
+            string hoverLabel, bool portrait)
+        {
+            var action = DirectAction(vm, id);
+            if (action == null) return;
+            float pulse = (Mathf.Sin(Time.unscaledTime * 4.4f + (int)id) + 1f) * .5f;
+            var old = GUI.color;
+            GUI.color = new Color(1f, .76f, .32f, .22f + pulse * .5f);
+            GUI.DrawTexture(new Rect(rect.x - 18, rect.y - 18, rect.width + 36, rect.height + 36),
+                _itemGlow, ScaleMode.StretchToFill, true);
+            GUI.color = old;
+            DrawCareSparkles(rect.center, .55f + pulse * .45f, 4);
+            if (rect.Contains(Event.current.mousePosition))
+                GUI.Label(new Rect(rect.x - 50, rect.y - (portrait ? 48 : 40),
+                        rect.width + 100, portrait ? 46 : 38), hoverLabel,
+                    OverlayLabelStyle(portrait ? 21 : 18, FontStyle.Bold,
+                        new Color(1f, .9f, .68f), TextAnchor.MiddleCenter));
+            if (GUI.Button(rect, GUIContent.none, GUIStyle.none))
+            {
+                _roomObjectAction = id;
+                _roomObjectAnimationStarted = Time.unscaledTime;
+                PerformV2Action(id);
+            }
         }
 
         private void DrawRoomPickupAnimation(V2PlayViewModel vm, bool portrait)
@@ -888,11 +1006,11 @@ namespace NotANap.App
             else
                 DrawItemArt(art, objectRect);
             DrawCareSparkles(objectRect.center, .45f + phase * .5f, 3);
-            var tag = new Rect(objectRect.x - 20, objectRect.yMax - (portrait ? 25f : 12f),
-                objectRect.width + 40, portrait ? 58f : 48f);
-            DrawGlassPanel(tag, .88f);
-            GUI.Label(tag, $"직접 탭 · {label}", OverlayLabelStyle(portrait ? 21 : 18,
-                FontStyle.Bold, new Color(1f, .9f, .7f), TextAnchor.MiddleCenter));
+            if (objectRect.Contains(Event.current.mousePosition))
+                GUI.Label(new Rect(objectRect.x - 35, objectRect.y - (portrait ? 48f : 40f),
+                        objectRect.width + 70, portrait ? 46f : 38f), label,
+                    OverlayLabelStyle(portrait ? 21 : 18, FontStyle.Bold,
+                        new Color(1f, .9f, .7f), TextAnchor.MiddleCenter));
             if (GUI.Button(objectRect, GUIContent.none, GUIStyle.none))
             {
                 _roomObjectAction = actionId;
@@ -1083,6 +1201,7 @@ namespace NotANap.App
                 Mathf.Clamp01((float)vm.CaregiverComposure / 100f),
                 new Color(0.72f, 0.56f, 0.94f), false);
             DrawPreparedItems(new Rect(44, 516, 270, 58), true);
+            DrawCaregiverBreathHotspot(vm, new Rect(38, 316, 286, 82), false);
         }
 
         private void DrawPortraitStatusOrnaments(V2PlayViewModel vm)
@@ -1100,6 +1219,29 @@ namespace NotANap.App
                 $"{vm.CaregiverComposure:0}",
                 Mathf.Clamp01((float)vm.CaregiverComposure / 100f),
                 new Color(0.72f, 0.56f, 0.94f), true);
+            DrawCaregiverBreathHotspot(vm, new Rect(385, y, 310, 108), true);
+        }
+
+        private void DrawCaregiverBreathHotspot(V2PlayViewModel vm, Rect rect, bool portrait)
+        {
+            var action = DirectAction(vm, V2ActionId.CatchBreath);
+            if (action == null) return;
+            bool urgent = vm.ParentStamina <= 20 || vm.CaregiverComposure < 50;
+            float pulse = (Mathf.Sin(Time.unscaledTime * 2.8f) + 1f) * .5f;
+            if (urgent || rect.Contains(Event.current.mousePosition))
+            {
+                var old = GUI.color;
+                GUI.color = new Color(.55f, .82f, 1f,
+                    rect.Contains(Event.current.mousePosition) ? .5f : .12f + pulse * .22f);
+                GUI.DrawTexture(rect, _itemGlow, ScaleMode.StretchToFill, true);
+                GUI.color = old;
+                GUI.Label(new Rect(rect.x, rect.yMax + 2, rect.width, portrait ? 38 : 30),
+                    "내 숨을 한 번 고르기",
+                    OverlayLabelStyle(portrait ? 18 : 14, FontStyle.Bold,
+                        new Color(.72f, .9f, 1f), TextAnchor.MiddleCenter));
+            }
+            if (GUI.Button(rect, GUIContent.none, GUIStyle.none))
+                PerformV2Action(V2ActionId.CatchBreath);
         }
 
         private void DrawStatusOrnament(Rect rect, string label, string value, float progress, Color color, bool portrait)
