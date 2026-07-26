@@ -86,6 +86,8 @@ namespace NotANap.Core
                 BabyAccompanied = night.Baby.Held
             };
             if (night.Over || from == destination) return outcome;
+            // 방 이동도 시간을 소비하므로 체력 0에서의 시간 소진 우회로로 쓰지 못한다.
+            if (night.Parent.Stamina <= 0) return outcome;
 
             outcome.Accepted = true;
             outcome.TimeDeltaMinutes = TravelMinutes(from, destination);

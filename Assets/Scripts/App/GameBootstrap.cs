@@ -1143,6 +1143,8 @@ namespace NotANap.App
                 return "집 지도를 보고 이 행동에 필요한 방으로 이동해주세요.";
             if (outcome.BlockReason == V2ActionBlockReason.ToolRequired)
                 return "욕실에서 탕온계를 먼저 챙겨주세요.";
+            if (outcome.BlockReason == V2ActionBlockReason.CaregiverExhausted)
+                return "보호자 체력이 바닥났어요. 먼저 숨을 고르고 다시 돌봐주세요.";
             if (outcome.ActivityLocation == "주방")
                 return $"주방에 다녀오며 {outcome.TimeDeltaMinutes}분이 흘렀어요. 그동안에도 아기의 상태는 계속 변해요.";
             if (outcome.HeadSupported)

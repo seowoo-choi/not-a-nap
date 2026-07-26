@@ -1,7 +1,9 @@
 using System;
+using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
+using UnityEngine;
 
 namespace NotANap.Editor
 {
@@ -18,6 +20,8 @@ namespace NotANap.Editor
 
             if (scenes.Length == 0)
                 throw new InvalidOperationException("활성화된 빌드 씬이 없습니다.");
+
+            PrepareOutputDirectory(outputPath);
 
             WebGLCompressionFormat previousCompression = PlayerSettings.WebGL.compressionFormat;
             BuildReport report;
@@ -53,5 +57,23 @@ namespace NotANap.Editor
 
         private static bool HasArgument(string name)
             => Environment.GetCommandLineArgs().Contains(name);
+
+        private static void PrepareOutputDirectory(string outputPath)
+        {
+            string projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            string buildsRoot = Path.GetFullPath(Path.Combine(projectRoot, "Builds")) +
+                Path.DirectorySeparatorChar;
+            string fullOutputPath = Path.GetFullPath(
+                Path.IsPathRooted(outputPath) ? outputPath : Path.Combine(projectRoot, outputPath));
+
+            // 빌드 산출물 외의 경로를 재귀 삭제하지 못하도록 Builds/ 하위만 허용한다.
+            if (!fullOutputPath.StartsWith(buildsRoot, StringComparison.Ordinal))
+                throw new InvalidOperationException(
+                    $"WebGL output must be inside {buildsRoot}: {fullOutputPath}");
+
+            if (Directory.Exists(fullOutputPath))
+                Directory.Delete(fullOutputPath, true);
+            Directory.CreateDirectory(fullOutputPath);
+        }
     }
 }

@@ -61,6 +61,10 @@ namespace NotANap.Core
             WakeScheduler.RequireV2(night);
             var outcome = new V2ActionOutcome { Action = action, Accepted = true };
             if (night.Over) return Reject(outcome);
+            // 체력이 바닥난 상태에서는 시간을 흘려 밤을 넘길 수 없다.
+            // 숨 고르기만이 다시 돌봄 행동으로 돌아가는 결정론적 회복 경로다.
+            if (night.Parent.Stamina <= 0 && action != V2ActionId.CatchBreath)
+                return Reject(outcome, V2ActionBlockReason.CaregiverExhausted);
             var locationBlock = LocationBlockReason(night, action);
             if (locationBlock != V2ActionBlockReason.None) return Reject(outcome, locationBlock);
 
