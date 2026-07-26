@@ -1,0 +1,98 @@
+:root {
+  color-scheme: dark;
+  background: #06101d;
+  font-family: -apple-system, BlinkMacSystemFont, "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #06101d;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+#unity-container {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  background: #06101d;
+}
+
+#unity-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: #06101d;
+}
+
+#unity-loading-bar {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(72vw, 360px);
+  padding: 24px;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(173, 198, 220, 0.22);
+  border-radius: 18px;
+  background: rgba(5, 17, 31, 0.9);
+  text-align: center;
+  backdrop-filter: blur(12px);
+}
+
+#loading-title {
+  color: #f5ecdc;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+#loading-copy {
+  margin-top: 10px;
+  color: #a9b7c5;
+  font-size: 14px;
+}
+
+#unity-progress-bar-empty {
+  height: 8px;
+  margin-top: 22px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #14293d;
+}
+
+#unity-progress-bar-full {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #55cf9a, #e8b35a);
+  transition: width 120ms linear;
+}
+
+#unity-warning {
+  position: fixed;
+  z-index: 10;
+  top: max(12px, env(safe-area-inset-top));
+  left: 50%;
+  width: min(92vw, 720px);
+  transform: translateX(-50%);
+}
+
+.warning {
+  margin-bottom: 8px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: #7b5b22;
+  color: #fff7e6;
+  font-size: 14px;
+}
+
+.warning.error { background: #812f38; }
