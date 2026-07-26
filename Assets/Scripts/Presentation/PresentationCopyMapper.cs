@@ -16,6 +16,44 @@ namespace NotANap.Presentation
             _ => id.ToString()
         };
 
+        public static string EndingTitle(EndingId id) => id switch
+        {
+            EndingId.MorningWon => "아침이 이겼다",
+            EndingId.FamilyRoutine => "우리 집의 루틴",
+            EndingId.UniverseInArms => "품 안의 우주",
+            EndingId.GrandmaBest => "할머니가 최고야",
+            EndingId.GearMaster => "장비의 지배자",
+            _ => "새벽의 생존자"
+        };
+
+        public static string EndingSubtitle(EndingId id) => id switch
+        {
+            EndingId.MorningWon => "완벽하지 않아도 괜찮다. 오늘의 신호는 다음 밤의 기억이 된다.",
+            EndingId.FamilyRoutine => "서로에게 무리 없는 리듬이 마침내 우리 집의 밤이 되었다.",
+            EndingId.UniverseInArms => "기억된 품의 온기 속에서 백일의 밤을 함께 건넜다.",
+            EndingId.GrandmaBest => "건네받은 품도 가족의 루틴이 되어 밤을 지켰다.",
+            EndingId.GearMaster => "도구를 정답이 아니라 우리에게 맞는 언어로 사용했다.",
+            _ => "흔들리는 새벽에도 서로를 놓치지 않고 아침에 닿았다."
+        };
+
+        public static string EndingSymbol(EndingId id) => id switch
+        {
+            EndingId.MorningWon => "☀",
+            EndingId.FamilyRoutine => "⌂",
+            EndingId.UniverseInArms => "●",
+            EndingId.GrandmaBest => "♡",
+            EndingId.GearMaster => "✦",
+            _ => "☾"
+        };
+
+        public static string VictoryConditionLabel(VictoryCondition condition) => condition switch
+        {
+            VictoryCondition.DeepSleepMorning => "아기가 깊은 잠으로 아침을 맞음",
+            VictoryCondition.ParentStamina => "보호자 체력 30 이상",
+            VictoryCondition.BareHandsLaydown => "맨손 눕히기 성공",
+            _ => condition.ToString()
+        };
+
         /// <summary>screen-spec 3절 상태 단어 표.</summary>
         public static string StageWord(SleepStage stage) => stage switch
         {

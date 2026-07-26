@@ -146,6 +146,8 @@ namespace NotANap.Presentation.Tests
         public void DiaryCentersLearningCaregiverGrowthAndSharedNight()
         {
             var flow = StartV2();
+            flow.Session.Night.Stats.NoiseTurns =
+                (int)System.Math.Ceiling(GameBalanceConfig.Default().NoiseHabitThreshold);
             TurnResolver.AdvanceMinutes(flow.Session.Run, flow.Session.Night, 540,
                 GameBalanceConfig.Default(), new SystemRandomSource(8));
             flow.ActV2(V2ActionId.Hesitate);
@@ -157,6 +159,31 @@ namespace NotANap.Presentation.Tests
             StringAssert.Contains("엄마", diary.MotherInsight);
             StringAssert.Contains("함께", diary.CompanionMessage);
             StringAssert.Contains("정답보다", diary.ShareCardText);
+            StringAssert.Contains("백색소음", diary.HabitNotes.Single());
+            Assert.IsNotEmpty(diary.HabitEffects.Single());
+        }
+
+        [Test]
+        public void HundredthNightDiaryAdvancesToCoreResolvedEnding()
+        {
+            var flow = new GameFlowController(new SystemRandomSource(12));
+            flow.StartGame();
+            flow.Session.Run.CurrentNightId = NightId.HundredthNight;
+            flow.ToggleV2Item(ItemId.Monitor);
+            flow.ToggleV2Item(ItemId.Pacifier);
+            flow.ConfirmV2Setup();
+
+            TurnResolver.AdvanceMinutes(flow.Session.Run, flow.Session.Night, 540,
+                GameBalanceConfig.Default(), new SystemRandomSource(8));
+            flow.ActV2(V2ActionId.Hesitate);
+            if (flow.PendingOverlay != null) flow.DismissOverlay();
+
+            Assert.AreEqual(ScreenState.Diary, flow.Screen);
+            Assert.IsFalse(flow.BuildV2Diary().HasNextNight);
+            Assert.IsTrue(flow.AdvanceToEnding());
+            Assert.AreEqual(ScreenState.Ending, flow.Screen);
+            Assert.AreEqual(EndingId.MorningWon, flow.BuildEnding().Id);
+            Assert.AreEqual(2, flow.BuildEnding().RequiredConditionCount);
         }
 
         [Test]

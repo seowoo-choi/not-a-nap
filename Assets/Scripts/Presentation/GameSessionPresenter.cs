@@ -32,6 +32,7 @@ namespace NotANap.Presentation
         private bool _diaryBuilt;
         private DiaryViewModel _diary;
         private bool _v2DiaryBuilt;
+        private List<MemoryNote> _v2MemoryNotes = new List<MemoryNote>();
 
         public GameSessionPresenter(IRandomSource rng, GameBalanceConfig config = null)
         {
@@ -70,6 +71,7 @@ namespace NotANap.Presentation
             _diaryBuilt = false;
             _diary = null;
             _v2DiaryBuilt = false;
+            _v2MemoryNotes.Clear();
         }
 
         /// <summary>V1 밤 생성 API를 유지하면서 V2 분 단위 루프를 명시적으로 시작한다.</summary>
@@ -88,6 +90,7 @@ namespace NotANap.Presentation
             _diaryBuilt = false;
             _diary = null;
             _v2DiaryBuilt = false;
+            _v2MemoryNotes.Clear();
         }
 
         // ── 행동 실행 (★ Apply → EndTurn 순서 고정) ───────────────
@@ -406,12 +409,12 @@ namespace NotANap.Presentation
                 throw new InvalidOperationException("종료된 V2 밤이 필요하다.");
             if (!_v2DiaryBuilt)
             {
-                MemoryConsolidator.Consolidate(Run, Night, _config);
+                _v2MemoryNotes = MemoryConsolidator.Consolidate(Run, Night, _config);
                 _v2DiaryBuilt = true;
             }
             var evaluation = NightEvaluationResolver.Evaluate(Night, _config);
             var m = evaluation.Metrics;
-            return new V2DiaryViewModel
+            var viewModel = new V2DiaryViewModel
             {
                 NightId = Night.NightId,
                 NightLabel = PresentationCopyMapper.NightLabel(Night.NightId),
@@ -441,6 +444,36 @@ namespace NotANap.Presentation
                 ShareCardText = $"오늘 알아차린 신호 · {PrimaryLearnedSignal(Night.V2)}\n" +
                     "정답보다 서로의 리듬을 알아가는 밤"
             };
+            foreach (var note in _v2MemoryNotes)
+            {
+                viewModel.HabitNotes.Add(note.Text);
+                viewModel.HabitEffects.Add(note.Sub);
+            }
+            return viewModel;
+        }
+
+        public EndingViewModel BuildEnding()
+        {
+            if (Night?.V2 == null || !Night.Over || Night.NightId != NightId.HundredthNight)
+                throw new InvalidOperationException("종료된 백일째 밤이 필요하다.");
+
+            // 백일째 밤의 기억까지 먼저 반영한 뒤, Core가 승리와 엔딩을 판정한다.
+            BuildV2Diary();
+            var victory = VictoryResolver.Evaluate(Night);
+            var ending = EndingResolver.Decide(Run, victory);
+            var viewModel = new EndingViewModel
+            {
+                Id = ending.Id,
+                IsSuccess = ending.IsSuccess,
+                Title = PresentationCopyMapper.EndingTitle(ending.Id),
+                Subtitle = PresentationCopyMapper.EndingSubtitle(ending.Id),
+                Symbol = PresentationCopyMapper.EndingSymbol(ending.Id),
+                MetConditionCount = victory.Count,
+                RequiredConditionCount = victory.RequiredCount
+            };
+            foreach (var condition in ending.MetConditions)
+                viewModel.MetConditions.Add(PresentationCopyMapper.VictoryConditionLabel(condition));
+            return viewModel;
         }
 
         public bool AdvanceToNextV2Night()
@@ -453,6 +486,7 @@ namespace NotANap.Presentation
             PendingOverlay = null;
             _eventCursor = 0;
             _v2DiaryBuilt = false;
+            _v2MemoryNotes.Clear();
             return true;
         }
 
