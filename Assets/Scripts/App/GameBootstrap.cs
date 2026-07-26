@@ -1091,13 +1091,23 @@ namespace NotANap.App
             float panelHeight = _portrait ? 1180 : 720;
             float x = (width - panelWidth) * 0.5f;
             float y = (height - panelHeight) * 0.5f;
+            Color accent = vm.IsSuccess
+                ? new Color(0.53f, 0.75f, 0.63f)
+                : new Color(0.86f, 0.58f, 0.36f);
             Panel(new Rect(x, y, panelWidth, panelHeight));
-            GUI.Label(new Rect(x + 60, y + 55, panelWidth - 120, 80), "백일의 밤 · 엔딩", Centered(_caption));
-            GUI.Label(new Rect(x + 60, y + 140, panelWidth - 120, 130), vm.Symbol, Centered(new GUIStyle(_title) { fontSize = _portrait ? 110 : 84 }));
+            Fill(new Rect(x, y, panelWidth, 8), accent);
+            var statusStyle = Centered(_caption);
+            statusStyle.normal.textColor = accent;
+            var symbolStyle = Centered(new GUIStyle(_title) { fontSize = _portrait ? 110 : 84 });
+            symbolStyle.normal.textColor = accent;
+            GUI.Label(new Rect(x + 60, y + 55, panelWidth - 120, 80),
+                $"백일의 밤 · {PresentationCopyMapper.EndingStatusLabel(vm.IsSuccess)}", statusStyle);
+            GUI.Label(new Rect(x + 60, y + 140, panelWidth - 120, 130), vm.Symbol, symbolStyle);
             GUI.Label(new Rect(x + 60, y + 275, panelWidth - 120, 90), vm.Title, Centered(_display));
             GUI.Label(new Rect(x + 110, y + 380, panelWidth - 220, 120), vm.Subtitle, Centered(_body));
             GUI.Label(new Rect(x + 110, y + 515, panelWidth - 220, 55),
-                $"지켜 낸 밤의 조건  {vm.MetConditionCount} / {vm.RequiredConditionCount}", Centered(_headline));
+                $"{PresentationCopyMapper.EndingStatusLabel(vm.IsSuccess)}의 조건  {vm.MetConditionCount} / {vm.RequiredConditionCount}",
+                Centered(_headline));
             GUI.Label(new Rect(x + 110, y + 580, panelWidth - 220, 130),
                 vm.MetConditions.Count > 0 ? string.Join("  ·  ", vm.MetConditions) : "다음 밤에 다시 이어갈 신호를 남겼어요.",
                 Centered(_caption));

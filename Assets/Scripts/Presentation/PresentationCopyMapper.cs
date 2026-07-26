@@ -46,6 +46,9 @@ namespace NotANap.Presentation
             _ => "☾"
         };
 
+        public static string EndingStatusLabel(bool isSuccess)
+            => isSuccess ? "지켜 낸 밤" : "아쉬운 밤";
+
         public static string VictoryConditionLabel(VictoryCondition condition) => condition switch
         {
             VictoryCondition.DeepSleepMorning => "아기가 깊은 잠으로 아침을 맞음",
