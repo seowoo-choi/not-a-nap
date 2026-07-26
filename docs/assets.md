@@ -4,7 +4,7 @@
 |---|---|---|---|---|
 | `Assets/Resources/Fonts/NotoSansKR.ttf` | 한국어 UI 폰트 | Google Fonts, Noto Sans KR | SIL Open Font License 1.1 | 원문은 같은 폴더의 `OFL.txt` |
 | `Reference/nursery-night-original.png` | 최초 16:9 밤 침실 배경 보관본 | OpenAI 내장 이미지 생성 도구로 2026-07-21 생성 | 프로젝트 사용을 위한 사용자 소유 생성물 | 빌드 중복 포함을 막기 위해 Unity `Resources` 밖에 보관 |
-| `Assets/Resources/Art/nursery-night-empty.jpg` | 캐릭터 분리용 공주풍 빈 침실 배경 | 기존 생성 배경을 OpenAI 내장 이미지 생성 도구로 2026-07-26 재편집 | 프로젝트 사용을 위한 사용자 소유 생성물 | 고목 월넛 조각 침대·달과 별 장식·달빛/문틈/스탠드 3점 조명, 아기·베개·느슨한 이불 없는 빈 매트리스. 50MiB 빌드 제한을 위해 1600×900 고품질 JPEG 사용 |
+| `Assets/Resources/Art/nursery-night-empty.jpg` | 캐릭터 분리용 공주풍 빈 침실 배경 | 기존 생성 배경을 OpenAI 내장 이미지 생성 도구로 2026-07-26 재편집 | 프로젝트 사용을 위한 사용자 소유 생성물 | 고목 월넛 조각 침대·달과 별 장식·달빛/문틈/스탠드 3점 조명, 아기·베개·느슨한 이불 없는 빈 매트리스. WebGL 전송 효율을 위해 1600×900 고품질 JPEG 사용 |
 | `Assets/Resources/Art/kitchen-night.jpg` | 야간 주방 플레이 배경 | 공주풍 침실을 스타일 기준으로 OpenAI 내장 이미지 생성 도구로 2026-07-26 생성 | 프로젝트 사용을 위한 사용자 소유 생성물 | 같은 집의 고목 월넛 주방, 소독기·분유포트·수유 준비대가 보이는 독립 16:9 장면. 1600×900 고품질 JPEG |
 | `Assets/Resources/Art/bathroom-night.jpg` | 야간 욕실 플레이 배경 | 공주풍 침실을 스타일 기준으로 OpenAI 내장 이미지 생성 도구로 2026-07-26 생성 | 프로젝트 사용을 위한 사용자 소유 생성물 | 같은 집의 월넛 세면대·아기 목욕통·탕온계가 보이는 독립 16:9 장면. 1600×900 고품질 JPEG |
 | `Assets/Resources/Art/Baby/*.png` | 아기 상태 캐릭터 12종 | OpenAI 내장 이미지 생성 도구로 2026-07-21 생성 | 프로젝트 사용을 위한 사용자 소유 생성물 | 동일한 동양 아기, 부드러운 큰 웨이브와 C자 애교머리, 크로마키 제거 투명 PNG |

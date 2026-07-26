@@ -32,7 +32,7 @@ Unity Pro를 사용할 경우 GameCI 문서에 따라 `UNITY_SERIAL` 기반 설�
 1. Unity `6000.3.20f1` 프로젝트 복원
 2. `Library` 캐시 복원
 3. `NotANap.Editor.WebBuildCommand.Build`로 비압축 WebGL 생성
-4. 산출물이 50MiB를 넘으면 실패
+4. 로더·데이터·프레임워크·WASM 산출물 정합성 확인
 5. Pages artifact 업로드 및 배포
 
 비압축 빌드를 사용하는 이유는 GitHub Pages에서 `.br` 파일의 `Content-Encoding: br` 헤더가
