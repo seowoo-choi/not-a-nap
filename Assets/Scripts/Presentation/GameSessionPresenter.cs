@@ -152,6 +152,20 @@ namespace NotANap.Presentation
             finally { _busy = false; }
         }
 
+        public HomeMoveOutcome MoveToHomeLocation(HomeLocation destination)
+        {
+            if (_busy || InputLocked || Night?.V2 == null || Night.Over)
+                return new HomeMoveOutcome();
+            _busy = true;
+            try
+            {
+                var outcome = HomeMovementResolver.MoveTo(Run, Night, destination, _config, _rng);
+                PendingOverlay = DrainOverlay();
+                return outcome;
+            }
+            finally { _busy = false; }
+        }
+
         /// <summary>Presentation의 결정 제한시간 만료 입력. Core 타이머를 실행하지 않는다.</summary>
         public V2PresentationActionResult ApplyDecisionTimeout()
             => PerformV2Action(V2ActionId.Hesitate);
@@ -322,6 +336,10 @@ namespace NotANap.Presentation
                 NoiseOn = Night.Wearing.Noise,
                 HasMonitor = Night.HasItem(ItemId.Monitor),
                 HeadSupported = v2.HeadSupported,
+                CaregiverLocation = v2.CaregiverLocation,
+                BabyLocation = Night.Baby.Held ? v2.CaregiverLocation : HomeLocation.Nursery,
+                BabyAccompaniesCaregiver = Night.Baby.Held,
+                BathThermometerRetrieved = v2.BathThermometerRetrieved,
                 CurrentSignal = v2.VisibleSignals.Count > 0
                     ? PresentationCopyMapper.ObservationSignal(v2.VisibleSignals[0])
                     : DefaultSignal(v2, Night.Baby.Hunger),
@@ -352,6 +370,21 @@ namespace NotANap.Presentation
 
         private bool IsV2ActionAvailable(V2ActionId action)
         {
+            var location = Night.V2.CaregiverLocation;
+            bool withBaby = Night.Baby.Held || location == HomeLocation.Nursery;
+            if (action == V2ActionId.SterilizeBottle || action == V2ActionId.PrepareWater ||
+                action == V2ActionId.MeasureFormula || action == V2ActionId.MixFormula ||
+                action == V2ActionId.CoolBottle || action == V2ActionId.CheckBottleTemperature)
+                return location == HomeLocation.Kitchen;
+            if (action == V2ActionId.FeedPreparedBottle) return withBaby;
+            if (action == V2ActionId.CheckEnvironment || action == V2ActionId.AdjustTemperature ||
+                action == V2ActionId.AdjustHumidity || action == V2ActionId.ToggleNoise)
+                return location == HomeLocation.Nursery;
+            if (action == V2ActionId.CheckBodyTemperature)
+                return withBaby && Night.V2.BathThermometerRetrieved && Night.V2.CryIntensity >= 45;
+            if (action == V2ActionId.CheckMonitor) return Night.HasItem(ItemId.Monitor);
+            if (action == V2ActionId.CatchBreath || action == V2ActionId.Hesitate) return true;
+            if (!withBaby) return false;
             if (action == V2ActionId.Pacifier) return Night.HasItem(ItemId.Pacifier);
             if (action == V2ActionId.ToggleCarrier)
                 return Night.HasItem(ItemId.Carrier) &&
@@ -359,7 +392,7 @@ namespace NotANap.Presentation
             if (action == V2ActionId.ToggleNoise) return Night.HasItem(ItemId.Noise) && !Night.NoiseDisabled;
             if (action == V2ActionId.CheckMonitor) return Night.HasItem(ItemId.Monitor);
             if (action == V2ActionId.Laydown)
-                return Night.Baby.Held &&
+                return location == HomeLocation.Nursery && Night.Baby.Held &&
                     (Night.V2.SleepCycle.Stage == V2SleepStage.RemActiveSleep ||
                      Night.V2.SleepCycle.Stage == V2SleepStage.NremDeepSleep);
             if (action == V2ActionId.CheckBodyTemperature) return Night.V2.CryIntensity >= 45;

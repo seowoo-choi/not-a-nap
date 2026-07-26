@@ -133,6 +133,8 @@ namespace NotANap.Core
         public double CaregiverComposure = 50;
         public int GentleObservationCount;
         public readonly List<ObservationSignalId> VisibleSignals = new List<ObservationSignalId>();
+        public HomeLocation CaregiverLocation = HomeLocation.Nursery;
+        public bool BathThermometerRetrieved;
         public bool ExhaustionWarned;
         public readonly HashSet<ProductCapability> ProductCapabilities = new HashSet<ProductCapability>();
     }

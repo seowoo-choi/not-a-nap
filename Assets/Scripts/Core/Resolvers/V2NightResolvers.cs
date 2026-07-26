@@ -72,6 +72,43 @@ namespace NotANap.Core
         }
     }
 
+    public static class HomeMovementResolver
+    {
+        public static HomeMoveOutcome MoveTo(RunState run, NightState night, HomeLocation destination,
+            GameBalanceConfig config, IRandomSource rng)
+        {
+            WakeScheduler.RequireV2(night);
+            var from = night.V2.CaregiverLocation;
+            var outcome = new HomeMoveOutcome
+            {
+                From = from,
+                To = destination,
+                BabyAccompanied = night.Baby.Held
+            };
+            if (night.Over || from == destination) return outcome;
+
+            outcome.Accepted = true;
+            outcome.TimeDeltaMinutes = TravelMinutes(from, destination);
+            night.V2.CaregiverLocation = destination;
+            if (destination == HomeLocation.Bathroom && !night.V2.BathThermometerRetrieved)
+            {
+                night.V2.BathThermometerRetrieved = true;
+                outcome.RetrievedBathThermometer = true;
+            }
+            V2TimeResolver.Advance(run, night, outcome.TimeDeltaMinutes, config, rng);
+            return outcome;
+        }
+
+        public static int TravelMinutes(HomeLocation from, HomeLocation to)
+        {
+            if (from == to) return 0;
+            if ((from == HomeLocation.Kitchen && to == HomeLocation.Bathroom) ||
+                (from == HomeLocation.Bathroom && to == HomeLocation.Kitchen))
+                return 3;
+            return 2;
+        }
+    }
+
     public static class WakeScheduler
     {
         private static readonly WakeCause[] Causes =

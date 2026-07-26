@@ -23,4 +23,14 @@ namespace NotANap.Core
         public readonly List<TraceId> TraceIds = new List<TraceId>();
         public StateDelta StateDelta = new StateDelta();
     }
+
+    public sealed class HomeMoveOutcome
+    {
+        public bool Accepted;
+        public HomeLocation From;
+        public HomeLocation To;
+        public int TimeDeltaMinutes;
+        public bool BabyAccompanied;
+        public bool RetrievedBathThermometer;
+    }
 }

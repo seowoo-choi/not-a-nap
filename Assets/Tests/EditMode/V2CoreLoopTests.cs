@@ -366,6 +366,8 @@ namespace NotANap.Core.Tests
             Assert.IsTrue(night.V2.Feeding.SanitationIncident);
             Assert.IsTrue(night.Events.Any(e => e.Id == GameEventId.BottleFoundUnsanitized));
 
+            HomeMovementResolver.MoveTo(run, night, HomeLocation.Kitchen,
+                config, new SequenceRandomSource(0));
             var result = V2ActionResolver.Apply(run, night, V2ActionId.SterilizeBottle,
                 config, new SequenceRandomSource(0));
             Assert.IsTrue(result.Accepted);
@@ -603,9 +605,13 @@ namespace NotANap.Core.Tests
             var night = Night(run, config);
             double hunger = night.Baby.Hunger;
 
+            var move = HomeMovementResolver.MoveTo(run, night, HomeLocation.Kitchen,
+                config, new SequenceRandomSource(0));
             var result = V2ActionResolver.Apply(run, night, V2ActionId.PrepareWater,
                 config, new SequenceRandomSource(0));
 
+            Assert.IsTrue(move.Accepted);
+            Assert.AreEqual(2, move.TimeDeltaMinutes);
             Assert.AreEqual("주방", result.ActivityLocation);
             Assert.AreEqual(config.V2.PreparationActionMinutes, result.TimeDeltaMinutes);
             Assert.Greater(night.V2.ElapsedMinutes, 0);
@@ -619,6 +625,8 @@ namespace NotANap.Core.Tests
             var run = RunState.Create(Temperament.Soft);
             var night = Night(run, config);
 
+            HomeMovementResolver.MoveTo(run, night, HomeLocation.Kitchen,
+                config, new SequenceRandomSource(0));
             V2ActionResolver.Apply(run, night, V2ActionId.PrepareWater,
                 config, new SequenceRandomSource(0));
             Assert.IsTrue(night.V2.Feeding.WaterReady);
@@ -640,12 +648,52 @@ namespace NotANap.Core.Tests
             var run = RunState.Create(Temperament.Soft);
             var night = Night(run, config);
 
+            HomeMovementResolver.MoveTo(run, night, HomeLocation.Bathroom,
+                config, new SequenceRandomSource(0));
+            HomeMovementResolver.MoveTo(run, night, HomeLocation.Nursery,
+                config, new SequenceRandomSource(0));
             V2ActionResolver.Apply(run, night, V2ActionId.CheckBodyTemperature,
                 config, new SequenceRandomSource(0));
 
             Assert.IsTrue(night.V2.Environment.IsBabyTemperatureChecked);
             Assert.IsFalse(night.V2.Environment.IsTemperatureChecked);
             Assert.AreEqual(36.7, night.V2.Environment.BabyTemperatureCelsius, 0.001);
+        }
+
+        [Test]
+        public void HomeMovementTracksCaregiverAndBabyLocationsDeterministically()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+
+            var alone = HomeMovementResolver.MoveTo(run, night, HomeLocation.Kitchen,
+                config, new SequenceRandomSource(0));
+            Assert.AreEqual(HomeLocation.Kitchen, night.V2.CaregiverLocation);
+            Assert.IsFalse(alone.BabyAccompanied);
+            Assert.AreEqual(2, alone.TimeDeltaMinutes);
+
+            night.Baby.Held = true;
+            var together = HomeMovementResolver.MoveTo(run, night, HomeLocation.Bathroom,
+                config, new SequenceRandomSource(0));
+            Assert.IsTrue(together.BabyAccompanied);
+            Assert.IsTrue(together.RetrievedBathThermometer);
+            Assert.AreEqual(3, together.TimeDeltaMinutes);
+        }
+
+        [Test]
+        public void RoomSpecificActionsAreRejectedByCoreOutsideRequiredRoom()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+
+            var blocked = V2ActionResolver.Apply(run, night, V2ActionId.PrepareWater,
+                config, new SequenceRandomSource(0));
+
+            Assert.IsFalse(blocked.Accepted);
+            Assert.AreEqual(V2ActionBlockReason.WrongLocation, blocked.BlockReason);
+            Assert.AreEqual(0, blocked.TimeDeltaMinutes);
         }
 
         [Test]

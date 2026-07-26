@@ -35,6 +35,7 @@ namespace NotANap.Presentation.Tests
         {
             var flow = StartV2();
             flow.Session.Night.V2.Feeding.BottleSanitized = false;
+            flow.MoveToHomeLocation(HomeLocation.Kitchen);
 
             Assert.IsTrue(flow.BuildV2Play().Actions.Any(a =>
                 a.Action == V2ActionId.SterilizeBottle && a.Enabled));
@@ -51,12 +52,31 @@ namespace NotANap.Presentation.Tests
             Assert.IsTrue(presenter.InputLocked);
             Assert.AreEqual("준비해 둔 젖병이 없다", presenter.PendingOverlay.Title);
             presenter.DismissOverlay();
+            presenter.MoveToHomeLocation(HomeLocation.Kitchen);
             Assert.IsTrue(presenter.BuildV2Play().Actions.Any(a =>
                 a.Action == V2ActionId.SterilizeBottle && a.Enabled));
 
             presenter.PerformV2Action(V2ActionId.SterilizeBottle);
             Assert.IsTrue(presenter.Night.V2.Feeding.BottleSanitized);
             Assert.IsFalse(presenter.BuildV2Play().Actions.Any(a => a.Action == V2ActionId.SterilizeBottle));
+        }
+
+        [Test]
+        public void MapMovementUpdatesLocationsAndRoomSpecificButtons()
+        {
+            var flow = StartV2();
+            Assert.AreEqual(HomeLocation.Nursery, flow.BuildV2Play().CaregiverLocation);
+            Assert.IsFalse(flow.BuildV2Play().Actions.Single(a =>
+                a.Action == V2ActionId.PrepareWater).Enabled);
+
+            var moved = flow.MoveToHomeLocation(HomeLocation.Kitchen);
+            var vm = flow.BuildV2Play();
+
+            Assert.IsTrue(moved.Accepted);
+            Assert.AreEqual(HomeLocation.Kitchen, vm.CaregiverLocation);
+            Assert.AreEqual(HomeLocation.Nursery, vm.BabyLocation);
+            Assert.IsTrue(vm.Actions.Single(a => a.Action == V2ActionId.PrepareWater).Enabled);
+            Assert.IsFalse(vm.Actions.Single(a => a.Action == V2ActionId.Hold).Enabled);
         }
 
         [Test]
