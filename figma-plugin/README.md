@@ -2,6 +2,8 @@
 
 `MOBILE_QA_STORYBOARD_V6`의 화면 디자인은 유지하고, 현재 Unity 코드가 더 최신인 개발 계약만 동기화하는 Figma 개발 플러그인입니다.
 
+코멘트 후속 액션의 단일 기준은 [`docs/figma-review-actions.md`](../docs/figma-review-actions.md)입니다.
+
 ## 실행
 
 1. Figma Desktop에서 V6 보드가 있는 파일을 엽니다.
@@ -11,18 +13,21 @@
 
 ## 동작
 
-- 원본 V6 보드를 직접 수정하지 않고 같은 페이지 오른쪽에 복제합니다.
-- 복제 이름은 `MOBILE_QA_STORYBOARD_V6_CODE_SYNC_*`입니다.
+- 원본 V6 보드는 보존합니다. 싱크 보드가 없을 때만 같은 페이지 오른쪽에 최초 1회 복제합니다.
+- 이후 실행은 가장 최신 `MOBILE_QA_STORYBOARD_V6_CODE_SYNC_*` 보드를 그 자리에서 업데이트하며 새 보드를 만들지 않습니다.
+- 최신 싱크 보드의 `REVIEW ACTIONS · 다음 구현` 영역에 전체 댓글 처리표 링크와 P0/P1 액션을 갱신합니다.
 - `Presenter.TryExecuteV2Action`을 실제 진입점인 `GameFlowController.ActV2`로 교체합니다.
 - `M_ITEM_SCROLL`의 가상 `SelectItem` 계약을 실제 `ToggleV2Item(ItemId)` 계약으로 교체합니다.
 - 현재 코드에 연결된 아기 상태 비주얼 계약을 `IMPLEMENTED`로 갱신합니다.
 - `M_TIMEOUT`, `M_SLEEP_FAST_FORWARD`, `M_UNLOCK_CANDIDATES`를 현재 구현 상태로 갱신합니다.
 - 백색소음기·베이비 모니터의 실제 PLAY 행동 계약을 추가합니다.
+- 맨손 안기와 아기띠 착용/벗기 행동, 계절별 실제 방 온도(여름 23°C·겨울 26°C) 계약을 동기화합니다.
 - 조기 눕히기 거부, 배고픔 단계 안내, 온·습도 숫자 표시, 다음 밤 진행 계약을 동기화합니다.
 - `M_DIAPER_CHECK_WET/CLEAN`을 실제 젖음·깨끗함 결과 및 무해한 우선 검사 계약에 연결합니다.
 - 체력 0의 `ParentExhausted` 안내와 `CatchBreath` 회복 선택을 계약에 추가합니다.
 - 댓글 반영안: 맨손 안기/아기띠/수유 중 안기 분리, 침대 토닥임 후 눕히기 금지, 수유 3단계 축소를 `REVIEW REQUIRED`로 표시합니다.
 - 수면 포지셔너를 암막 커튼으로 교체하고, 루팅 반사·체온 확인·신호 중심 육아일지 계약을 추가합니다.
+- 수면 구간을 `같이 쉬기 / 환경 점검 / 다음 수유 준비` 선택으로 확장하는 계약과 아빠 시점의 관찰 문구를 추가합니다.
 - 수유 준비는 `BottleSanitized=true`가 기본이며, 둘째 밤의 `BottleFoundUnsanitized` 돌발에서만 젖병 소독을 `EXCEPTION ONLY`로 노출합니다.
 - 아이템 구성 및 PLAY/SETUP 화면 구조처럼 제품 결정이 필요한 항목은 화면을 바꾸지 않고 `REVIEW REQUIRED` 메모를 추가합니다.
 

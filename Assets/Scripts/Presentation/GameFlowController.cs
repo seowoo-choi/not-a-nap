@@ -113,10 +113,14 @@ namespace NotANap.Presentation
         public V2PlayViewModel BuildV2Play() => Session.BuildV2Play();
 
         public void FastForwardV2Sleep()
+            => ChooseV2SleepInterval(SleepIntervalChoice.RestTogether);
+
+        public bool ChooseV2SleepInterval(SleepIntervalChoice choice)
         {
-            if (Screen != ScreenState.Play) return;
-            Session.FastForwardV2Sleep();
+            if (Screen != ScreenState.Play) return false;
+            if (!Session.ChooseV2SleepInterval(choice)) return false;
             if (Session.PendingOverlay == null && Session.Night.Over) GoTo(ScreenState.Diary);
+            return true;
         }
 
         /// <summary>오버레이를 닫는다. 밤이 끝났으면 DIARY로 전환(한 번만).</summary>

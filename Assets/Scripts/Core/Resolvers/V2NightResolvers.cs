@@ -30,7 +30,13 @@ namespace NotANap.Core
                     FeedingNeedModifier = source.FeedingNeedModifier
                 }
             };
-            night.V2.Environment.TemperatureCelsius = 21;
+            // 세 밤의 계절 환경은 NightId로 결정해 저장/재실행 시 동일하게 재현한다.
+            night.V2.Environment.Season = run.CurrentNightId == NightId.FirstNight
+                ? RoomSeason.Summer : RoomSeason.Winter;
+            night.V2.Environment.TemperatureCelsius =
+                night.V2.Environment.Season == RoomSeason.Summer
+                    ? config.V2.SummerScenarioTemperature
+                    : config.V2.WinterScenarioTemperature;
             night.V2.Environment.HumidityPercent = 50;
             night.V2.Environment.BabyTemperatureCelsius = 36.7;
             // 가정에서 젖병은 평소 세척·소독해 둔 상태가 기본이다.
@@ -211,7 +217,10 @@ namespace NotANap.Core
             if (cause == WakeCause.Hunger)
                 night.Baby.Hunger = Math.Max(night.Baby.Hunger, config.V2.HungerLateThreshold);
             else if (cause == WakeCause.Temperature)
-                night.V2.Environment.TemperatureCelsius = config.V2.RecommendedTemperatureMax + 5;
+                night.V2.Environment.TemperatureCelsius =
+                    night.V2.Environment.Season == RoomSeason.Summer
+                        ? config.V2.SummerScenarioTemperature
+                        : config.V2.WinterScenarioTemperature;
             else if (cause == WakeCause.Humidity)
                 night.V2.Environment.HumidityPercent = config.V2.RecommendedHumidityMin - 10;
             night.AddEvent(GameEventId.BabyFullyWoke);
@@ -236,6 +245,45 @@ namespace NotANap.Core
             state.MinutesInStage = 0;
             state.IsLimbRelaxed = stage == V2SleepStage.NremDeepSleep;
             state.IsBreathingRegular = stage == V2SleepStage.NremDeepSleep;
+        }
+    }
+
+    public static class V2SleepIntervalResolver
+    {
+        public static bool Apply(RunState run, NightState night, SleepIntervalChoice choice,
+            GameBalanceConfig config, IRandomSource rng)
+        {
+            WakeScheduler.RequireV2(night);
+            if (night.Over) return false;
+            var stage = night.V2.SleepCycle.Stage;
+            if (stage != V2SleepStage.RemActiveSleep && stage != V2SleepStage.NremDeepSleep)
+                return false;
+
+            switch (choice)
+            {
+                case SleepIntervalChoice.RestTogether:
+                    night.Parent.Stamina = CoreMath.Clamp(night.Parent.Stamina +
+                        config.V2.SleepRestStaminaRecovery, 0, 100);
+                    break;
+                case SleepIntervalChoice.CheckEnvironment:
+                    night.V2.Environment.IsTemperatureChecked = true;
+                    night.V2.Environment.IsHumidityChecked = true;
+                    break;
+                case SleepIntervalChoice.PrepareNextFeed:
+                    night.Parent.Stamina = CoreMath.Clamp(night.Parent.Stamina -
+                        config.V2.SleepPreparationStaminaCost, 0, 100);
+                    night.V2.Feeding.WaterReady = true;
+                    night.V2.Feeding.FormulaMeasured = true;
+                    night.V2.Feeding.BottleMixed = true;
+                    break;
+            }
+
+            int target = night.V2.NextWake != null && !night.V2.NextWake.Triggered
+                ? night.V2.NextWake.AtElapsedMinute
+                : config.V2.NightDurationMinutes;
+            V2TimeResolver.Advance(run, night,
+                Math.Max(0, target - night.V2.ElapsedMinutes), config, rng);
+            return true;
         }
     }
 

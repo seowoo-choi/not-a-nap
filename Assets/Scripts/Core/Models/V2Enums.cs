@@ -12,6 +12,8 @@ namespace NotANap.Core
     public enum VisualGender { Unspecified, Feminine, Masculine, Neutral }
     public enum ProductCapability { AutoFormulaPrep, PreSanitizedBottle, TemperatureControl }
     public enum FeedingPreparationStep { SanitizeBottle, PrepareWater, MeasureFormula, MixFormula, CoolBottle, CheckTemperature }
+    public enum SleepIntervalChoice { RestTogether, CheckEnvironment, PrepareNextFeed }
+    public enum RoomSeason { Summer, Winter }
 
     public enum ObservationSignalId
     {
@@ -30,10 +32,13 @@ namespace NotANap.Core
         AdjustTemperature, AdjustHumidity, Hesitate,
         SterilizeBottle, PrepareWater, MeasureFormula, MixFormula, CoolBottle,
         CheckBottleTemperature, FeedPreparedBottle, HoldWhilePreparing,
-        ToggleNoise, CheckMonitor, CatchBreath
+        ToggleCarrier, ToggleNoise, CheckMonitor, CatchBreath
     }
 
-    public enum V2ActionBlockReason { None, BabyNotHeld, BabyNotAsleep, ItemUnavailable }
+    public enum V2ActionBlockReason
+    {
+        None, BabyNotHeld, BabyNotAsleep, ItemUnavailable, CarrierAlreadyWorn
+    }
 
     public static class CoreTraceIds
     {

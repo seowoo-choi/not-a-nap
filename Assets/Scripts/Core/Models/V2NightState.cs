@@ -65,6 +65,7 @@ namespace NotANap.Core
 
     public sealed class EnvironmentState
     {
+        public RoomSeason Season;
         public double TemperatureCelsius;
         public double HumidityPercent;
         public double BabyTemperatureCelsius;

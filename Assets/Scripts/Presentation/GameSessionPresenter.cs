@@ -151,16 +151,14 @@ namespace NotANap.Presentation
 
         /// <summary>자는 동안 다음 예약 각성 또는 06:00까지 Core 시간을 빠르게 진행한다.</summary>
         public void FastForwardV2Sleep()
+            => ChooseV2SleepInterval(SleepIntervalChoice.RestTogether);
+
+        public bool ChooseV2SleepInterval(SleepIntervalChoice choice)
         {
-            if (Night?.V2 == null || Night.Over) return;
-            var stage = Night.V2.SleepCycle.Stage;
-            if (stage != V2SleepStage.RemActiveSleep && stage != V2SleepStage.NremDeepSleep) return;
-            int target = Night.V2.NextWake != null && !Night.V2.NextWake.Triggered
-                ? Night.V2.NextWake.AtElapsedMinute
-                : _config.V2.NightDurationMinutes;
-            TurnResolver.AdvanceMinutes(Run, Night,
-                Math.Max(0, target - Night.V2.ElapsedMinutes), _config, _rng);
+            if (Night?.V2 == null || Night.Over) return false;
+            if (!V2SleepIntervalResolver.Apply(Run, Night, choice, _config, _rng)) return false;
             PendingOverlay = DrainOverlay();
+            return true;
         }
 
         /// <summary>이벤트 커서 이후 새 이벤트 중 오버레이 후보를 모아 한 개 오버레이로 만든다.</summary>
@@ -304,6 +302,8 @@ namespace NotANap.Presentation
                 HumidityChecked = v2.Environment.IsHumidityChecked,
                 BabyTemperatureChecked = v2.Environment.IsBabyTemperatureChecked,
                 FeedingReady = v2.Feeding.IsReadyToFeed,
+                HasCarrier = Night.HasItem(ItemId.Carrier),
+                CarrierOn = Night.Wearing.Carrier,
                 HasNoise = Night.HasItem(ItemId.Noise) && !Night.NoiseDisabled,
                 NoiseOn = Night.Wearing.Noise,
                 HasMonitor = Night.HasItem(ItemId.Monitor),
@@ -320,7 +320,9 @@ namespace NotANap.Presentation
                 vm.Actions.Add(new V2ActionButtonViewModel
                 {
                     Action = action,
-                    Label = PresentationCopyMapper.V2ActionLabel(action),
+                    Label = action == V2ActionId.ToggleCarrier
+                        ? (Night.Wearing.Carrier ? "아기띠 벗기" : "아기띠 착용")
+                        : PresentationCopyMapper.V2ActionLabel(action),
                     Enabled = !Night.Over && IsV2ActionAvailable(action)
                 });
             }
@@ -330,6 +332,9 @@ namespace NotANap.Presentation
         private bool IsV2ActionAvailable(V2ActionId action)
         {
             if (action == V2ActionId.Pacifier) return Night.HasItem(ItemId.Pacifier);
+            if (action == V2ActionId.ToggleCarrier)
+                return Night.HasItem(ItemId.Carrier) &&
+                    !(Night.CarrierDisabledTurns > 0 && !Night.Wearing.Carrier);
             if (action == V2ActionId.ToggleNoise) return Night.HasItem(ItemId.Noise) && !Night.NoiseDisabled;
             if (action == V2ActionId.CheckMonitor) return Night.HasItem(ItemId.Monitor);
             if (action == V2ActionId.Laydown)
@@ -337,6 +342,7 @@ namespace NotANap.Presentation
                     (Night.V2.SleepCycle.Stage == V2SleepStage.RemActiveSleep ||
                      Night.V2.SleepCycle.Stage == V2SleepStage.NremDeepSleep);
             if (action == V2ActionId.CheckBodyTemperature) return Night.V2.CryIntensity >= 45;
+            if (action == V2ActionId.Hold) return !Night.Wearing.Carrier;
             return true;
         }
 
