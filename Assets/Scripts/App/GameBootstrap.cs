@@ -201,6 +201,19 @@ namespace NotANap.App
         {
             EnsureStyles();
             var oldMatrix = GUI.matrix;
+            // 9:16보다 긴 모바일 화면에서도 Unity 기본색 막대가 드러나지 않게
+            // 실제 화면 전체를 먼저 배경으로 채운 뒤 기준 해상도 UI를 얹는다.
+            Color oldColor = GUI.color;
+            GUI.color = Color.white;
+            if (_room != null)
+                GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), _room, ScaleMode.ScaleAndCrop);
+            else
+            {
+                GUI.color = new Color(0.01f, 0.025f, 0.05f);
+                GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height),
+                    Texture2D.whiteTexture, ScaleMode.StretchToFill);
+            }
+            GUI.color = oldColor;
             _portrait = Screen.height > Screen.width * 1.15f;
             ApplyResponsiveTypography();
             float referenceWidth = _portrait ? PortraitWidth : LandscapeWidth;
@@ -324,9 +337,9 @@ namespace NotANap.App
             DrawItemArt(card.Id, new Rect(rect.x + 18, rect.y + 24, 104, 104));
             GUI.Label(new Rect(rect.x + 146, rect.y + 20, rect.width - 166, 52), card.Name, _headline);
             GUI.Label(new Rect(rect.x + 146, rect.y + 72, rect.width - 166, 122), card.Desc, _body);
-            Fill(new Rect(rect.x + 18, rect.y + rect.height - 66, rect.width - 36, 1),
+            Fill(new Rect(rect.x + 18, rect.y + rect.height - 88, rect.width - 36, 1),
                 new Color(0.45f, 0.5f, 0.56f, 0.3f));
-            GUI.Label(new Rect(rect.x + 20, rect.y + rect.height - 58, rect.width - 40, 52), $"주의  {card.Side}", _caption);
+            GUI.Label(new Rect(rect.x + 20, rect.y + rect.height - 80, rect.width - 40, 76), $"주의  {card.Side}", _caption);
             var oldEnabled = GUI.enabled;
             GUI.enabled = !card.Disabled;
             if (GUI.Button(rect, GUIContent.none, GUIStyle.none)) _flow.ToggleV2Item(card.Id);
