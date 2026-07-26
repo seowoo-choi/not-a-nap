@@ -724,6 +724,7 @@ namespace NotANap.App
         {
             Panel(new Rect(0, 1180, PortraitWidth, 740), 0.74f);
             GUI.Label(new Rect(48, 1200, 700, 52),
+                vm.ParentStamina <= 0 ? "먼저 숨을 고르세요" :
                 IsSleeping(vm) ? "아기가 자는 동안" : "어떻게 할까요?", _headline);
             // 세로 화면에도 가로와 같은 수면 중 시간 보내기 입력을 제공한다(Figma M_SLEEP_FAST_FORWARD).
             if (IsSleeping(vm))
@@ -735,7 +736,7 @@ namespace NotANap.App
             DrawTab(new Rect(388, tabY, 305, 70), "돌보기", ActionGroup.Care);
             DrawTab(new Rect(727, tabY, 305, 70), "수유 준비", ActionGroup.Feed);
 
-            var actions = ActionsFor(_actionGroup);
+            var actions = ActionsFor(_actionGroup, vm.ParentStamina <= 0);
             for (int i = 0; i < actions.Length; i++)
             {
                 var action = vm.Actions.Find(a => a.Action == actions[i]);
@@ -795,13 +796,14 @@ namespace NotANap.App
         {
             var panel = new Rect(1430, 132, 442, 858);
             Panel(panel, 0.72f);
-            GUI.Label(new Rect(1460, 162, 380, 36), "어떻게 할까요?", _headline);
+            GUI.Label(new Rect(1460, 162, 380, 36),
+                vm.ParentStamina <= 0 ? "먼저 숨을 고르세요" : "어떻게 할까요?", _headline);
 
             DrawTab(new Rect(1460, 220, 120, 48), "살펴보기", ActionGroup.Diagnose);
             DrawTab(new Rect(1589, 220, 120, 48), "돌보기", ActionGroup.Care);
             DrawTab(new Rect(1718, 220, 120, 48), "수유 준비", ActionGroup.Feed);
 
-            var actions = ActionsFor(_actionGroup);
+            var actions = ActionsFor(_actionGroup, vm.ParentStamina <= 0);
             float y = 292;
             for (int i = 0; i < actions.Length; i++)
             {
@@ -865,8 +867,11 @@ namespace NotANap.App
             if (GUI.Button(rect, label, _actionGroup == group ? selected : normal)) _actionGroup = group;
         }
 
-        private static V2ActionId[] ActionsFor(ActionGroup group)
+        private static V2ActionId[] ActionsFor(ActionGroup group, bool caregiverExhausted)
         {
+            // 탈진 중에는 현재 탭과 무관하게 유일한 회복 행동을 바로 보여준다.
+            if (caregiverExhausted)
+                return new[] { V2ActionId.CatchBreath };
             switch (group)
             {
                 case ActionGroup.Diagnose:

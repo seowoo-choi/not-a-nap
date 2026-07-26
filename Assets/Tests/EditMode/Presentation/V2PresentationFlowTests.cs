@@ -219,6 +219,19 @@ namespace NotANap.Presentation.Tests
         }
 
         [Test]
+        public void ExhaustedPresentationEnablesOnlyCatchBreath()
+        {
+            var flow = StartV2();
+            flow.Session.Night.Parent.Stamina = 0;
+
+            var actions = flow.BuildV2Play().Actions;
+
+            Assert.IsTrue(actions.Single(a => a.Action == V2ActionId.CatchBreath).Enabled);
+            Assert.IsFalse(actions.Where(a => a.Action != V2ActionId.CatchBreath)
+                .Any(a => a.Enabled));
+        }
+
+        [Test]
         public void FirstNightDiaryAdvancesSameRunToSecondNightSetup()
         {
             var flow = StartV2();
