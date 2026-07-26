@@ -66,6 +66,8 @@ namespace NotANap.Core
         public int WakeDelayMaxMinutes = 120;
         public double RecommendedTemperatureMin = 20;
         public double RecommendedTemperatureMax = 22;
+        public double SummerScenarioTemperature = 23;
+        public double WinterScenarioTemperature = 26;
         public double RecommendedHumidityMin = 40;
         public double RecommendedHumidityMax = 60;
         public double TemperatureAdjustment;

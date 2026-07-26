@@ -140,6 +140,14 @@ namespace NotANap.Core
                         return Reject(outcome, V2ActionBlockReason.ItemUnavailable);
                     night.Wearing.Noise = !night.Wearing.Noise;
                     break;
+                case V2ActionId.ToggleCarrier:
+                    if (!night.HasItem(ItemId.Carrier) ||
+                        (night.CarrierDisabledTurns > 0 && !night.Wearing.Carrier))
+                        return Reject(outcome, V2ActionBlockReason.ItemUnavailable);
+                    night.Wearing.Carrier = !night.Wearing.Carrier;
+                    // 벗긴 직후에는 아기가 맨손 품에 남아 있어 Held와 Carrier가 독립된다.
+                    night.Baby.Held = true;
+                    break;
                 case V2ActionId.CheckMonitor:
                     if (!night.HasItem(ItemId.Monitor))
                         return Reject(outcome, V2ActionBlockReason.ItemUnavailable);
@@ -150,6 +158,8 @@ namespace NotANap.Core
                     night.V2.CryIntensity = CoreMath.Clamp(night.V2.CryIntensity + 3, 0, 100);
                     break;
                 case V2ActionId.Hold:
+                    if (night.Wearing.Carrier)
+                        return Reject(outcome, V2ActionBlockReason.CarrierAlreadyWorn);
                     Consume(outcome, config.V2.DefaultActionMinutes, -8);
                     night.Baby.Held = true;
                     night.Baby.Calm = CoreMath.Clamp(night.Baby.Calm +
@@ -296,6 +306,8 @@ namespace NotANap.Core
             GameBalanceConfig config, IRandomSource rng)
         {
             Consume(outcome, config.V2.DefaultActionMinutes, -4);
+            bool bareHands = night.Baby.Held && !night.Wearing.Carrier && !night.Wearing.Bouncer;
+            night.Wearing.Carrier = false;
             double chance = ActionResolver.CalculateLaydownSuccessProbability(run, night, config);
             bool deepObserved = night.V2.SleepCycle.Stage == V2SleepStage.NremDeepSleep &&
                                 night.V2.SleepCycle.IsLimbRelaxed && night.V2.SleepCycle.DeepSleepObserved;
@@ -305,6 +317,7 @@ namespace NotANap.Core
             if (rng.NextDouble() < chance)
             {
                 night.Baby.Held = false;
+                if (bareHands) night.Stats.BareHandsLaydownSucceeded = true;
                 outcome.EventIds.Add(GameEventId.LaydownSucceeded);
                 if (deepObserved)
                     AddTrace(run, night, outcome, CoreTraceIds.DeepSleepObservedBeforeLaydown, ActionId.Laydown);

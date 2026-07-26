@@ -78,6 +78,50 @@ namespace NotANap.Core.Tests
         }
 
         [Test]
+        public void CarrierAndBareHandsHoldAreIndependentV2States()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+
+            var wear = V2ActionResolver.Apply(run, night, V2ActionId.ToggleCarrier,
+                config, new SequenceRandomSource(0));
+            Assert.IsTrue(wear.Accepted);
+            Assert.IsTrue(night.Wearing.Carrier);
+            Assert.IsTrue(night.Baby.Held);
+
+            var blockedBareHold = V2ActionResolver.Apply(run, night, V2ActionId.Hold,
+                config, new SequenceRandomSource(0));
+            Assert.IsFalse(blockedBareHold.Accepted);
+            Assert.AreEqual(V2ActionBlockReason.CarrierAlreadyWorn, blockedBareHold.BlockReason);
+
+            V2ActionResolver.Apply(run, night, V2ActionId.ToggleCarrier,
+                config, new SequenceRandomSource(0));
+            Assert.IsFalse(night.Wearing.Carrier);
+            Assert.IsTrue(night.Baby.Held, "아기띠를 벗긴 직후에는 맨손 품에 남아야 한다.");
+        }
+
+        [Test]
+        public void SeasonalRoomTemperatureIsDeterministicByNight()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+
+            var first = Night(run, config);
+            Assert.AreEqual(RoomSeason.Summer, first.V2.Environment.Season);
+            Assert.AreEqual(23, first.V2.Environment.TemperatureCelsius);
+
+            run.CurrentNightId = NightId.SecondNight;
+            var second = Night(run, config);
+            Assert.AreEqual(RoomSeason.Winter, second.V2.Environment.Season);
+            Assert.AreEqual(26, second.V2.Environment.TemperatureCelsius);
+
+            V2TimeResolver.TriggerWake(second, WakeCause.Temperature, config);
+            Assert.AreEqual(26, second.V2.Environment.TemperatureCelsius,
+                "온도 원인 각성에서도 실제 계절 시나리오 수치를 유지해야 한다.");
+        }
+
+        [Test]
         public void DifferentSeedsCanScheduleDifferentWake()
         {
             var config = GameBalanceConfig.Default();

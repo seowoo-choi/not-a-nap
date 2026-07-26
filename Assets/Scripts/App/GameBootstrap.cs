@@ -610,7 +610,7 @@ namespace NotANap.App
                 case ActionGroup.Diagnose:
                     return new[] { V2ActionId.CheckDiaper, V2ActionId.CheckHungerSignals, V2ActionId.CheckEnvironment, V2ActionId.CheckBodyTemperature, V2ActionId.CheckMonitor, V2ActionId.CheckLimbRelaxation, V2ActionId.Hesitate, V2ActionId.CatchBreath };
                 case ActionGroup.Care:
-                    return new[] { V2ActionId.Hold, V2ActionId.Pat, V2ActionId.Pacifier, V2ActionId.ToggleNoise, V2ActionId.Laydown, V2ActionId.ChangeDiaper, V2ActionId.AdjustTemperature, V2ActionId.AdjustHumidity };
+                    return new[] { V2ActionId.Hold, V2ActionId.ToggleCarrier, V2ActionId.Pat, V2ActionId.Pacifier, V2ActionId.ToggleNoise, V2ActionId.Laydown, V2ActionId.ChangeDiaper, V2ActionId.AdjustTemperature, V2ActionId.AdjustHumidity };
                 default:
                     return new[] { V2ActionId.SterilizeBottle, V2ActionId.PrepareWater, V2ActionId.CoolBottle, V2ActionId.FeedPreparedBottle };
             }
@@ -763,6 +763,8 @@ namespace NotANap.App
                 return "아직 잠들지 않았어요. 먼저 충분히 달래주세요.";
             if (outcome.BlockReason == V2ActionBlockReason.ItemUnavailable)
                 return "이 물건을 가져오지 않아 사용할 수 없어요.";
+            if (outcome.BlockReason == V2ActionBlockReason.CarrierAlreadyWorn)
+                return "아기띠를 먼저 벗으면 맨손으로 안을 수 있어요.";
             if (outcome.DiaperCheckResult == DiaperCheckResult.Wet)
                 return "기저귀가 젖어 있어요. 기저귀를 갈아주세요.";
             if (outcome.DiaperCheckResult == DiaperCheckResult.Clean)

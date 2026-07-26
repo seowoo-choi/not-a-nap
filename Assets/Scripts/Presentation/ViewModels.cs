@@ -185,6 +185,8 @@ namespace NotANap.Presentation
         public bool HumidityChecked;
         public bool BabyTemperatureChecked;
         public bool FeedingReady;
+        public bool HasCarrier;
+        public bool CarrierOn;
         public bool HasNoise;
         public bool NoiseOn;
         public bool HasMonitor;

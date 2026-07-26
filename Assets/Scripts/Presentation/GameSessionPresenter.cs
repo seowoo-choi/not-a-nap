@@ -302,6 +302,8 @@ namespace NotANap.Presentation
                 HumidityChecked = v2.Environment.IsHumidityChecked,
                 BabyTemperatureChecked = v2.Environment.IsBabyTemperatureChecked,
                 FeedingReady = v2.Feeding.IsReadyToFeed,
+                HasCarrier = Night.HasItem(ItemId.Carrier),
+                CarrierOn = Night.Wearing.Carrier,
                 HasNoise = Night.HasItem(ItemId.Noise) && !Night.NoiseDisabled,
                 NoiseOn = Night.Wearing.Noise,
                 HasMonitor = Night.HasItem(ItemId.Monitor),
@@ -318,7 +320,9 @@ namespace NotANap.Presentation
                 vm.Actions.Add(new V2ActionButtonViewModel
                 {
                     Action = action,
-                    Label = PresentationCopyMapper.V2ActionLabel(action),
+                    Label = action == V2ActionId.ToggleCarrier
+                        ? (Night.Wearing.Carrier ? "아기띠 벗기" : "아기띠 착용")
+                        : PresentationCopyMapper.V2ActionLabel(action),
                     Enabled = !Night.Over && IsV2ActionAvailable(action)
                 });
             }
@@ -328,6 +332,9 @@ namespace NotANap.Presentation
         private bool IsV2ActionAvailable(V2ActionId action)
         {
             if (action == V2ActionId.Pacifier) return Night.HasItem(ItemId.Pacifier);
+            if (action == V2ActionId.ToggleCarrier)
+                return Night.HasItem(ItemId.Carrier) &&
+                    !(Night.CarrierDisabledTurns > 0 && !Night.Wearing.Carrier);
             if (action == V2ActionId.ToggleNoise) return Night.HasItem(ItemId.Noise) && !Night.NoiseDisabled;
             if (action == V2ActionId.CheckMonitor) return Night.HasItem(ItemId.Monitor);
             if (action == V2ActionId.Laydown)
@@ -335,6 +342,7 @@ namespace NotANap.Presentation
                     (Night.V2.SleepCycle.Stage == V2SleepStage.RemActiveSleep ||
                      Night.V2.SleepCycle.Stage == V2SleepStage.NremDeepSleep);
             if (action == V2ActionId.CheckBodyTemperature) return Night.V2.CryIntensity >= 45;
+            if (action == V2ActionId.Hold) return !Night.Wearing.Carrier;
             return true;
         }
 

@@ -202,14 +202,12 @@
       panel.appendChild(body);
     }
     await setText(body,
-      "P0 · #13  맨손 안기와 아기띠 착용/해제 행동 분리\n" +
-      "P0 · #15  여름 23°C / 겨울 26°C 계절 시나리오\n" +
       "P1 · #18  코드의 수면 포지셔너 명칭을 암막 커튼으로 교체\n" +
       "P1 · #20-2  원인별 관찰 신호를 결정론적 시드로 변주\n" +
       "P1 · #20-3  관찰 → 근거 → 권장 행동을 단계적으로 안내\n" +
       "P2 · #20-4  30초 광고 → 옆잠베개 활성화·깊은 수면 +5 제안 검토\n" +
       "             안전 메시지·심사 규정·WebGL 광고 SDK·꾸미기 대안 비교 후 결정\n\n" +
-      "완료 · #4 #5 #6 #8–#12 #14 #16 #17 #19 #20-1 #21 #23\n" +
+      "완료 · #4 #5 #6 #8–#17 #19 #20-1 #21 #23\n" +
       "유지 · #7 #22 #24\n\n" +
       "전체 댓글별 처리표\n" +
       "https://github.com/seowoo-choi/not-a-nap/blob/codex/fair-sleep-guidance/docs/figma-review-actions.md\n\n" +
@@ -266,9 +264,9 @@
     "LAYDOWN")) changes += 1;
 
   const hold = contractFor("M_TAB_CARE_PERSIST");
-  if (await setBadge(hold, "REVIEW REQUIRED", { r: 1, g: 0.9, b: 0.68 })) changes += 1;
+  if (await setBadge(hold, "IMPLEMENTED", green)) changes += 1;
   if (await appendReviewNote(hold,
-    "품에 안기=맨손 안기(Baby.Held=true). 아기띠 선택 시 별도 착용/해제 행동. 수유 중 안기는 HoldContext.Feeding으로 분리.",
+    "IMPLEMENTED: 품에 안기=맨손 안기. 아기띠 선택 시 ToggleCarrier 착용/벗기 행동 노출. 벗긴 직후 Held=true / Wearing.Carrier=false로 독립 상태 유지.",
     "HOLD")) changes += 1;
 
   const awakeCopy = contractFor("M_PLAY_AWAKE_CALM");
@@ -299,7 +297,7 @@
 
   const environment = contractFor("M_ENVIRONMENT_CHECK");
   if (await appendReviewNote(environment,
-    "방 온도·습도는 실제 숫자로 표시해 사용자가 판단. 아기 체온 확인은 별도 Diagnose 행동·상태로 분리 필요.",
+    "IMPLEMENTED: 방 온도·습도를 실제 숫자로 표시. 첫째 밤 여름 23°C, 둘째·백일째 밤 겨울 26°C. 아기 체온 확인은 별도 Diagnose 행동.",
     "BODY_TEMPERATURE")) changes += 1;
 
   const stamina = contractFor("M_PLAY_AWAKE_CALM");

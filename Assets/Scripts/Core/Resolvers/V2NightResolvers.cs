@@ -30,7 +30,13 @@ namespace NotANap.Core
                     FeedingNeedModifier = source.FeedingNeedModifier
                 }
             };
-            night.V2.Environment.TemperatureCelsius = 21;
+            // 세 밤의 계절 환경은 NightId로 결정해 저장/재실행 시 동일하게 재현한다.
+            night.V2.Environment.Season = run.CurrentNightId == NightId.FirstNight
+                ? RoomSeason.Summer : RoomSeason.Winter;
+            night.V2.Environment.TemperatureCelsius =
+                night.V2.Environment.Season == RoomSeason.Summer
+                    ? config.V2.SummerScenarioTemperature
+                    : config.V2.WinterScenarioTemperature;
             night.V2.Environment.HumidityPercent = 50;
             night.V2.Environment.BabyTemperatureCelsius = 36.7;
             // 가정에서 젖병은 평소 세척·소독해 둔 상태가 기본이다.
@@ -211,7 +217,10 @@ namespace NotANap.Core
             if (cause == WakeCause.Hunger)
                 night.Baby.Hunger = Math.Max(night.Baby.Hunger, config.V2.HungerLateThreshold);
             else if (cause == WakeCause.Temperature)
-                night.V2.Environment.TemperatureCelsius = config.V2.RecommendedTemperatureMax + 5;
+                night.V2.Environment.TemperatureCelsius =
+                    night.V2.Environment.Season == RoomSeason.Summer
+                        ? config.V2.SummerScenarioTemperature
+                        : config.V2.WinterScenarioTemperature;
             else if (cause == WakeCause.Humidity)
                 night.V2.Environment.HumidityPercent = config.V2.RecommendedHumidityMin - 10;
             night.AddEvent(GameEventId.BabyFullyWoke);
