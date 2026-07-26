@@ -15,7 +15,7 @@
 | 새 각성 식별 | `DiagnosisState.EncounterSequence` | 값이 바뀐 새 각성에서만 `Diagnose`로 최초 1회 초기화 |
 | 탭 클릭 | `GameBootstrap.DrawCommandTab()` | 같은 각성 안에서는 사용자가 선택한 탭을 계속 유지 |
 | 아기 비주얼 | `GameBootstrap.DrawAnimatedBaby()` + `DrawBabyActionAnimation()` | ViewModel 상태와 직전 action outcome만 시각화하며 화면에서 판정하지 않음 |
-| 방 이동 | `GameBootstrap.DrawRoomRibbon()` | 미니맵 없이 `아기방 / 주방 / 욕실` 알약 버튼으로 이동 |
+| 방 이동 | `GameBootstrap.DrawHomeJourneyMap()` | 세 방의 점선 동선과 아빠·아기 토큰으로 이동 과정 표시 |
 | 입력 잠금 | `GameSessionPresenter.InputLocked` | 결과 오버레이가 열렸을 때만 행동 버튼 잠금 |
 | 제한시간 | `GameBootstrap.UpdateDecisionTimer()` | `EncounterSequence`당 타이머 1회 시작, 만료 시 `Hesitate` 1회 전달 |
 
@@ -31,16 +31,16 @@
 ```text
 시계 / 새벽까지 남은 시간
 신호 리본과 아기 그림
-아기방 / 주방 / 욕실 이동
+우리 집 새벽 동선 지도
 연속 수면 / 보호자 체력 / 마음의 여유
 현재 행동 결과
 살펴보기 / 돌보기 / 수유 준비
 현재 탭의 행동 버튼
 ```
 
-Unity 기준 좌표는 신호 리본 `46,176,760,104`, 방 이동 `y=720`, 상태 카드 `y=772`,
+Unity 기준 좌표는 신호 리본 `46,176,760,104`, 생활 동선 지도 `816,176,232,332`, 상태 카드 `y=772`,
 피드백 `58,912,964,118`, 행동 덱 `y=1060`이다. Figma 플러그인은 이 좌표를
-`CODE_SYNC_UNITY_PRESENTATION_V8` 레이어로 재생성한다.
+`CODE_SYNC_UNITY_PRESENTATION_V9` 레이어로 재생성한다.
 
 ## 3. 탭 클릭 계약
 
@@ -180,10 +180,10 @@ REM/NREM은 정지 그림만 바꾸지 않고 최소 2프레임 또는 Smart Ani
 
 ## 8. 현재 코드와 Figma 동기화 범위
 
-- `CODE_SYNC_UNITY_PRESENTATION_V8`: 현재 세로 PLAY 좌표, 방 이동 알약, 상태·피드백·행동 덱.
-- `CODE_SYNC_SETUP_PRESENTATION_V8`: 2×2 아이템 진열과 독립 설명 패널.
-- `_ACTION_MOTION_SPEC_V8`: 기저귀 확인·갈기, 배고픔·이완 확인, 품에 안기,
-  토닥이기, 쪽쪽이, 눕히기, 수유의 0%/50%/100% QA 키프레임.
+- `CODE_SYNC_UNITY_PRESENTATION_V9`: 현재 세로 PLAY 좌표, 생활 동선 지도, 상태·피드백·행동 덱.
+- `CODE_SYNC_SETUP_PRESENTATION_V9`: 2×2 아이템 진열과 독립 설명 패널.
+- `_ACTION_MOTION_SPEC_V9`: 기저귀 확인·갈기, 배고픔·이완 확인, 품에 안기,
+  토닥이기, 쪽쪽이, 눕히기, 수유의 진입/접촉/정리 QA 키프레임과 방 이동 3단계.
 - 안전·월령 조건이 있는 후속 해금 아이템만 `NOT PLAYABLE`로 유지한다.
 
 Figma는 Core보다 앞서 성공·실패를 판정하지 않는다. 각 모션 프레임은 실행된 action outcome을

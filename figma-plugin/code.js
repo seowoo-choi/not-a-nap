@@ -1,4 +1,4 @@
-/* NOT A NAP — Unity V8 presentation contract synchronizer.
+/* NOT A NAP — Unity V9 journey and care-motion contract synchronizer.
  * MOBILE_QA_STORYBOARD_V6 is preserved. The latest editable CODE_SYNC board is updated.
  */
 
@@ -192,7 +192,7 @@
     return candidates.sort((a, b) => a.width * a.height - b.width * b.height)[0] || null;
   }
 
-  const SYNC_VERSION = "V8 · Unity 799d17b · 2026-07-26";
+  const SYNC_VERSION = "V9 · 생활 동선 + 돌봄 모션 · 2026-07-26";
   const THEME = {
     ink: { r: 0.012, g: 0.025, b: 0.045 },
     glass: { r: 0.025, g: 0.055, b: 0.09 },
@@ -238,12 +238,65 @@
     return frame;
   }
 
-  function addRoomPill(parent, name, x, y, active, babyHere) {
-    const room = addSyncFrame(parent, "ROOM_PILL__" + name, x, y, 270, 62,
-      THEME.glass, active ? 0.82 : 0.58, active ? THEME.gold : THEME.line, 31);
-    addSyncText(room, "ROOM_LABEL", name + (babyHere ? "  · 아기" : ""),
-      16, 10, 238, 27, true, active ? THEME.cream : THEME.muted, "CENTER");
-    return room;
+  function addMapDot(parent, x, y, size, color, opacity) {
+    const dot = figma.createEllipse();
+    dot.name = "ROUTE_DOT";
+    dot.resize(size, size);
+    dot.x = x - size / 2;
+    dot.y = y - size / 2;
+    dot.fills = [{ type: "SOLID", color, opacity }];
+    parent.appendChild(dot);
+  }
+
+  function addMapRoute(parent, from, to) {
+    for (let i = 1; i < 8; i++) {
+      const t = i / 8;
+      addMapDot(parent, from.x + (to.x - from.x) * t,
+        from.y + (to.y - from.y) * t, 5, THEME.gold, 0.46);
+    }
+  }
+
+  function addMapRoom(parent, name, center, active) {
+    const room = addSyncFrame(parent, "MAP_ROOM__" + name,
+      center.x - 47, center.y - 29, 94, 58, THEME.glass,
+      active ? 0.9 : 0.64, active ? THEME.gold : THEME.line, 12);
+    addSyncText(room, "ROOM_LABEL", name, 6, 9, 82, 17, true,
+      active ? THEME.cream : THEME.muted, "CENTER");
+  }
+
+  function addMapToken(parent, name, x, y, label, color) {
+    const token = figma.createEllipse();
+    token.name = "MAP_TOKEN__" + name;
+    token.resize(34, 34);
+    token.x = x - 17;
+    token.y = y - 17;
+    token.fills = [{ type: "SOLID", color }];
+    token.strokes = [{ type: "SOLID", color: THEME.cream }];
+    token.strokeWeight = 2;
+    parent.appendChild(token);
+    addSyncText(parent, "MAP_TOKEN_LABEL__" + name, label, x - 17, y - 15,
+      34, 16, true, THEME.cream, "CENTER");
+  }
+
+  function addHomeJourneyMap(parent) {
+    const map = addSyncFrame(parent, "HOME_JOURNEY_MAP_V9", 816, 176, 232, 332,
+      THEME.glass, 0.66, THEME.line, 0);
+    addSyncFrame(map, "MAP_ACCENT", 14, 14, 4, 304, THEME.gold, 0.8, null, 0);
+    addSyncText(map, "MAP_TITLE", "우리 집 새벽 동선", 28, 8, 190, 19,
+      true, { r: 0.98, g: 0.88, b: 0.7 }, "LEFT");
+    const nursery = { x: 116, y: 100 };
+    const kitchen = { x: 64, y: 252 };
+    const bathroom = { x: 172, y: 252 };
+    addMapRoute(map, nursery, kitchen);
+    addMapRoute(map, nursery, bathroom);
+    addMapRoute(map, kitchen, bathroom);
+    addMapRoom(map, "아기방", nursery, true);
+    addMapRoom(map, "주방", kitchen, false);
+    addMapRoom(map, "욕실", bathroom, false);
+    addMapToken(map, "CAREGIVER", nursery.x - 24, nursery.y - 27, "아", THEME.gold);
+    addMapToken(map, "BABY", nursery.x + 24, nursery.y - 27, "♥",
+      { r: 0.95, g: 0.65, b: 0.72 });
+    return map;
   }
 
   function addStatusCard(parent, name, value, x, color) {
@@ -301,13 +354,14 @@
 
     const staleLayers = screen.findAll(n =>
       n.name === "CODE_SYNC_HOME_MAP" ||
-      n.name === "CODE_SYNC_UNITY_PRESENTATION_V8");
+      n.name === "CODE_SYNC_UNITY_PRESENTATION_V8" ||
+      n.name === "CODE_SYNC_UNITY_PRESENTATION_V9");
     for (const stale of staleLayers) stale.remove();
 
     const sx = screen.width / 1080;
     const sy = screen.height / 1920;
     const overlay = figma.createFrame();
-    overlay.name = "CODE_SYNC_UNITY_PRESENTATION_V8";
+    overlay.name = "CODE_SYNC_UNITY_PRESENTATION_V9";
     overlay.resize(1080, 1920);
     overlay.x = 0;
     overlay.y = 0;
@@ -331,9 +385,7 @@
     addSyncText(signal, "SIGNAL_BODY", copy.signal, 24, 47, 712, 29, false,
       { r: 0.92, g: 0.93, b: 0.93 }, "LEFT");
 
-    addRoomPill(overlay, "아기방", 119, 720, true, true);
-    addRoomPill(overlay, "주방", 405, 720, false, false);
-    addRoomPill(overlay, "욕실", 691, 720, false, false);
+    addHomeJourneyMap(overlay);
 
     addStatusCard(overlay, "연속 수면", "0분", 46, THEME.blue);
     addStatusCard(overlay, "보호자 체력", "100", 385, THEME.green);
@@ -386,11 +438,13 @@
   function upsertSetupPresentation(screenId) {
     const screen = screenFor(screenId);
     if (!screen) return false;
-    const staleLayers = screen.findAll(n => n.name === "CODE_SYNC_SETUP_PRESENTATION_V8");
+    const staleLayers = screen.findAll(n =>
+      n.name === "CODE_SYNC_SETUP_PRESENTATION_V8" ||
+      n.name === "CODE_SYNC_SETUP_PRESENTATION_V9");
     for (const stale of staleLayers) stale.remove();
 
     const overlay = figma.createFrame();
-    overlay.name = "CODE_SYNC_SETUP_PRESENTATION_V8";
+    overlay.name = "CODE_SYNC_SETUP_PRESENTATION_V9";
     overlay.resize(1080, 1920);
     overlay.x = 0;
     overlay.y = 0;
@@ -462,24 +516,25 @@
   }
 
   async function upsertMotionSpec() {
-    let panel = board.findOne(n => n.type === "FRAME" && n.name === "_ACTION_MOTION_SPEC_V8");
+    let panel = board.findOne(n => n.type === "FRAME" &&
+      (n.name === "_ACTION_MOTION_SPEC_V9" || n.name === "_ACTION_MOTION_SPEC_V8"));
     const summary = board.findOne(n => n.type === "FRAME" && n.name === "_REVIEW_ACTIONS_SUMMARY");
     if (!panel) {
       panel = figma.createFrame();
-      panel.name = "_ACTION_MOTION_SPEC_V8";
-      panel.resize(2200, 1700);
+      panel.resize(2200, 1900);
       panel.x = 80;
       panel.y = summary ? summary.y + summary.height + 80 : board.height + 80;
       panel.fills = [{ type: "SOLID", color: { r: 0.035, g: 0.06, b: 0.09 } }];
       panel.cornerRadius = 32;
       board.appendChild(panel);
     }
+    panel.name = "_ACTION_MOTION_SPEC_V9";
     for (const child of [...panel.children]) child.remove();
-    panel.resize(2200, 1700);
-    addSyncText(panel, "MOTION_SPEC_TITLE", "ACTION MOTION · 1.05초 Presentation 계약",
+    panel.resize(2200, 1900);
+    addSyncText(panel, "MOTION_SPEC_TITLE", "ACTION MOTION + HOME JOURNEY · Presentation 계약",
       56, 48, 2088, 36, true, THEME.cream, "LEFT");
     addSyncText(panel, "MOTION_SPEC_SUBTITLE",
-      "Core 판정이 Accepted=true일 때만 재생 · 0% 진입 → 50% 접촉/동작 → 100% 퇴장",
+      "Core 판정이 Accepted=true일 때만 재생 · 진입 → 접촉/동작 → 정리 · 방 이동은 기존 2–3분 판정을 시각화",
       56, 104, 2088, 24, false, THEME.muted, "LEFT");
 
     const actions = [
@@ -523,6 +578,24 @@
         addSyncText(keyframe, "TIME", frameIndex === 0 ? "0%" : frameIndex === 1 ? "50%" : "100%",
           12, 168, 156, 16, true, THEME.gold, "CENTER");
       }
+    }
+    const travel = addSyncFrame(panel, "ROOM_TRAVEL_SEQUENCE_V9",
+      56, 1598, 2048, 230, THEME.glass, 0.72, THEME.line, 0);
+    addSyncText(travel, "TRAVEL_TITLE", "방 이동 · 아빠 토큰과 아기 하트가 생활 동선을 따라 이동",
+      28, 18, 1992, 28, true, THEME.cream, "LEFT");
+    addSyncText(travel, "TRAVEL_DETAIL",
+      "Held=false: 아기 하트는 아기방에 남음 · Held=true: 목을 받친 채 두 토큰이 함께 이동 · 배경 0.9초 크로스페이드",
+      28, 60, 1992, 20, false, THEME.muted, "LEFT");
+    const travelLabels = ["출발 0%", "이동 50%", "도착 100%"];
+    for (let i = 0; i < 3; i++) {
+      const stage = addSyncFrame(travel, "TRAVEL_KEYFRAME__" + i,
+        28 + i * 660, 104, 620, 94, THEME.ink, 0.72, THEME.line, 0);
+      addSyncText(stage, "STAGE_LABEL", travelLabels[i], 18, 24, 150, 18,
+        true, THEME.gold, "LEFT");
+      addMapRoute(stage, { x: 190, y: 48 }, { x: 545, y: 48 });
+      addMapToken(stage, "CAREGIVER", 190 + i * 177, 48, "아", THEME.gold);
+      addMapToken(stage, "BABY", 224 + i * 177, 48, "♥",
+        { r: 0.95, g: 0.65, b: 0.72 });
     }
     const requiredBoardHeight = panel.y + panel.height + 80;
     if (board.height < requiredBoardHeight) board.resize(board.width, requiredBoardHeight);
@@ -577,10 +650,10 @@
     await setText(body,
       "동기화 기준 · " + SYNC_VERSION + "\n" +
       "이번 반영 · 공주풍 아기방/주방/욕실 독립 배경 + 아기 중심 구도\n" +
-      "이번 반영 · 미니맵 제거 + 아기방/주방/욕실 방 이동 알약 3개\n" +
+      "이번 반영 · 집 동선 미니맵 + 아빠/아기 토큰 + 동행 여부가 보이는 방 이동\n" +
       "이번 반영 · 직선형 반투명 HUD + 금색 선택선 + 충분한 한글 line-height\n" +
       "이번 반영 · 진열형 아이템 2×2 + 독립 설명 패널 + 선택 광택\n" +
-      "이번 반영 · 기저귀/배고픔/이완/안기/토닥임/눕히기/수유 1.05초 행동 모션\n" +
+      "이번 반영 · 기저귀/배고픔/이완/안기/토닥임/쪽쪽이/눕히기/수유 3단계 행동 모션\n" +
       "이번 반영 · 빌드 용량 상한 제거. 필수 WebGL 산출물 정합성만 검사\n\n" +
       "완료 · #18  부적절한 수면 보조 장비를 암막 커튼으로 교체\n" +
       "P1 · #20-2  원인별 관찰 신호를 결정론적 시드로 변주\n" +
@@ -617,8 +690,8 @@
     if (await setBadge(contractFor(id), "IMPLEMENTED", green)) changes += 1;
   }
 
-  // 현재 Unity 세로 PLAY 좌표를 복제한다. 구형 CODE_SYNC_HOME_MAP은 실행 시 제거한다.
-  // 같은 화면에서 다시 실행하면 V8 동기화 레이어를 교체하므로 중복되지 않는다.
+  // 현재 Unity 세로 PLAY와 생활 동선 미니맵을 복제한다.
+  // 같은 화면에서 다시 실행하면 V8/V9 동기화 레이어를 교체하므로 중복되지 않는다.
   const presentationScreens = visualImplemented.concat([
     "M_DIAPER_CHECK_WET", "M_DIAPER_CHECK_CLEAN", "M_ENVIRONMENT_CHECK",
     "M_TAB_CARE_PERSIST", "M_TAB_FEED_PERSIST", "M_SLEEP_FAST_FORWARD",
@@ -717,8 +790,8 @@
     "CURRENT UNITY: 평상시 수유 UI는 분유 준비(PrepareWater) → 식히기(CoolBottle) → 수유(FeedPreparedBottle) 3단계. 젖병 소독은 둘째 밤 돌발에서만 예외 노출. 각 행동은 위치·선행조건을 Core에서 검증한다.",
     "FEEDING_FLOW")) changes += 1;
   if (await appendReviewNote(feeding,
-    "ROOM RIBBON: 미니맵 없음. 화면 위 아기방/주방/욕실 알약 버튼으로 이동. 아기방↔주방/욕실 2분, 주방↔욕실 3분. Held=false면 아기는 아기방에 남고 Held=true면 함께 이동.",
-    "ROOM_RIBBON")) changes += 1;
+    "HOME JOURNEY MAP: 세 방의 점선 동선과 아빠/아기 토큰을 표시. 아기방↔주방/욕실 2분, 주방↔욕실 3분. Held=false면 아기 하트는 아기방에 남고 Held=true면 두 토큰이 함께 이동하며 방 배경이 크로스페이드.",
+    "HOME_JOURNEY_MAP")) changes += 1;
 
   const sterilize = contractFor("M_FEED_SANITIZED");
   if (sterilize) {
@@ -731,15 +804,15 @@
   const boardTitle = textNodes(board).find(n => n.name === "BOARD_TITLE" || n.characters.indexOf("스토리보드 V6") >= 0);
   if (boardTitle) {
     const baseTitle = boardTitle.characters
-      .replace(/\s*·\s*CODE SYNC(?:\s*·\s*V8)?/g, "")
+      .replace(/\s*·\s*CODE SYNC(?:\s*·\s*V[89])?/g, "")
       .replace(/\s*·\s*Unity [0-9a-f]+/g, "");
-    await setText(boardTitle, baseTitle + " · CODE SYNC · V8");
+    await setText(boardTitle, baseTitle + " · CODE SYNC · V9");
     changes += 1;
   }
 
   figma.currentPage.selection = [board];
   figma.viewport.scrollAndZoomIntoView([board]);
-  figma.closePlugin("V8 Unity 화면 계약 동기화 완료 · " +
+  figma.closePlugin("V9 생활 동선·돌봄 모션 동기화 완료 · " +
     (created ? "싱크 보드 최초 생성" : "기존 최신 싱크 보드 갱신") +
     " · " + changes + "개 항목 갱신");
 })();

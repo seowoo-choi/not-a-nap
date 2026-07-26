@@ -73,6 +73,11 @@ namespace NotANap.App
         private V2ActionId? _animatedAction;
         private float _actionAnimationStarted = -10f;
         private const float ActionAnimationDuration = 1.05f;
+        private float _roomTransitionStarted = -10f;
+        private HomeLocation _roomTransitionFrom;
+        private HomeLocation _roomTransitionTo;
+        private bool _roomTransitionBabyAccompanied;
+        private const float RoomTransitionDuration = 0.9f;
 
         private static readonly string[] AwakeBabble = { "아우…", "으응?", "응아", "에…", "아으" };
         private static readonly string[] FussBabble = { "으응…", "에에…", "아으…" };
@@ -678,7 +683,8 @@ namespace NotANap.App
             }
 
             DrawSignalRibbon(vm, portrait);
-            DrawRoomRibbon(vm, portrait);
+            DrawHomeJourneyMap(vm, portrait);
+            DrawRoomTravelMoment(portrait);
         }
 
         private void DrawSignalRibbon(V2PlayViewModel vm, bool portrait)
@@ -700,36 +706,131 @@ namespace NotANap.App
                     new Color(0.92f, 0.93f, 0.93f), TextAnchor.MiddleLeft, true));
         }
 
-        private void DrawRoomRibbon(V2PlayViewModel vm, bool portrait)
+        private void DrawHomeJourneyMap(V2PlayViewModel vm, bool portrait)
         {
-            float y = portrait ? 720f : 132f;
-            float x = portrait ? 120f : 1546f;
-            float buttonWidth = portrait ? 270f : 106f;
-            float buttonHeight = portrait ? 62f : 50f;
-            float gap = portrait ? 16f : 8f;
-            HomeLocation[] locations =
-            {
-                HomeLocation.Nursery,
-                HomeLocation.Kitchen,
-                HomeLocation.Bathroom
-            };
-            if (portrait)
-                x = (PortraitWidth - (buttonWidth * 3 + gap * 2)) * 0.5f;
+            Rect map = portrait
+                ? new Rect(816, 176, 232, 332)
+                : new Rect(1510, 116, 360, 224);
+            DrawGlassPanel(map, 0.66f);
+            Fill(new Rect(map.x + 14, map.y + 14, 4, map.height - 28),
+                new Color(0.95f, 0.69f, 0.33f, 0.8f));
+            GUI.Label(new Rect(map.x + 28, map.y + 8, map.width - 42, portrait ? 40 : 32),
+                "우리 집 새벽 동선",
+                OverlayLabelStyle(portrait ? 19 : 16, FontStyle.Bold,
+                    new Color(0.98f, 0.88f, 0.7f), TextAnchor.MiddleLeft));
 
-            for (int i = 0; i < locations.Length; i++)
+            Vector2 nursery = portrait
+                ? new Vector2(map.center.x, map.y + 100)
+                : new Vector2(map.x + 82, map.y + 126);
+            Vector2 kitchen = portrait
+                ? new Vector2(map.x + 64, map.y + 252)
+                : new Vector2(map.x + 190, map.y + 82);
+            Vector2 bathroom = portrait
+                ? new Vector2(map.x + 172, map.y + 252)
+                : new Vector2(map.x + 282, map.y + 160);
+            DrawDottedRoute(nursery, kitchen);
+            DrawDottedRoute(nursery, bathroom);
+            DrawDottedRoute(kitchen, bathroom);
+
+            DrawMapRoomNode(vm, HomeLocation.Nursery, nursery, portrait);
+            DrawMapRoomNode(vm, HomeLocation.Kitchen, kitchen, portrait);
+            DrawMapRoomNode(vm, HomeLocation.Bathroom, bathroom, portrait);
+
+            bool moving = RoomTransitionActive();
+            if (!moving || !_roomTransitionBabyAccompanied)
+                DrawMapToken(MapPoint(vm.BabyLocation, nursery, kitchen, bathroom) +
+                    new Vector2(portrait ? 24f : 19f, portrait ? -27f : -22f),
+                    "♥", new Color(0.95f, 0.65f, 0.72f), portrait);
+            if (moving)
             {
-                HomeLocation location = locations[i];
-                bool current = vm.CaregiverLocation == location;
-                var room = new Rect(x + i * (buttonWidth + gap), y, buttonWidth, buttonHeight);
-                DrawGlassPanel(room, current ? 0.82f : 0.58f, current);
-                string marker = vm.BabyLocation == location ? "  · 아기" : "";
-                GUI.Label(room, HomeLocationLabel(location) + marker,
-                    LabelStyle(portrait ? 27 : 16, FontStyle.Bold,
-                        current ? Color.white : new Color(0.84f, 0.86f, 0.87f), TextAnchor.MiddleCenter));
-                var old = GUI.enabled;
-                GUI.enabled = old && !current && !_flow.InputLocked;
-                if (GUI.Button(room, GUIContent.none, GUIStyle.none)) MoveToRoom(location);
-                GUI.enabled = old;
+                float eased = Mathf.SmoothStep(0f, 1f, RoomTransitionProgress());
+                Vector2 from = MapPoint(_roomTransitionFrom, nursery, kitchen, bathroom);
+                Vector2 to = MapPoint(_roomTransitionTo, nursery, kitchen, bathroom);
+                Vector2 caregiver = Vector2.Lerp(from, to, eased) +
+                    new Vector2(portrait ? -24f : -19f, portrait ? -27f : -22f);
+                DrawMapToken(caregiver, "아", new Color(0.96f, 0.69f, 0.3f), portrait);
+                if (_roomTransitionBabyAccompanied)
+                    DrawMapToken(caregiver + new Vector2(portrait ? 38f : 31f, 0f),
+                        "♥", new Color(0.95f, 0.65f, 0.72f), portrait);
+            }
+            else
+            {
+                DrawMapToken(MapPoint(vm.CaregiverLocation, nursery, kitchen, bathroom) +
+                    new Vector2(portrait ? -24f : -19f, portrait ? -27f : -22f),
+                    "아", new Color(0.96f, 0.69f, 0.3f), portrait);
+            }
+        }
+
+        private void DrawMapRoomNode(V2PlayViewModel vm, HomeLocation location, Vector2 center, bool portrait)
+        {
+            float width = portrait ? 94f : 92f;
+            float height = portrait ? 58f : 54f;
+            var room = new Rect(center.x - width * 0.5f, center.y - height * 0.5f, width, height);
+            bool current = vm.CaregiverLocation == location;
+            DrawGlassPanel(room, current ? 0.9f : 0.64f, current);
+            GUI.Label(room, HomeLocationLabel(location),
+                OverlayLabelStyle(portrait ? 17 : 14, FontStyle.Bold,
+                    current ? Color.white : new Color(0.84f, 0.86f, 0.87f),
+                    TextAnchor.MiddleCenter));
+            var old = GUI.enabled;
+            GUI.enabled = old && !current && !_flow.InputLocked && !RoomTransitionActive();
+            if (GUI.Button(room, GUIContent.none, GUIStyle.none)) MoveToRoom(location);
+            GUI.enabled = old;
+        }
+
+        private static Vector2 MapPoint(HomeLocation location, Vector2 nursery,
+            Vector2 kitchen, Vector2 bathroom) => location switch
+        {
+            HomeLocation.Kitchen => kitchen,
+            HomeLocation.Bathroom => bathroom,
+            _ => nursery
+        };
+
+        private static void DrawDottedRoute(Vector2 from, Vector2 to)
+        {
+            for (int i = 1; i < 8; i++)
+            {
+                float t = i / 8f;
+                Vector2 point = Vector2.Lerp(from, to, t);
+                float pulse = 4f + Mathf.Sin((Time.unscaledTime + t) * 4f) * 1.2f;
+                Fill(new Rect(point.x - pulse * 0.5f, point.y - pulse * 0.5f, pulse, pulse),
+                    new Color(0.88f, 0.7f, 0.43f, 0.46f));
+            }
+        }
+
+        private void DrawMapToken(Vector2 center, string label, Color color, bool portrait)
+        {
+            float size = portrait ? 34f : 28f;
+            var token = new Rect(center.x - size * 0.5f, center.y - size * 0.5f, size, size);
+            GUI.DrawTexture(token, _itemGlow, ScaleMode.StretchToFill, true);
+            Fill(new Rect(token.x + 4f, token.y + 4f, token.width - 8f, token.height - 8f),
+                new Color(color.r, color.g, color.b, 0.96f));
+            GUI.Label(token, label, OverlayLabelStyle(portrait ? 17 : 13, FontStyle.Bold,
+                Color.white, TextAnchor.MiddleCenter));
+        }
+
+        private void DrawRoomTravelMoment(bool portrait)
+        {
+            if (!RoomTransitionActive()) return;
+            float progress = RoomTransitionProgress();
+            float presence = Mathf.Sin(progress * Mathf.PI);
+            Rect card = portrait
+                ? new Rect(294, 620, 492, 72)
+                : new Rect(760, 650, 470, 60);
+            DrawGlassPanel(card, 0.55f + presence * 0.18f);
+            string destination = HomeLocationLabel(_roomTransitionTo);
+            string copy = _roomTransitionBabyAccompanied
+                ? $"목을 받치고 {destination}으로 살금살금"
+                : $"{destination}에 필요한 물건을 가지러 가요";
+            GUI.Label(card, copy, OverlayLabelStyle(portrait ? 23 : 19, FontStyle.Bold,
+                new Color(1f, 0.87f, 0.68f), TextAnchor.MiddleCenter));
+            for (int i = 0; i < 4; i++)
+            {
+                float step = (progress * 1.5f + i * 0.22f) % 1f;
+                float x = Mathf.Lerp(card.x + 56f, card.xMax - 56f, step);
+                float y = card.yMax + 10f + Mathf.Sin(step * Mathf.PI * 2f) * 5f;
+                Fill(new Rect(x, y, 7f, 11f),
+                    new Color(0.98f, 0.72f, 0.38f, presence * (0.9f - i * 0.12f)));
             }
         }
 
@@ -872,21 +973,33 @@ namespace NotANap.App
 
         private void DrawRoomFocusBackdrop(HomeLocation location, Rect rect)
         {
-            Texture2D backdrop = location switch
-            {
-                HomeLocation.Kitchen => _kitchenRoom,
-                HomeLocation.Bathroom => _bathroomRoom,
-                _ => _room
-            };
+            Texture2D backdrop = RoomBackdrop(location);
             if (backdrop != null)
                 GUI.DrawTexture(rect, backdrop, ScaleMode.ScaleAndCrop, true);
+            if (!RoomTransitionActive()) return;
+
+            Texture2D previous = RoomBackdrop(_roomTransitionFrom);
+            if (previous == null) return;
+            float fade = 1f - Mathf.SmoothStep(0f, 1f, RoomTransitionProgress());
+            var old = GUI.color;
+            GUI.color = new Color(old.r, old.g, old.b, old.a * fade);
+            GUI.DrawTexture(rect, previous, ScaleMode.ScaleAndCrop, true);
+            GUI.color = old;
         }
+
+        private Texture2D RoomBackdrop(HomeLocation location) => location switch
+        {
+            HomeLocation.Kitchen => _kitchenRoom,
+            HomeLocation.Bathroom => _bathroomRoom,
+            _ => _room
+        };
 
         private void HandleRoomMovementKeys(V2PlayViewModel vm)
         {
             var currentEvent = Event.current;
             if (currentEvent == null || currentEvent.type != EventType.KeyDown ||
-                _flow.InputLocked || Time.unscaledTime < _nextKeyboardMoveAt) return;
+                _flow.InputLocked || RoomTransitionActive() ||
+                Time.unscaledTime < _nextKeyboardMoveAt) return;
 
             HomeLocation? destination = null;
             switch (currentEvent.keyCode)
@@ -921,10 +1034,20 @@ namespace NotANap.App
             _lastResult = null;
             if (_lastMove.Accepted)
             {
+                _roomTransitionFrom = _lastMove.From;
+                _roomTransitionTo = _lastMove.To;
+                _roomTransitionBabyAccompanied = _lastMove.BabyAccompanied;
+                _roomTransitionStarted = Time.unscaledTime;
                 _audio.PlayMove();
                 TriggerImpact(new Color(0.45f, 0.68f, 0.8f, 0.3f), 2f, 0.2f);
             }
         }
+
+        private bool RoomTransitionActive()
+            => Time.unscaledTime - _roomTransitionStarted < RoomTransitionDuration;
+
+        private float RoomTransitionProgress()
+            => Mathf.Clamp01((Time.unscaledTime - _roomTransitionStarted) / RoomTransitionDuration);
 
         private static Color RoomFocusTint(HomeLocation location) => location switch
         {
@@ -991,8 +1114,10 @@ namespace NotANap.App
                 case V2ActionId.Laydown:
                     rect.y -= (1f - progress) * 34f;
                     break;
+                case V2ActionId.CheckDiaper:
                 case V2ActionId.ChangeDiaper:
                     rect.y -= lift * 15f;
+                    rect.x += Mathf.Sin(progress * Mathf.PI * 2f) * 3f * lift;
                     break;
             }
             return rect;
@@ -1032,9 +1157,12 @@ namespace NotANap.App
                         GUI.DrawTexture(cloth, _diaperCloth, ScaleMode.StretchToFill, true);
                         Fill(new Rect(cloth.x + 20f, cloth.y + cloth.height * 0.46f,
                             cloth.width - 40f, 3f), new Color(0.86f, 0.68f, 0.4f, 0.75f));
+                        DrawCareSparkles(new Vector2(cloth.center.x, cloth.y + 8f), presence, 3);
                     }
                     DrawActionMotionLabel(babyRect, action == V2ActionId.ChangeDiaper
-                        ? "보송하게 새 기저귀" : "기저귀를 살짝 확인", portrait);
+                        ? MotionStage(progress, "두 다리를 살짝 들어요", "깨끗하게 갈아입혀요", "보송하게, 옷매무새까지")
+                        : MotionStage(progress, "두 다리를 살짝 들어요", "기저귀를 조심히 살펴봐요", "다시 포근하게 덮어줘요"),
+                        portrait);
                     break;
                 }
                 case V2ActionId.CheckHungerSignals:
@@ -1051,7 +1179,9 @@ namespace NotANap.App
                             babyRect.y + babyRect.height * 0.29f - dot * 12f, size, size),
                             _itemGlow, ScaleMode.StretchToFill, true);
                     }
-                    DrawActionMotionLabel(babyRect, "입과 손의 신호를 살펴봐요", portrait);
+                    DrawActionMotionLabel(babyRect,
+                        MotionStage(progress, "손을 입가 가까이 가져가요", "고개와 입의 방향을 기다려요", "아기의 대답을 기억해요"),
+                        portrait);
                     break;
                 }
                 case V2ActionId.CheckBodyTemperature:
@@ -1072,7 +1202,9 @@ namespace NotANap.App
                     DrawCaregiverHand(new Rect(
                         Mathf.Lerp(babyRect.xMax, babyRect.center.x + handWidth * 0.2f, presence),
                         handY, handWidth, handHeight), true);
-                    DrawActionMotionLabel(babyRect, "팔다리의 힘을 천천히 확인", portrait);
+                    DrawActionMotionLabel(babyRect,
+                        MotionStage(progress, "발끝부터 가볍게 받쳐요", "팔다리의 힘을 천천히 확인", "깊어진 숨을 방해하지 않아요"),
+                        portrait);
                     break;
                 }
                 case V2ActionId.Hold:
@@ -1086,8 +1218,12 @@ namespace NotANap.App
                     if (action == V2ActionId.ToggleCarrier)
                         DrawItemArt(ItemId.Carrier, new Rect(babyRect.center.x - babyRect.width * 0.28f,
                             babyRect.y + babyRect.height * 0.38f, babyRect.width * 0.56f, babyRect.height * 0.56f));
+                    DrawCareSparkles(new Vector2(babyRect.center.x, babyRect.y + 55f), presence, 4);
                     DrawActionMotionLabel(babyRect,
-                        action == V2ActionId.ToggleCarrier ? "아기띠로 포근하게" : "목을 받치고 품으로", portrait);
+                        action == V2ActionId.ToggleCarrier
+                            ? MotionStage(progress, "아기띠를 넓게 펼쳐요", "등과 목을 포근하게 감싸요", "아빠 심장 가까이에 꼭")
+                            : MotionStage(progress, "한 손으로 목을 받쳐요", "가슴 가까이 천천히 안아요", "같은 리듬으로 살랑살랑"),
+                        portrait);
                     break;
                 }
                 case V2ActionId.Pat:
@@ -1099,7 +1235,10 @@ namespace NotANap.App
                         Fill(new Rect(babyRect.xMax + 12f + i * 14f,
                             patY + handHeight * 0.35f, 7f, 3f),
                             new Color(1f, 0.73f, 0.34f, presence * (0.9f - i * 0.2f)));
-                    DrawActionMotionLabel(babyRect, "토닥 · 토닥 · 천천히", portrait);
+                    DrawCareSparkles(new Vector2(babyRect.xMax - 10f, patY - 8f), presence, 2);
+                    DrawActionMotionLabel(babyRect,
+                        MotionStage(progress, "등에 손바닥을 포근히", "토닥 · 토닥 · 천천히", "숨이 맞춰지면 손을 쉬어요"),
+                        portrait);
                     break;
                 }
                 case V2ActionId.Pacifier:
@@ -1109,7 +1248,9 @@ namespace NotANap.App
                         Mathf.Lerp(babyRect.xMax + size, babyRect.center.x + babyRect.width * 0.04f, presence),
                         babyRect.y + babyRect.height * 0.3f, size, size);
                     DrawItemArt(ItemId.Pacifier, itemRect);
-                    DrawActionMotionLabel(babyRect, "입가에 조심히 건네요", portrait);
+                    DrawActionMotionLabel(babyRect,
+                        MotionStage(progress, "입가 가까이 보여줘요", "아기가 물 때까지 기다려요", "입술이 편안한지 살펴봐요"),
+                        portrait);
                     break;
                 }
                 case V2ActionId.FeedPreparedBottle:
@@ -1126,7 +1267,10 @@ namespace NotANap.App
                     GUI.DrawTexture(new Rect(bottle.center.x - bottle.width * 0.22f,
                         bottle.y - bottle.height * 0.16f, bottle.width * 0.44f, bottle.height * 0.24f),
                         _caregiverHand, ScaleMode.StretchToFill, true);
-                    DrawActionMotionLabel(babyRect, "삼키는 리듬에 맞춰 수유", portrait);
+                    DrawCareSparkles(new Vector2(bottle.x, bottle.y + bottle.height * 0.42f), presence, 2);
+                    DrawActionMotionLabel(babyRect,
+                        MotionStage(progress, "목과 등을 안정적으로 받쳐요", "삼키는 리듬에 맞춰 수유", "입가를 닦고 숨을 기다려요"),
+                        portrait);
                     break;
                 }
                 case V2ActionId.Laydown:
@@ -1135,9 +1279,30 @@ namespace NotANap.App
                         babyRect.y + babyRect.height * 0.68f, handWidth, handHeight));
                     DrawCaregiverHand(new Rect(babyRect.center.x + handWidth * 0.3f,
                         babyRect.y + babyRect.height * 0.68f, handWidth, handHeight), true);
-                    DrawActionMotionLabel(babyRect, "숨의 리듬을 지키며 눕혀요", portrait);
+                    DrawActionMotionLabel(babyRect,
+                        MotionStage(progress, "머리와 등을 함께 받쳐요", "숨의 리듬을 지키며 내려가요", "손을 천천히 빼고 기다려요"),
+                        portrait);
                     break;
                 }
+            }
+        }
+
+        private static string MotionStage(float progress, string enter, string contact, string settle)
+            => progress < 0.32f ? enter : progress < 0.72f ? contact : settle;
+
+        private void DrawCareSparkles(Vector2 center, float presence, int count)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                float phase = Time.unscaledTime * 2.2f + i * 1.7f;
+                float radius = 24f + i * 17f;
+                float x = center.x + Mathf.Cos(phase) * radius;
+                float y = center.y + Mathf.Sin(phase * 0.83f) * radius * 0.62f;
+                float size = 5f + (i % 2) * 3f;
+                Color color = new Color(1f, 0.75f + i * 0.035f, 0.46f,
+                    presence * (0.78f - i * 0.08f));
+                Fill(new Rect(x - size * 0.5f, y - 1f, size, 2f), color);
+                Fill(new Rect(x - 1f, y - size * 0.5f, 2f, size), color);
             }
         }
 
