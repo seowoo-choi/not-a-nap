@@ -1,6 +1,6 @@
 # NOT A NAP — V6 Code Sync
 
-`MOBILE_QA_STORYBOARD_V6`의 화면 디자인은 유지하고, 현재 Unity 코드가 더 최신인 개발 계약만 동기화하는 Figma 개발 플러그인입니다.
+`MOBILE_QA_STORYBOARD_V6` 원본은 보존하고, 최신 Unity 코드의 화면과 개발 계약을 기존 CODE_SYNC 보드에 동기화하는 Figma 개발 플러그인입니다.
 
 코멘트 후속 액션의 단일 기준은 [`docs/figma-review-actions.md`](../docs/figma-review-actions.md)입니다.
 
@@ -15,6 +15,8 @@
 
 - 원본 V6 보드는 보존합니다. 싱크 보드가 없을 때만 같은 페이지 오른쪽에 최초 1회 복제합니다.
 - 이후 실행은 가장 최신 `MOBILE_QA_STORYBOARD_V6_CODE_SYNC_*` 보드를 그 자리에서 업데이트하며 새 보드를 만들지 않습니다.
+- PLAY 대표 화면의 아기 단독 영역을 `현재 방을 크게 보는 플레이어 초점 + 우측 상단 미니맵 + WASD 방 이동 + 반투명 행동 HUD` 구조로 교체합니다.
+- 지도 레이어는 화면별 `CODE_SYNC_HOME_MAP` 한 개를 갱신하므로 다시 실행해도 겹쳐 생성되지 않습니다.
 - 최신 싱크 보드의 `REVIEW ACTIONS · 다음 구현` 영역에 전체 댓글 처리표 링크와 P0/P1 액션을 갱신합니다.
 - `Presenter.TryExecuteV2Action`을 실제 진입점인 `GameFlowController.ActV2`로 교체합니다.
 - `M_ITEM_SCROLL`의 가상 `SelectItem` 계약을 실제 `ToggleV2Item(ItemId)` 계약으로 교체합니다.

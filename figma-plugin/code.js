@@ -156,6 +156,180 @@
     return true;
   }
 
+  function screenFor(screenId) {
+    const named = board.findAll(n => n.type === "FRAME" &&
+      n.name.indexOf(screenId) >= 0 &&
+      n.name.indexOf("CONTRACT") < 0 &&
+      n.name !== board.name);
+    const namedScreen = named
+      .filter(n => n.width >= 600 && n.height >= 1000 && n.width / n.height < 0.8)
+      .sort((a, b) => Math.abs(a.width / a.height - 1080 / 1920) -
+        Math.abs(b.width / b.height - 1080 / 1920))[0];
+    if (namedScreen) return namedScreen;
+
+    const labels = textNodes(board).filter(n =>
+      n.characters.indexOf(screenId) >= 0 &&
+      (!n.parent || n.parent.name.indexOf("CONTRACT") < 0));
+    const candidates = [];
+    for (const label of labels) {
+      let parent = label.parent;
+      while (parent && parent !== board) {
+        if (parent.type === "FRAME" &&
+            parent.width >= 600 && parent.height >= 1000 &&
+            parent.width / parent.height < 0.8) {
+          candidates.push(parent);
+        }
+        parent = parent.parent;
+      }
+    }
+    return candidates.sort((a, b) => a.width * a.height - b.width * b.height)[0] || null;
+  }
+
+  function addMapText(parent, name, value, x, y, width, size, bold, color) {
+    const node = figma.createText();
+    node.name = name;
+    node.fontName = bold && fallbackBold ? fallbackBold.fontName : fallback.fontName;
+    node.fontSize = size;
+    node.characters = value;
+    node.fills = [{ type: "SOLID", color }];
+    node.textAutoResize = "HEIGHT";
+    node.resize(width, Math.max(size * 1.5, 28));
+    parent.appendChild(node);
+    node.x = x;
+    node.y = y;
+    return node;
+  }
+
+  function addMapRoom(parent, name, items, x, y, width, height, active) {
+    const room = figma.createFrame();
+    room.name = "HOME_MAP_ROOM__" + name;
+    room.resize(width, height);
+    room.fills = [{
+      type: "SOLID",
+      color: active ? { r: 0.13, g: 0.22, b: 0.26 } : { r: 0.045, g: 0.075, b: 0.11 }
+    }];
+    room.strokes = [{
+      type: "SOLID",
+      color: active ? { r: 0.49, g: 0.82, b: 0.6 } : { r: 0.22, g: 0.3, b: 0.38 }
+    }];
+    room.strokeWeight = active ? 4 : 2;
+    room.cornerRadius = 16;
+    parent.appendChild(room);
+    room.x = x;
+    room.y = y;
+
+    addMapText(room, "ROOM_NAME", active ? "● " + name : name,
+      18, 16, width - 36, 24, true, { r: 0.94, g: 0.96, b: 0.98 });
+    addMapText(room, "ROOM_ITEMS", items,
+      18, 54, width - 36, 17, false, { r: 0.63, g: 0.7, b: 0.78 });
+    addMapText(room, "ROOM_MOVE",
+      active ? "현재 위치" : (name === "아기방" ? "이동 · 2분" : "이동 · 2–3분"),
+      18, height - 48, width - 36, 17, true,
+      active ? { r: 0.49, g: 0.82, b: 0.6 } : { r: 0.91, g: 0.7, b: 0.36 });
+    return room;
+  }
+
+  function upsertHomeMap(screenId) {
+    const screen = screenFor(screenId);
+    if (!screen) return false;
+
+    const previous = screen.findOne(n => n.name === "CODE_SYNC_HOME_MAP");
+    if (previous) previous.remove();
+
+    const map = figma.createFrame();
+    map.name = "CODE_SYNC_HOME_MAP";
+    map.resize(screen.width * 0.87, screen.height * 0.23);
+    map.fills = [{ type: "SOLID", color: { r: 0.02, g: 0.055, b: 0.09 } }];
+    map.strokes = [{ type: "SOLID", color: { r: 0.17, g: 0.28, b: 0.38 } }];
+    map.strokeWeight = 2;
+    map.cornerRadius = 20;
+    map.clipsContent = true;
+    screen.appendChild(map);
+    map.x = screen.width * 0.065;
+    map.y = screen.height * 0.088;
+
+    const inset = 12;
+    const stateWidth = map.width * 0.52;
+    const miniWidth = map.width * 0.34;
+    const miniHeight = map.height * 0.46;
+
+    const focus = figma.createFrame();
+    focus.name = "FIRST_PERSON_ROOM_FOCUS";
+    focus.resize(map.width - inset * 2, map.height - inset * 2);
+    focus.fills = [{ type: "SOLID", color: { r: 0.035, g: 0.08, b: 0.12 }, opacity: 0.82 }];
+    focus.cornerRadius = 14;
+    map.appendChild(focus);
+    focus.x = inset;
+    focus.y = inset;
+
+    const state = figma.createFrame();
+    state.name = "BABY_STATE_OVERLAY";
+    state.resize(stateWidth, 72);
+    state.fills = [{ type: "SOLID", color: { r: 0.025, g: 0.06, b: 0.105 }, opacity: 0.72 }];
+    state.cornerRadius = 12;
+    map.appendChild(state);
+    state.x = inset * 2;
+    state.y = inset * 2;
+    addMapText(state, "BABY_STATE_TITLE", "아기의 지금 · 표정과 몸짓을 살핀다",
+      16, 10, state.width - 32, 19, true, { r: 0.94, g: 0.96, b: 0.98 });
+    addMapText(state, "BABY_STATE_SIGNAL", "아기는 아기방 · 보호자만 이동",
+      16, 38, state.width - 32, 15, false, { r: 0.63, g: 0.7, b: 0.78 });
+
+    const baby = figma.createEllipse();
+    baby.name = "BABY_LOCATION_MARKER";
+    baby.resize(Math.max(92, map.width * 0.16), Math.max(92, map.width * 0.16));
+    baby.fills = [{ type: "SOLID", color: { r: 0.93, g: 0.68, b: 0.53 } }];
+    baby.strokes = [{ type: "SOLID", color: { r: 0.98, g: 0.84, b: 0.71 } }];
+    baby.strokeWeight = 4;
+    map.appendChild(baby);
+    baby.x = map.width * 0.46 - baby.width / 2;
+    baby.y = map.height * 0.48 - baby.height / 2;
+    addMapText(map, "BABY_MARKER_LABEL", "아기",
+      baby.x - 2, baby.y + baby.height + 6, baby.width + 4, 15, true,
+      { r: 0.94, g: 0.96, b: 0.98 });
+
+    addMapText(map, "ROOM_FOCUS_TITLE", "현재 위치 · 아기방",
+      28, map.height - 70, map.width * 0.55, 24, true,
+      { r: 0.94, g: 0.96, b: 0.98 });
+    addMapText(map, "ROOM_FOCUS_ITEMS", "침대 · 베이비 모니터 · 아기의 숨소리",
+      28, map.height - 38, map.width * 0.58, 15, false,
+      { r: 0.63, g: 0.7, b: 0.78 });
+
+    const mini = figma.createFrame();
+    mini.name = "HOME_MINIMAP__TOP_RIGHT";
+    mini.resize(miniWidth, miniHeight);
+    mini.fills = [{ type: "SOLID", color: { r: 0.015, g: 0.035, b: 0.06 }, opacity: 0.72 }];
+    mini.cornerRadius = 12;
+    map.appendChild(mini);
+    mini.x = map.width - miniWidth - inset * 2;
+    mini.y = inset * 2;
+    const gap = 6;
+    const nurseryWidth = mini.width * 0.54;
+    const sideWidth = mini.width - nurseryWidth - gap;
+    addMapRoom(mini, "아기방", "WASD", 0, 0, nurseryWidth, mini.height - 24, true);
+    addMapRoom(mini, "주방", "D", nurseryWidth + gap, 0, sideWidth,
+      (mini.height - gap - 24) / 2, false);
+    addMapRoom(mini, "욕실", "S", nurseryWidth + gap,
+      (mini.height - gap - 24) / 2 + gap, sideWidth,
+      (mini.height - gap - 24) / 2, false);
+    addMapText(mini, "MINIMAP_HELP", "WASD 방 이동 · 2–3분 경과",
+      6, mini.height - 22, mini.width - 12, 13, true,
+      { r: 0.91, g: 0.7, b: 0.36 });
+
+    const hud = figma.createFrame();
+    hud.name = "TRANSPARENT_ACTION_HUD";
+    hud.resize(map.width * 0.42, 54);
+    hud.fills = [{ type: "SOLID", color: { r: 0.025, g: 0.055, b: 0.09 }, opacity: 0.62 }];
+    hud.cornerRadius = 12;
+    map.appendChild(hud);
+    hud.x = map.width - hud.width - inset * 2;
+    hud.y = map.height - hud.height - inset * 2;
+    addMapText(hud, "HUD_TABS", "살펴보기     돌보기     수유 준비",
+      14, 15, hud.width - 28, 16, true, { r: 0.86, g: 0.88, b: 0.91 });
+
+    return true;
+  }
+
   async function upsertActionSummary() {
     const panelWidth = 2200;
     const panelHeight = 1580;
@@ -240,6 +414,16 @@
   const green = { r: 0.82, g: 0.95, b: 0.87 };
   for (const id of visualImplemented) {
     if (await setBadge(contractFor(id), "IMPLEMENTED", green)) changes += 1;
+  }
+
+  // 코드의 PLAY 화면처럼 아기 단독 비주얼 영역을 실제 3칸 집 지도 UI로 갱신한다.
+  // 같은 화면에서 다시 실행하면 CODE_SYNC_HOME_MAP을 교체하므로 중복 레이어가 생기지 않는다.
+  const mapScreens = visualImplemented.concat([
+    "M_DIAPER_CHECK_WET", "M_DIAPER_CHECK_CLEAN", "M_ENVIRONMENT_CHECK",
+    "M_TAB_CARE_PERSIST", "M_TAB_FEED_PERSIST", "M_SLEEP_FAST_FORWARD"
+  ]);
+  for (const id of mapScreens) {
+    if (upsertHomeMap(id)) changes += 1;
   }
 
   const timeout = contractFor("M_TIMEOUT");

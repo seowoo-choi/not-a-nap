@@ -26,6 +26,7 @@ namespace NotANap.App
         private ActionGroup _actionGroup = ActionGroup.Diagnose;
         private int _actionEncounterSequence = -1;
         private bool _portrait;
+        private float _nextKeyboardMoveAt;
 
         private Font _font;
         private Texture2D _room;
@@ -90,9 +91,9 @@ namespace NotANap.App
             _caption = LabelStyle(20, FontStyle.Bold, new Color(0.62f, 0.68f, 0.74f));
 
             _button = ButtonStyle(28, new Color(0.09f, 0.14f, 0.21f, 0.98f), new Color(0.91f, 0.72f, 0.42f), new Color(0.97f, 0.94f, 0.87f));
-            _buttonSmall = ButtonStyle(23, new Color(0.07f, 0.11f, 0.17f, 0.94f), new Color(0.28f, 0.36f, 0.45f), new Color(0.82f, 0.85f, 0.88f));
+            _buttonSmall = ButtonStyle(23, new Color(0.07f, 0.11f, 0.17f, 0.72f), new Color(0.28f, 0.36f, 0.45f, 0.9f), new Color(0.82f, 0.85f, 0.88f));
             _buttonSelected = ButtonStyle(23, new Color(0.78f, 0.54f, 0.23f, 0.98f), new Color(0.95f, 0.76f, 0.44f), Color.white);
-            _tabButton = ButtonStyle(18, new Color(0.07f, 0.11f, 0.17f, 0.94f), new Color(0.28f, 0.36f, 0.45f), new Color(0.82f, 0.85f, 0.88f));
+            _tabButton = ButtonStyle(18, new Color(0.07f, 0.11f, 0.17f, 0.68f), new Color(0.28f, 0.36f, 0.45f, 0.9f), new Color(0.82f, 0.85f, 0.88f));
             _tabSelected = ButtonStyle(18, new Color(0.78f, 0.54f, 0.23f, 0.98f), new Color(0.95f, 0.76f, 0.44f), Color.white);
             _speechBubble = RoundedTexture(new Color(0.97f, 0.94f, 0.87f, 0.98f), 14);
         }
@@ -258,6 +259,7 @@ namespace NotANap.App
         private void DrawPlay()
         {
             var vm = _flow.BuildV2Play();
+            HandleRoomMovementKeys(vm);
             int encounterSequence = _flow.Session.Night.V2.Diagnosis.EncounterSequence;
             if (!vm.CauseResolved && _actionEncounterSequence != encounterSequence)
             {
@@ -284,7 +286,7 @@ namespace NotANap.App
 
         private void DrawTopBar(V2PlayViewModel vm)
         {
-            Fill(new Rect(0, 0, LandscapeWidth, 94), new Color(0.02f, 0.045f, 0.08f, 0.94f));
+            Fill(new Rect(0, 0, LandscapeWidth, 94), new Color(0.02f, 0.045f, 0.08f, 0.76f));
             GUI.Label(new Rect(70, 20, 320, 52), vm.Clock, _display);
             GUI.Label(new Rect(395, 28, 500, 40), vm.CauseResolved ? "조용한 밤을 이어가는 중" : "아기가 깼어요 · 원인을 찾아주세요", _body);
             GUI.Label(new Rect(1440, 25, 410, 46), $"새벽까지  {FormatDuration(vm.RemainingMinutes)}", Right(_headline));
@@ -301,7 +303,7 @@ namespace NotANap.App
 
             DrawBabyStateVisual(vm, new Rect(70, 170, 940, 440));
 
-            Panel(new Rect(48, 640, 984, 250));
+            Panel(new Rect(48, 640, 984, 250), 0.72f);
             GUI.Label(new Rect(82, 675, 270, 44), "연속 수면", _caption);
             GUI.Label(new Rect(82, 720, 270, 62), FormatDuration(vm.CurrentSleepStretchMinutes), _headline);
             DrawProgress(new Rect(82, 802, 260, 18), Mathf.Clamp01(vm.CurrentSleepStretchMinutes / 300f), new Color(0.38f, 0.68f, 0.86f));
@@ -328,64 +330,137 @@ namespace NotANap.App
 
         private void DrawHomeMap(V2PlayViewModel vm, Rect rect, bool portrait)
         {
-            Panel(rect, 0.96f);
-            float gap = portrait ? 10f : 14f;
-            var nursery = new Rect(rect.x + gap, rect.y + gap, rect.width * 0.57f - gap * 1.5f, rect.height - gap * 2);
-            var kitchen = new Rect(nursery.xMax + gap, rect.y + gap, rect.xMax - nursery.xMax - gap * 2, (rect.height - gap * 3) * 0.53f);
-            var bathroom = new Rect(nursery.xMax + gap, kitchen.yMax + gap, kitchen.width, rect.yMax - kitchen.yMax - gap * 2);
+            // 플레이어가 서 있는 방을 크게 보여주고, 집 구조는 우측 상단 미니맵으로만 제공한다.
+            Fill(rect, RoomFocusTint(vm.CaregiverLocation));
+            Fill(new Rect(rect.x, rect.yMax - (portrait ? 82 : 96), rect.width, portrait ? 82 : 96),
+                new Color(0.015f, 0.035f, 0.06f, 0.62f));
+            GUI.Label(new Rect(rect.x + 24, rect.yMax - (portrait ? 72 : 86), rect.width * 0.54f, 40),
+                $"현재 위치 · {HomeLocationLabel(vm.CaregiverLocation)}", _headline);
+            GUI.Label(new Rect(rect.x + 24, rect.yMax - 42, rect.width * 0.6f, 30),
+                RoomFocusItems(vm), _caption);
 
-            DrawMapRoom(nursery, "아기방", "침대 · 베이비 모니터", HomeLocation.Nursery, vm);
-            DrawMapRoom(kitchen, "주방", "젖병 소독기 · 분유포트", HomeLocation.Kitchen, vm);
-            DrawMapRoom(bathroom, "욕실", vm.BathThermometerRetrieved ? "탕온계 챙김 ✓" : "탕온계 · 목욕용품", HomeLocation.Bathroom, vm);
+            bool babyVisible = vm.BabyLocation == vm.CaregiverLocation;
+            if (babyVisible)
+            {
+                float babySize = portrait ? 245f : 360f;
+                var babyRect = new Rect(
+                    rect.center.x - babySize * 0.5f,
+                    rect.center.y - babySize * 0.42f,
+                    babySize, babySize);
+                DrawAnimatedBaby(vm, babyRect);
+                DrawSignalMotionCue(vm, babyRect, portrait);
+                DrawBabbleBubble(vm, babyRect, portrait);
+            }
+            else
+            {
+                GUI.Label(new Rect(rect.x + rect.width * 0.2f, rect.y + rect.height * 0.38f,
+                    rect.width * 0.6f, 90), "아기는 아기방에 있어요.\n이동 중에도 아기의 상태는 계속 변합니다.",
+                    Centered(_body));
+            }
 
-            Rect babyRoom = vm.BabyLocation == HomeLocation.Kitchen ? kitchen :
-                vm.BabyLocation == HomeLocation.Bathroom ? bathroom : nursery;
-            float babySize = portrait ? 155f : 230f;
-            var babyRect = new Rect(
-                babyRoom.center.x - babySize * 0.5f,
-                babyRoom.center.y - babySize * 0.45f,
-                babySize, babySize);
-            DrawAnimatedBaby(vm, babyRect);
-            DrawSignalMotionCue(vm, babyRect, portrait);
-            DrawBabbleBubble(vm, babyRect, portrait);
-
-            var stateOverlay = new Rect(rect.x + 30, rect.y + 20, nursery.width - 50, portrait ? 90 : 105);
-            Fill(stateOverlay, new Color(0.025f, 0.06f, 0.105f, 0.92f));
+            var stateOverlay = new Rect(rect.x + 24, rect.y + 20,
+                rect.width * (portrait ? 0.58f : 0.55f), portrait ? 90 : 105);
+            Fill(stateOverlay, new Color(0.025f, 0.06f, 0.105f, 0.72f));
             GUI.Label(new Rect(stateOverlay.x + 18, stateOverlay.y + 8, stateOverlay.width - 36, 38),
                 $"아기의 지금 · {BabyStateHeadline(vm)}", _caption);
             GUI.Label(new Rect(stateOverlay.x + 18, stateOverlay.y + 45, stateOverlay.width - 36, stateOverlay.height - 50),
                 vm.CurrentSignal, portrait ? _caption : _body);
 
-            string together = vm.BabyAccompaniesCaregiver
-                ? "아기를 안고 함께 이동 중"
-                : "아기는 아기방 · 보호자만 이동";
-            GUI.Label(new Rect(rect.x + 28, rect.yMax - 42, nursery.width - 45, 30), together, _caption);
+            DrawMiniMap(vm, new Rect(
+                rect.xMax - (portrait ? 330 : 360),
+                rect.y + 18,
+                portrait ? 310 : 340,
+                portrait ? 188 : 210), portrait);
         }
 
-        private void DrawMapRoom(Rect room, string name, string items, HomeLocation location, V2PlayViewModel vm)
+        private void DrawMiniMap(V2PlayViewModel vm, Rect rect, bool portrait)
+        {
+            Fill(rect, new Color(0.015f, 0.035f, 0.06f, 0.72f));
+            float gap = 6f;
+            var nursery = new Rect(rect.x + 8, rect.y + 8, rect.width * 0.55f - 10, rect.height - 34);
+            var kitchen = new Rect(nursery.xMax + gap, rect.y + 8,
+                rect.xMax - nursery.xMax - gap - 8, (rect.height - 38) * 0.52f);
+            var bathroom = new Rect(kitchen.x, kitchen.yMax + gap, kitchen.width,
+                rect.yMax - kitchen.yMax - gap - 26);
+            DrawMiniMapRoom(nursery, "아기방", HomeLocation.Nursery, vm);
+            DrawMiniMapRoom(kitchen, "주방", HomeLocation.Kitchen, vm);
+            DrawMiniMapRoom(bathroom, "욕실", HomeLocation.Bathroom, vm);
+            GUI.Label(new Rect(rect.x + 8, rect.yMax - 24, rect.width - 16, 22),
+                portrait ? "WASD · 방 이동" : "WASD로 이동 · 2–3분 경과", _caption);
+        }
+
+        private void DrawMiniMapRoom(Rect room, string name, HomeLocation location, V2PlayViewModel vm)
         {
             bool current = vm.CaregiverLocation == location;
-            Fill(room, current
-                ? new Color(0.13f, 0.22f, 0.26f, 0.98f)
-                : new Color(0.045f, 0.075f, 0.11f, 0.94f));
-            Fill(new Rect(room.x, room.y, room.width, current ? 5 : 2),
-                current ? new Color(0.49f, 0.82f, 0.6f) : new Color(0.22f, 0.3f, 0.38f));
-            GUI.Label(new Rect(room.x + 16, room.y + 12, room.width - 32, 34),
-                current ? $"● {name}" : name, _headline);
-            GUI.Label(new Rect(room.x + 16, room.y + 52, room.width - 32, 50), items, _caption);
-
+            bool babyHere = vm.BabyLocation == location;
+            Fill(room, current ? new Color(0.18f, 0.34f, 0.31f, 0.9f) :
+                new Color(0.055f, 0.09f, 0.14f, 0.78f));
+            GUI.Label(new Rect(room.x + 6, room.y + 4, room.width - 12, 28),
+                (current ? "● " : "") + name + (babyHere ? "  ◉" : ""), _caption);
             int minutes = HomeMovementResolver.TravelMinutes(vm.CaregiverLocation, location);
             var old = GUI.enabled;
             GUI.enabled = old && !current && !_flow.InputLocked;
-            string label = current ? "현재 위치" : $"이동 · {minutes}분";
-            if (GUI.Button(new Rect(room.x + 16, room.yMax - 56, room.width - 32, 42), label,
-                current ? _buttonSelected : _buttonSmall))
-            {
-                _lastMove = _flow.MoveToHomeLocation(location);
-                _lastResult = null;
-            }
+            if (GUI.Button(room, GUIContent.none, GUIStyle.none))
+                MoveToRoom(location);
             GUI.enabled = old;
+            if (!current)
+                GUI.Label(new Rect(room.x + 6, room.yMax - 24, room.width - 12, 20), $"{minutes}분", _caption);
         }
+
+        private void HandleRoomMovementKeys(V2PlayViewModel vm)
+        {
+            var currentEvent = Event.current;
+            if (currentEvent == null || currentEvent.type != EventType.KeyDown ||
+                _flow.InputLocked || Time.unscaledTime < _nextKeyboardMoveAt) return;
+
+            HomeLocation? destination = null;
+            switch (currentEvent.keyCode)
+            {
+                case KeyCode.W:
+                    destination = vm.CaregiverLocation == HomeLocation.Bathroom
+                        ? HomeLocation.Kitchen : (HomeLocation?)null;
+                    break;
+                case KeyCode.A:
+                    destination = vm.CaregiverLocation == HomeLocation.Nursery
+                        ? (HomeLocation?)null : HomeLocation.Nursery;
+                    break;
+                case KeyCode.S:
+                    destination = vm.CaregiverLocation == HomeLocation.Nursery
+                        ? HomeLocation.Bathroom :
+                        vm.CaregiverLocation == HomeLocation.Kitchen ? HomeLocation.Bathroom : (HomeLocation?)null;
+                    break;
+                case KeyCode.D:
+                    destination = vm.CaregiverLocation == HomeLocation.Nursery
+                        ? HomeLocation.Kitchen : (HomeLocation?)null;
+                    break;
+            }
+            if (!destination.HasValue) return;
+            _nextKeyboardMoveAt = Time.unscaledTime + 0.25f;
+            MoveToRoom(destination.Value);
+            currentEvent.Use();
+        }
+
+        private void MoveToRoom(HomeLocation location)
+        {
+            _lastMove = _flow.MoveToHomeLocation(location);
+            _lastResult = null;
+        }
+
+        private static Color RoomFocusTint(HomeLocation location) => location switch
+        {
+            HomeLocation.Kitchen => new Color(0.12f, 0.085f, 0.045f, 0.42f),
+            HomeLocation.Bathroom => new Color(0.035f, 0.09f, 0.11f, 0.48f),
+            _ => new Color(0.02f, 0.055f, 0.09f, 0.36f)
+        };
+
+        private static string RoomFocusItems(V2PlayViewModel vm) => vm.CaregiverLocation switch
+        {
+            HomeLocation.Kitchen => "젖병 소독기 · 분유포트 · 준비한 분유",
+            HomeLocation.Bathroom => vm.BathThermometerRetrieved
+                ? "탕온계를 챙겼어요 · 목욕용품"
+                : "탕온계 · 목욕용품",
+            _ => "침대 · 베이비 모니터 · 아기의 숨소리"
+        };
 
         private void DrawSignalMotionCue(V2PlayViewModel vm, Rect babyRect, bool portrait)
         {
@@ -521,7 +596,7 @@ namespace NotANap.App
 
         private void DrawPortraitEvent(V2PlayViewModel vm)
         {
-            Panel(new Rect(48, 920, 984, 250));
+            Panel(new Rect(48, 920, 984, 250), 0.72f);
             GUI.Label(new Rect(82, 950, 900, 42), !vm.CauseResolved ? $"결정까지 {UpdateDecisionTimer(vm)}초" : "방금 일어난 일", _caption);
             string title = vm.CauseResolved ? "아기가 몸으로 건네는 말을 살피고 있어요." : "정답을 고르기 전에 신호를 읽어보세요.";
             string detail = vm.CurrentSignal;
@@ -543,7 +618,7 @@ namespace NotANap.App
 
         private void DrawPortraitActions(V2PlayViewModel vm)
         {
-            Panel(new Rect(0, 1200, PortraitWidth, 720), 0.98f);
+            Panel(new Rect(0, 1200, PortraitWidth, 720), 0.74f);
             GUI.Label(new Rect(48, 1230, 500, 52), "어떻게 할까요?", _headline);
             // 세로 화면에도 가로와 같은 수면 중 시간 보내기 입력을 제공한다(Figma M_SLEEP_FAST_FORWARD).
             if (IsSleeping(vm))
@@ -587,7 +662,7 @@ namespace NotANap.App
         private void DrawStatusPanel(V2PlayViewModel vm)
         {
             var panel = new Rect(48, 132, 360, 672);
-            Panel(panel);
+            Panel(panel, 0.72f);
             GUI.Label(new Rect(76, 162, 304, 28), "아기의 지금", _caption);
             GUI.Label(new Rect(74, 205, 308, 54), PresentationCopyMapper.V2StageLabel(vm.SleepStage), _headline);
             string signal = vm.CauseResolved ? SleepSignal(vm) : CauseSignal(vm);
@@ -611,7 +686,7 @@ namespace NotANap.App
         private void DrawActionPanel(V2PlayViewModel vm)
         {
             var panel = new Rect(1430, 132, 442, 858);
-            Panel(panel);
+            Panel(panel, 0.72f);
             GUI.Label(new Rect(1460, 162, 380, 36), "어떻게 할까요?", _headline);
 
             DrawTab(new Rect(1460, 220, 120, 48), "살펴보기", ActionGroup.Diagnose);
@@ -662,7 +737,7 @@ namespace NotANap.App
         private void DrawEventPanel(V2PlayViewModel vm)
         {
             var rect = new Rect(448, 790, 934, 200);
-            Panel(rect);
+            Panel(rect, 0.72f);
             GUI.Label(new Rect(478, 816, 840, 28), !vm.CauseResolved ? $"결정까지  {UpdateDecisionTimer(vm)}초" : "방금 일어난 일", _caption);
 
             string title = "아기의 숨소리만 방 안에 작게 들린다.";
