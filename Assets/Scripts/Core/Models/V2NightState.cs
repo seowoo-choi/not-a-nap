@@ -136,6 +136,8 @@ namespace NotANap.Core
         public HomeLocation CaregiverLocation = HomeLocation.Nursery;
         public bool BathThermometerRetrieved;
         public bool ExhaustionWarned;
+        public int BareHandsLaydownAttempts;
+        public readonly List<ActionAuditEntry> ActionAudit = new List<ActionAuditEntry>();
         public readonly HashSet<ProductCapability> ProductCapabilities = new HashSet<ProductCapability>();
     }
 

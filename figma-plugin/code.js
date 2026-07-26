@@ -801,18 +801,126 @@
       "STERILIZE_EXCEPTION")) changes += 1;
   }
 
+  // V10: Core facts/Memory/Ending 계약을 별도 QA 프레임으로 명시한다.
+  const reflectionContracts = [
+    ["NIGHT_TRANSITION_RHYTHM", "MemoryConsolidator 확정값만 표시 · 어젯밤 / 도움 / 부담 · 둘째 밤 1개, 백일째 밤 최대 2개 · 중립 폴백"],
+    ["FINAL_NIGHT_ECHO_SOURCE", "사건 발생 후에만 원인 / 현재 변화 / 대응 단서를 각 한 문장으로 표시 · FinalNightResolver + FiredEventIds"],
+    ["ENDING_FAILURE_0_OF_2", "아쉬운 밤 → 지켜 낸 조건 0/2 → 아침이 이겼다 → 설명 → 충족/미충족 조건"],
+    ["ENDING_SUCCESS_2_OF_3", "지켜 낸 밤 → 지켜 낸 조건 2/2 → Core EndingId 제목 → 설명 → 충족/미충족 조건"],
+    ["DIARY_FACT_BASED", "DiaryFacts의 실제 신호·반복 행동·거절 후 대응·수면·깸·체력·준비·맨손 눕히기만 서술"],
+    ["DIARY_FALLBACK", "AI 필드 누락/길이/의료 단정/상태 변경/광고 거부 후 동일 DiaryFacts 기반 한국어 폴백"],
+    ["CAREGIVER_EXHAUSTED_RECOVERY", "ParentStamina=0 → CatchBreath만 허용 · 15분 / 체력 +9 / 울음 +3"],
+    ["TEMPERAMENT_SIGNAL_SOFT", "반응이 잔잔함 · 작은 표정/호흡 신호 variant · 의학적 진단 아님"],
+    ["TEMPERAMENT_SIGNAL_SENSITIVE", "자극에 민감 · 소리/자세 변화 신호 variant · 의학적 진단 아님"],
+    ["TEMPERAMENT_SIGNAL_HUNGRY", "배고픔 신호 빠름 · 입/손 초기 신호 variant · 의학적 진단 아님"]
+  ];
+  let contractIndex = board.findOne(n => n.type === "FRAME" && n.name === "CODE_SYNC_REFLECTION_CONTRACTS_V10");
+  if (!contractIndex) {
+    contractIndex = figma.createFrame();
+    contractIndex.name = "CODE_SYNC_REFLECTION_CONTRACTS_V10";
+    contractIndex.resize(1080, 1320);
+    contractIndex.x = board.width + 160;
+    contractIndex.y = 0;
+    contractIndex.fills = [{ type: "SOLID", color: THEME.ink }];
+    board.appendChild(contractIndex);
+  }
+  const oldContractText = contractIndex.findAll(n => n.type === "TEXT");
+  for (const node of oldContractText) node.remove();
+  for (let i = 0; i < reflectionContracts.length; i++) {
+    const [id, detail] = reflectionContracts[i];
+    const title = figma.createText();
+    title.name = id;
+    title.fontName = fallbackBold ? fallbackBold.fontName : fallback.fontName;
+    title.fontSize = 22;
+    title.characters = id;
+    title.fills = [{ type: "SOLID", color: THEME.gold }];
+    title.x = 48;
+    title.y = 42 + i * 124;
+    contractIndex.appendChild(title);
+    const body = figma.createText();
+    body.name = id + "__DEV_CONTRACT";
+    body.fontName = fallback.fontName;
+    body.fontSize = 16;
+    body.characters = detail;
+    body.fills = [{ type: "SOLID", color: { r: 0.88, g: 0.9, b: 0.94 } }];
+    body.textAutoResize = "HEIGHT";
+    body.resize(960, 60);
+    body.x = 48;
+    body.y = 76 + i * 124;
+    contractIndex.appendChild(body);
+  }
+  changes += reflectionContracts.length;
+
+  async function upsertReflectionQaFrame(name, eyebrow, title, sections, column) {
+    let frame = board.findOne(n => n.type === "FRAME" && n.name === name);
+    if (!frame) {
+      frame = figma.createFrame();
+      frame.name = name;
+      board.appendChild(frame);
+    }
+    frame.resize(1080, 1920);
+    frame.x = board.width + 1360 + column * 1160;
+    frame.y = 0;
+    frame.fills = [{ type: "SOLID", color: THEME.ink }];
+    for (const child of frame.children.slice()) child.remove();
+    addSyncText(frame, "QA_EYEBROW", eyebrow, 64, 72, 952, 24, true, THEME.gold);
+    addSyncText(frame, "QA_TITLE", title, 64, 122, 952, 50, true, THEME.cream);
+    addSyncText(frame, "QA_ROLE", "Core 확정 결과를 보여주는 실제 상태 화면", 64, 196, 952, 22, false, THEME.muted);
+    for (let i = 0; i < sections.length; i++) {
+      const panel = figma.createFrame();
+      panel.name = sections[i][0] + "__PANEL";
+      panel.resize(952, sections[i][2] || 270);
+      panel.x = 64;
+      panel.y = 300 + i * 330;
+      panel.cornerRadius = 28;
+      panel.fills = [{ type: "SOLID", color: THEME.glass }];
+      panel.strokes = [{ type: "SOLID", color: THEME.line }];
+      frame.appendChild(panel);
+      addSyncText(panel, "SECTION_LABEL", sections[i][0], 34, 30, 884, 22, true, THEME.gold);
+      addSyncText(panel, "SECTION_BODY", sections[i][1], 34, 78, 884, 29, false, THEME.cream);
+    }
+    addSyncText(frame, "QA_FOOTER", "판정·수치·기억은 화면에서 계산하지 않습니다.", 64, 1810, 952, 20, false, THEME.muted);
+    return frame;
+  }
+
+  await upsertReflectionQaFrame("NIGHT_TRANSITION_RHYTHM", "둘째 밤 · 리듬 전환",
+    "어젯밤의 방식이 오늘의 규칙이 됩니다", [
+      ["어젯밤", "품에서 잠든 시간이 여러 번 이어졌어요"],
+      ["도움", "품에 안기면 잠드는 흐름을 빠르게 이어갑니다."],
+      ["부담", "내려놓기 전 고른 숨과 팔다리 이완을 더 확실히 확인해야 합니다."]
+    ], 0);
+  await upsertReflectionQaFrame("FINAL_NIGHT_ECHO_SOURCE", "백일째 밤 · 사건 발생 후",
+    "지난 밤의 리듬이 돌아왔어요", [
+      ["원인", "지난 두 밤 동안 품에서 잠드는 리듬이 익숙해졌어요."],
+      ["현재 변화", "새벽에 잠이 얕아져 내려놓기가 조금 더 어려워졌어요."],
+      ["대응 단서", "깊은 잠의 고른 숨과 이완을 확인한 뒤 시도해보세요."]
+    ], 1);
+  await upsertReflectionQaFrame("DIARY_FACT_BASED", "둘째 밤 · 육아일지",
+    "실제로 건넨 돌봄이 가족의 문장이 됩니다", [
+      ["알아차린 신호", "입맛을 다시고 손을 빠는 초기 배고픔 신호를 먼저 보았어요."],
+      ["실제 행동에서 배운 점", "쪽쪽이가 이어지지 않자 토닥이기로 바꿔 아기의 답을 다시 살폈어요."],
+      ["가족의 준비 이해", "소독 젖병을 직접 준비하며 보이지 않던 가족의 시간을 알게 됐어요."]
+    ], 2);
+  await upsertReflectionQaFrame("ENDING_FAILURE_0_OF_2", "백일의 밤 · 아쉬운 밤",
+    "지켜 낸 조건 0 / 2", [
+      ["아침이 이겼다", "완벽하지 않아도 괜찮아요. 오늘의 신호는 다음 밤의 기억이 됩니다."],
+      ["지켜 낸 조건", "없음"],
+      ["다음에 이어갈 조건", "아기가 깊은 잠으로 아침 맞기\n보호자 체력 30 이상\n맨손 눕히기 성공"]
+    ], 3);
+  changes += 4;
+
   const boardTitle = textNodes(board).find(n => n.name === "BOARD_TITLE" || n.characters.indexOf("스토리보드 V6") >= 0);
   if (boardTitle) {
     const baseTitle = boardTitle.characters
       .replace(/\s*·\s*CODE SYNC(?:\s*·\s*V[89])?/g, "")
       .replace(/\s*·\s*Unity [0-9a-f]+/g, "");
-    await setText(boardTitle, baseTitle + " · CODE SYNC · V9");
+    await setText(boardTitle, baseTitle + " · CODE SYNC · V10");
     changes += 1;
   }
 
   figma.currentPage.selection = [board];
   figma.viewport.scrollAndZoomIntoView([board]);
-  figma.closePlugin("V9 생활 동선·돌봄 모션 동기화 완료 · " +
+  figma.closePlugin("V10 리듬·일지·엔딩 계약 동기화 완료 · " +
     (created ? "싱크 보드 최초 생성" : "기존 최신 싱크 보드 갱신") +
     " · " + changes + "개 항목 갱신");
 })();

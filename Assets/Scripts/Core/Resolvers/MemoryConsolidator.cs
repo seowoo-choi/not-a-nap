@@ -83,6 +83,9 @@ namespace NotANap.Core
                 StaminaLeft = s.StaminaLeft,
                 Grandma = s.Grandma,
                 NoiseTurns = s.NoiseTurns,
+                CarrierTurns = s.CarrierTurns,
+                HeldSleepTurns = s.HeldSleepTurns,
+                WatchOk = s.WatchOk,
             });
             return notes;
         }

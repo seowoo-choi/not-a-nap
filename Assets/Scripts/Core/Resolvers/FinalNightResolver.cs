@@ -51,7 +51,11 @@ namespace NotANap.Core
             if (night.NightId != NightId.HundredthNight) return;
             var b = night.Baby;
 
-            if (night.Hour == 0
+            bool carrierTime = night.V2 != null ? night.V2.ElapsedMinutes >= 180 : night.Hour == 0;
+            bool noiseTime = night.V2 != null ? night.V2.ElapsedMinutes >= 240 : night.Hour == 1;
+            bool dawnTime = night.V2 != null ? night.V2.ElapsedMinutes >= 360 : night.Hour == 3;
+
+            if (carrierTime
                 && night.ActiveTargetedEvents.Contains(TargetedEventId.CarrierBuckle)
                 && night.FiredEventIds.Add("final-carrier-buckle"))
             {
@@ -62,7 +66,7 @@ namespace NotANap.Core
                 if (wasWearing) night.AddLog("아기를 급히 품으로 옮겨 안았다.");
             }
 
-            if (night.Hour == 1
+            if (noiseTime
                 && night.ActiveTargetedEvents.Contains(TargetedEventId.NoiseBattery)
                 && night.FiredEventIds.Add("final-noise-battery"))
             {
@@ -71,7 +75,7 @@ namespace NotANap.Core
                 night.AddLog("🚨 백색소음기 배터리가 방전됐다. 오늘 밤은 다시 켤 수 없다.", LogClass.Warn);
             }
 
-            if (night.Hour == 3
+            if (dawnTime
                 && night.ActiveTargetedEvents.Contains(TargetedEventId.DawnWaking)
                 && night.FiredEventIds.Add("final-dawn-waking"))
             {

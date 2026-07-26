@@ -98,6 +98,15 @@ namespace NotANap.Core
                 outcome.RetrievedBathThermometer = true;
             }
             V2TimeResolver.Advance(run, night, outcome.TimeDeltaMinutes, config, rng);
+            night.V2.ActionAudit.Add(new ActionAuditEntry
+            {
+                Kind = NightAuditKind.Movement,
+                Accepted = true,
+                TimeDeltaMinutes = outcome.TimeDeltaMinutes,
+                EncounterSequence = night.V2.Diagnosis.EncounterSequence,
+                ElapsedMinutes = night.V2.ElapsedMinutes,
+                MovementDestination = destination
+            });
             return outcome;
         }
 
@@ -185,12 +194,14 @@ namespace NotANap.Core
             }
 
             night.Hour = (GameConfig.StartHour + night.V2.ElapsedMinutes / 60) % 24;
+            FinalNightResolver.RunScheduledEvents(run, night, rng);
             if (night.V2.ElapsedMinutes >= config.V2.NightDurationMinutes)
             {
                 night.Over = true;
                 night.V2.Metrics.ParentStaminaAtDawn = night.Parent.Stamina;
                 night.Stats.StaminaLeft = night.Parent.Stamina;
                 night.Stats.Wakes = night.V2.Metrics.WakeCount;
+                night.Stats.WatchOk = night.V2.GentleObservationCount;
                 bool sleepingAtDawn = night.V2.SleepCycle.Stage == V2SleepStage.NremDeepSleep ||
                                       night.V2.SleepCycle.Stage == V2SleepStage.RemActiveSleep;
                 night.Result = sleepingAtDawn
@@ -210,10 +221,14 @@ namespace NotANap.Core
                 night.Baby.Calm = CoreMath.Clamp(night.Baby.Calm + minutes * .4 * effectiveness, 0, 100);
                 night.Stats.NoiseTurns += Math.Max(1, (int)Math.Ceiling(minutes / 15d));
             }
+            if (night.Wearing.Carrier)
+                night.Stats.CarrierTurns += Math.Max(1, (int)Math.Ceiling(minutes / 15d));
             bool sleeping = v2.SleepCycle.Stage == V2SleepStage.RemActiveSleep ||
                             v2.SleepCycle.Stage == V2SleepStage.NremDeepSleep;
             if (sleeping)
             {
+                if (night.Baby.Held)
+                    night.Stats.HeldSleepTurns += Math.Max(1, (int)Math.Ceiling(minutes / 15d));
                 v2.Metrics.RecordSleep(minutes);
                 v2.SleepCycle.CurrentSleepStretchMinutes = v2.Metrics.CurrentSleepStretchMinutes;
                 v2.SleepCycle.MinutesInStage += minutes;
@@ -320,8 +335,17 @@ namespace NotANap.Core
             int target = night.V2.NextWake != null && !night.V2.NextWake.Triggered
                 ? night.V2.NextWake.AtElapsedMinute
                 : config.V2.NightDurationMinutes;
-            V2TimeResolver.Advance(run, night,
-                Math.Max(0, target - night.V2.ElapsedMinutes), config, rng);
+            int intervalMinutes = Math.Max(0, target - night.V2.ElapsedMinutes);
+            V2TimeResolver.Advance(run, night, intervalMinutes, config, rng);
+            night.V2.ActionAudit.Add(new ActionAuditEntry
+            {
+                Kind = NightAuditKind.SleepInterval,
+                Accepted = true,
+                TimeDeltaMinutes = intervalMinutes,
+                EncounterSequence = night.V2.Diagnosis.EncounterSequence,
+                ElapsedMinutes = night.V2.ElapsedMinutes,
+                IntervalChoice = choice
+            });
             return true;
         }
     }

@@ -16,6 +16,75 @@ namespace NotANap.Presentation
             _ => id.ToString()
         };
 
+        public static string NightRoleTitle(NightId id) => id switch
+        {
+            NightId.FirstNight => "신호를 배우는 밤",
+            NightId.SecondNight => "익숙해진 리듬이 돌아오는 밤",
+            _ => "쌓인 리듬을 함께 맞추는 마지막 밤"
+        };
+
+        public static string NightRoleSummary(NightId id) => id switch
+        {
+            NightId.FirstNight => "작은 신호를 살피고 우리 집의 첫 리듬을 만듭니다.",
+            NightId.SecondNight => "어젯밤의 방식이 주는 도움과 준비의 부담을 함께 만납니다.",
+            _ => "지난 두 밤의 선택이 최대 두 사건으로 돌아옵니다. 세 조건 중 둘을 지켜내세요."
+        };
+
+        public static RhythmCardViewModel RhythmCard(RhythmFact fact)
+        {
+            switch (fact.Id)
+            {
+                case RhythmId.Carrier:
+                    return new RhythmCardViewModel { Id = fact.Id,
+                        PreviousChoice = "아기띠와 함께한 시간의 흔적",
+                        Help = "아기띠 안에서는 품의 움직임에 더 빠르게 차분해집니다.",
+                        Burden = "아기띠를 쓸 수 없는 순간에는 다른 진정 신호를 찾아야 합니다." };
+                case RhythmId.HeldSleep:
+                    return new RhythmCardViewModel { Id = fact.Id,
+                        PreviousChoice = "품에서 잠든 시간이 여러 번 이어졌어요",
+                        Help = "품에 안기면 잠드는 흐름을 빠르게 이어갑니다.",
+                        Burden = "내려놓기 전 깊은 잠의 호흡과 이완을 더 확실히 확인해야 합니다." };
+                case RhythmId.Noise:
+                    return new RhythmCardViewModel { Id = fact.Id,
+                        PreviousChoice = "백색소음과 함께한 시간의 흔적",
+                        Help = "익숙한 소리가 주변 자극을 부드럽게 덮어줍니다.",
+                        Burden = "반복해서 들으면 반응이 줄어 다른 진정 방식도 함께 필요합니다." };
+                case RhythmId.SelfSoothe:
+                    return new RhythmCardViewModel { Id = fact.Id,
+                        PreviousChoice = "기다려 준 순간들이 이어졌어요",
+                        Help = "잠깐 스스로 호흡을 가다듬을 가능성이 커졌습니다.",
+                        Burden = "울음이 커질 때는 기다림만 고집하지 말고 신호를 다시 확인해야 합니다." };
+                default:
+                    return new RhythmCardViewModel { Id = fact.Id,
+                        PreviousChoice = "뚜렷하게 굳어진 리듬은 아직 없어요.",
+                        Help = "오늘도 아기의 신호에 맞춰 유연하게 시작할 수 있습니다.",
+                        Burden = "새로운 선택이 다음 밤의 변화로 남을 수 있습니다." };
+            }
+        }
+
+        public static string HomeLocationLabel(HomeLocation location) => location switch
+        {
+            HomeLocation.Kitchen => "주방",
+            HomeLocation.Bathroom => "욕실",
+            _ => "아기방"
+        };
+
+        public static EchoSourceViewModel EchoSource(TargetedEventId id) => id switch
+        {
+            TargetedEventId.CarrierBuckle => new EchoSourceViewModel { EventId = id,
+                Cause = "지난 두 밤 동안 아기띠의 움직임에 익숙해졌어요.",
+                Change = "지금은 버클 고장으로 아기띠를 잠시 쓸 수 없어요.",
+                ResponseHint = "맨손 품과 토닥임으로 익숙한 박자를 이어보세요." },
+            TargetedEventId.NoiseBattery => new EchoSourceViewModel { EventId = id,
+                Cause = "반복해서 들었던 백색소음이 밤의 신호로 남았어요.",
+                Change = "배터리가 방전되어 오늘은 그 소리를 다시 켤 수 없어요.",
+                ResponseHint = "호흡과 몸의 이완을 살피며 다른 진정 신호를 건네보세요." },
+            _ => new EchoSourceViewModel { EventId = id,
+                Cause = "지난 두 밤 동안 품에서 잠드는 리듬이 익숙해졌어요.",
+                Change = "새벽에 잠이 얕아져 내려놓기가 조금 더 어려워졌어요.",
+                ResponseHint = "깊은 잠의 고른 숨과 이완을 확인한 뒤 시도해보세요." }
+        };
+
         public static string EndingTitle(EndingId id) => id switch
         {
             EndingId.MorningWon => "아침이 이겼다",

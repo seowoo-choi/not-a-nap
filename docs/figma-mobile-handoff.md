@@ -188,3 +188,25 @@ REM/NREM은 정지 그림만 바꾸지 않고 최소 2프레임 또는 Smart Ani
 
 Figma는 Core보다 앞서 성공·실패를 판정하지 않는다. 각 모션 프레임은 실행된 action outcome을
 표현하는 QA 계약이며, 게임 수치나 조건을 새로 만들지 않는다.
+
+## 9. V10 리듬·일지·엔딩 계약
+
+`figma-plugin/code.js`는 `CODE_SYNC_REFLECTION_CONTRACTS_V10`에 다음 계약을 생성한다.
+
+- `NIGHT_TRANSITION_RHYTHM`: `MemoryConsolidator` 확정값만 사용하며 어젯밤의 선택, 도움, 부담을 함께 표시한다.
+- `FINAL_NIGHT_ECHO_SOURCE`: `FinalNightResolver`가 선택하고 실제로 발동한 사건만 원인·현재 변화·대응 단서 순으로 공개한다.
+- `ENDING_FAILURE_0_OF_2`, `ENDING_SUCCESS_2_OF_3`: 성공 여부와 조건 수를 엔딩명보다 먼저 보여준다.
+- `DIARY_FACT_BASED`, `DIARY_FALLBACK`: `DiaryFacts`의 실제 ID·수치만 서술하고 AI 경계 실패 시 같은 facts로 폴백한다.
+- `CAREGIVER_EXHAUSTED_RECOVERY`: 체력 0에서 `CatchBreath`로 복귀하는 기존 Core 경로를 표시한다.
+- `TEMPERAMENT_SIGNAL_SOFT`, `TEMPERAMENT_SIGNAL_SENSITIVE`, `TEMPERAMENT_SIGNAL_HUNGRY`: 기질을 진단이 아닌 관찰 가능한 신호 차이로 표현한다.
+
+실제 Figma 원본 연결은 이 작업 환경에서 확인하지 못했다. 플러그인 실행 후 최신
+`MOBILE_QA_STORYBOARD_V6_CODE_SYNC_*` 보드 한 장에서 위 V10 프레임을 검수해야 한다.
+
+V10 플러그인은 계약 목록과 별도로 다음 네 개를 각각 **1080×1920 실제 QA 화면 프레임**으로
+생성하거나 갱신한다.
+
+- `NIGHT_TRANSITION_RHYTHM`: 둘째 밤 리듬 전환의 어젯밤·도움·부담 카드
+- `FINAL_NIGHT_ECHO_SOURCE`: 사건 발동 뒤 원인·현재 변화·대응 단서
+- `DIARY_FACT_BASED`: 알아차린 신호·실제 행동 학습·가족 준비 이해
+- `ENDING_FAILURE_0_OF_2`: 아쉬운 밤·0/2·충족 없음·다음 조건

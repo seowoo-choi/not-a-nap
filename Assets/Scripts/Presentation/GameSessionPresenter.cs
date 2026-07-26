@@ -234,6 +234,12 @@ namespace NotANap.Presentation
                 TemperamentName = Run.Temperament.Name,
                 PairGuidance = BuildPairGuidance(Run.CaregiverStyle, Run.Temperament)
             };
+            vm.NightRoleTitle = PresentationCopyMapper.NightRoleTitle(Run.CurrentNightId);
+            vm.NightRoleSummary = PresentationCopyMapper.NightRoleSummary(Run.CurrentNightId);
+            int rhythmMaximum = Run.CurrentNightId == NightId.HundredthNight ? 2 : 1;
+            if (Run.CurrentNightId != NightId.FirstNight)
+                foreach (var fact in ReflectionResolver.GetRhythms(Run, rhythmMaximum))
+                    vm.RhythmCards.Add(PresentationCopyMapper.RhythmCard(fact));
             bool full = selected.Count >= vm.Slots;
             foreach (var def in definitions)
             {
@@ -349,8 +355,14 @@ namespace NotANap.Presentation
                 CaregiverReflection = v2.CaregiverComposure >= 65
                     ? "숨을 고르니 아기의 작은 변화가 조금 더 잘 보여요."
                     : "서두르지 않아도 괜찮아요. 먼저 한 번 숨을 고르세요.",
+                NightRoleTitle = PresentationCopyMapper.NightRoleTitle(Night.NightId),
+                NightRuleChange = PresentationCopyMapper.NightRoleSummary(Night.NightId),
                 Grade = Night.Over ? NightEvaluationResolver.Evaluate(Night, _config).Grade : null
             };
+            if (Night.NightId == NightId.HundredthNight)
+                foreach (var id in Night.ActiveTargetedEvents)
+                    if (WasTargetedEventFired(Night, id))
+                        vm.EchoSources.Add(PresentationCopyMapper.EchoSource(id));
             foreach (V2ActionId action in Enum.GetValues(typeof(V2ActionId)))
             {
                 // 이미 끝난 일상 준비는 화면에서 감춘다. 미소독 돌발 상태에서만 노출된다.
@@ -416,6 +428,7 @@ namespace NotANap.Presentation
             }
             var evaluation = NightEvaluationResolver.Evaluate(Night, _config);
             var m = evaluation.Metrics;
+            var facts = ReflectionResolver.BuildDiaryFacts(Run, Night);
             var viewModel = new V2DiaryViewModel
             {
                 NightId = Night.NightId,
@@ -428,9 +441,10 @@ namespace NotANap.Presentation
                 MisdiagnosisCount = m.MisdiagnosisCount,
                 UnsafeChoiceCount = m.UnsafeChoiceCount,
                 ParentStaminaAtDawn = m.ParentStaminaAtDawn,
+                Facts = facts,
                 HasNextNight = Run.CurrentNightId != NightId.HundredthNight,
-                LearnedSignal = m.CorrectFirstChecks > 0
-                    ? $"오늘은 {m.CorrectFirstChecks}번 아기의 신호를 먼저 알아차렸다."
+                LearnedSignal = facts.FirstNoticedSignal.HasValue
+                    ? $"처음 제대로 알아차린 신호는 ‘{PresentationCopyMapper.ObservationSignal(facts.FirstNoticedSignal.Value)}’였다."
                     : "오늘은 서두르기보다 아기의 작은 신호를 다시 살펴보는 법을 배웠다.",
                 NextNightNote = m.MisdiagnosisCount > 0
                     ? "다음 밤에는 바로 달래기 전에 기저귀·배고픔·환경을 차례로 확인하자."
@@ -439,9 +453,11 @@ namespace NotANap.Presentation
                     ? "아기와 보호자 모두를 돌보는 지속 가능한 밤에 가까워지고 있다."
                     : "힘든 밤을 버틴 것도 돌봄이다. 다음에는 보호자의 숨 고르기도 먼저 챙기자.",
                 CaregiverGrowth = BuildCaregiverGrowth(Run.CaregiverStyle, Night.V2),
-                MotherInsight = Night.NightId == NightId.HundredthNight
-                    ? "말하지 못하는 존재를 기다리며, 같은 밤을 먼저 견뎌 온 엄마의 시간도 비로소 보였다."
-                    : "오늘의 돌봄을 지나며 엄마가 매일 읽어 왔던 작은 신호들을 조금 이해하게 됐다.",
+                MotherInsight = BuildFamilyUnderstanding(facts),
+                FamilyUnderstanding = BuildFamilyUnderstanding(facts),
+                HabitReflection = BuildHabitReflection(facts),
+                ActionLearning = BuildActionLearning(facts),
+                CaregiverFactReflection = BuildCaregiverFactReflection(facts),
                 CompanionMessage = CompanionMessageFor(Night.NightId),
                 ShareCardText = $"오늘 알아차린 신호 · {PrimaryLearnedSignal(Night.V2)}\n" +
                     "정답보다 서로의 리듬을 알아가는 밤"
@@ -475,8 +491,70 @@ namespace NotANap.Presentation
             };
             foreach (var condition in ending.MetConditions)
                 viewModel.MetConditions.Add(PresentationCopyMapper.VictoryConditionLabel(condition));
+            foreach (VictoryCondition condition in Enum.GetValues(typeof(VictoryCondition)))
+                if (!ending.MetConditions.Contains(condition))
+                    viewModel.UnmetConditions.Add(PresentationCopyMapper.VictoryConditionLabel(condition));
+            viewModel.RetrySuggestion =
+                $"다음에는 {PresentationCopyMapper.CaregiverStyleName(NextStyle(Run.CaregiverStyle))} 보호자와 " +
+                $"{NextTemperament(Run.Temperament).Name} 아기의 밤을 선택해볼 수 있어요.";
             return viewModel;
         }
+
+        private static bool WasTargetedEventFired(NightState night, TargetedEventId id)
+            => night.FiredEventIds.Contains(id == TargetedEventId.CarrierBuckle
+                ? "final-carrier-buckle" : id == TargetedEventId.NoiseBattery
+                    ? "final-noise-battery" : "final-dawn-waking");
+
+        private static string BuildHabitReflection(DiaryFacts facts)
+        {
+            if (facts.Rhythms.Count == 0 || facts.Rhythms[0].Id == RhythmId.Neutral)
+                return "아직 굳어진 리듬은 없다. 오늘 알아차린 신호가 다음 밤의 출발점이 된다.";
+            var card = PresentationCopyMapper.RhythmCard(facts.Rhythms[0]);
+            return $"{card.Help} {card.Burden}";
+        }
+
+        private static string BuildFamilyUnderstanding(DiaryFacts facts)
+        {
+            if (facts.FeedingPreparationIncident)
+                return "평소 준비돼 있던 소독 젖병이 없자, 엄마를 비롯해 함께 밤을 지켜 온 보호자의 준비가 어떤 시간을 아껴줬는지 몸으로 알게 됐다.";
+            if (facts.LongestPreparationStep.HasValue)
+                return $"{PresentationCopyMapper.FeedingStepLabel(facts.LongestPreparationStep.Value)}를 직접 마치며, 엄마와 다른 보호자의 보이지 않던 준비도 돌봄의 일부였음을 알게 됐다.";
+            return "아기의 신호를 기다리고 내 숨도 돌보며, 엄마를 비롯해 함께 밤을 지켜 온 보호자의 시간을 조금 더 구체적으로 이해했다.";
+        }
+
+        private static string BuildActionLearning(DiaryFacts facts)
+        {
+            if (facts.RejectedAction.HasValue && facts.FollowupAction.HasValue)
+                return $"{PresentationCopyMapper.V2ActionLabel(facts.RejectedAction.Value)}이 이어지지 않자 " +
+                    $"{PresentationCopyMapper.V2ActionLabel(facts.FollowupAction.Value)}으로 바꿔 아기의 답을 다시 살폈다.";
+            if (facts.MostRepeatedAction.HasValue)
+                return $"가장 자주 건넨 돌봄은 {PresentationCopyMapper.V2ActionLabel(facts.MostRepeatedAction.Value)}였다. " +
+                    "반복할수록 같은 행동에도 아기의 작은 반응이 다르게 보였다.";
+            if (facts.SleepIntervalChoice == SleepIntervalChoice.PrepareNextFeed)
+                return "아기가 잠든 사이 다음 수유를 준비해, 깨어난 뒤의 서두름을 줄였다.";
+            return "행동을 서두르기보다 관찰한 신호에 맞춰 한 가지씩 바꿔 보았다.";
+        }
+
+        private static string BuildCaregiverFactReflection(DiaryFacts facts)
+        {
+            if (facts.UsedCatchBreath)
+                return $"깨어남이 {facts.WakeCount}번 이어진 밤에도 숨을 고르고 다시 돌아왔다. 새벽의 남은 체력은 {facts.ParentStamina:0}이었다.";
+            if (facts.BareHandsLaydownAttempts > 0)
+                return facts.BareHandsLaydownSucceeded
+                    ? "도구 없이 품에서 침대로 옮기는 시도를 끝내 이어 냈다."
+                    : "맨손으로 내려놓아 본 시도는 실패가 아니라 더 깊은 잠 신호를 배우는 계기가 됐다.";
+            if (facts.LongestMovementDestination.HasValue)
+                return $"{PresentationCopyMapper.HomeLocationLabel(facts.LongestMovementDestination.Value)}으로 직접 움직이며 준비와 돌봄 사이의 시간을 체감했다.";
+            return $"아기가 {facts.WakeCount}번 깨어난 뒤에도 보호자의 체력 {facts.ParentStamina:0}을 남기며 밤을 건넜다.";
+        }
+
+        private static CaregiverStyle NextStyle(CaregiverStyle style)
+            => style == CaregiverStyle.Responsive ? CaregiverStyle.Observant
+                : style == CaregiverStyle.Observant ? CaregiverStyle.Methodical : CaregiverStyle.Responsive;
+
+        private static Temperament NextTemperament(Temperament temperament)
+            => temperament == Temperament.Soft ? Temperament.Sensitive
+                : temperament == Temperament.Sensitive ? Temperament.Hungry : Temperament.Soft;
 
         public bool AdvanceToNextV2Night()
         {

@@ -11,5 +11,8 @@ namespace NotANap.Core
         public bool Grandma;
         /// <summary>백일째 밤 배터리 방전 이벤트 조건(1~2일차 noiseTurns 합)에 사용.</summary>
         public int NoiseTurns;
+        public int CarrierTurns;
+        public int HeldSleepTurns;
+        public int WatchOk;
     }
 }

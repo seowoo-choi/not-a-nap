@@ -24,7 +24,18 @@ namespace NotANap.Presentation
         public string CaregiverStyleDescription;
         public string TemperamentName;
         public string PairGuidance;
+        public string NightRoleTitle;
+        public string NightRoleSummary;
+        public List<RhythmCardViewModel> RhythmCards = new List<RhythmCardViewModel>();
         public List<ItemCardViewModel> Cards = new List<ItemCardViewModel>();
+    }
+
+    public sealed class RhythmCardViewModel
+    {
+        public RhythmId Id;
+        public string PreviousChoice;
+        public string Help;
+        public string Burden;
     }
 
     /// <summary>SETUP 아이템 카드 한 장.</summary>
@@ -204,8 +215,19 @@ namespace NotANap.Presentation
         public bool BathThermometerRetrieved;
         public string CurrentSignal;
         public string CaregiverReflection;
+        public string NightRoleTitle;
+        public string NightRuleChange;
+        public readonly List<EchoSourceViewModel> EchoSources = new List<EchoSourceViewModel>();
         public NightGrade? Grade;
         public readonly List<V2ActionButtonViewModel> Actions = new List<V2ActionButtonViewModel>();
+    }
+
+    public sealed class EchoSourceViewModel
+    {
+        public TargetedEventId EventId;
+        public string Cause;
+        public string Change;
+        public string ResponseHint;
     }
 
     public sealed class V2ActionButtonViewModel
@@ -246,6 +268,11 @@ namespace NotANap.Presentation
         public string MotherInsight;
         public string CompanionMessage;
         public string ShareCardText;
+        public DiaryFacts Facts;
+        public string HabitReflection;
+        public string FamilyUnderstanding;
+        public string ActionLearning;
+        public string CaregiverFactReflection;
         public readonly List<string> HabitNotes = new List<string>();
         public readonly List<string> HabitEffects = new List<string>();
     }
@@ -260,5 +287,7 @@ namespace NotANap.Presentation
         public int MetConditionCount;
         public int RequiredConditionCount;
         public readonly List<string> MetConditions = new List<string>();
+        public readonly List<string> UnmetConditions = new List<string>();
+        public string RetrySuggestion;
     }
 }

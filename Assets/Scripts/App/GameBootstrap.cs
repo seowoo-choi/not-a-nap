@@ -343,7 +343,15 @@ namespace NotANap.App
             if (vm.IsFirstNight)
                 DrawCarePairSetup(vm, false);
             else
-                GUI.Label(new Rect(92, 130, 1500, 40), $"“{vm.TemperamentHint}” · {vm.CaregiverStyleName}", _body);
+            {
+                GUI.Label(new Rect(92, 126, 1500, 42), $"{vm.NightRoleTitle} · {vm.NightRoleSummary}", _headline);
+                for (int i = 0; i < vm.RhythmCards.Count && i < 2; i++)
+                {
+                    var rhythm = vm.RhythmCards[i];
+                    GUI.Label(new Rect(92, 176 + i * 62, 1700, 58),
+                        $"{rhythm.PreviousChoice} · 도움: {rhythm.Help} · 부담: {rhythm.Burden}", _caption);
+                }
+            }
 
             const float displayWidth = 400f;
             const float gap = 48f;
@@ -615,6 +623,7 @@ namespace NotANap.App
             DrawPlayScene(vm, new Rect(0, 0, LandscapeWidth, LandscapeHeight), false);
             DrawTopBar(vm);
             DrawLandscapeStatusOrnaments(vm);
+            DrawEchoSource(vm, new Rect(390, 548, 1140, 126), false);
             DrawSceneFeedback(vm, new Rect(390, 686, 1140, 76), false);
             DrawLandscapeCommandDeck(vm);
 
@@ -645,8 +654,22 @@ namespace NotANap.App
             DrawProgress(new Rect(735, 145, 289, 5), 1f - vm.RemainingMinutes / 540f,
                 new Color(0.94f, 0.67f, 0.3f));
             DrawPortraitStatusOrnaments(vm);
+            DrawEchoSource(vm, new Rect(58, 772, 964, 132), true);
             DrawSceneFeedback(vm, new Rect(58, 912, 964, 118), true);
             DrawPortraitActions(vm);
+        }
+
+        private void DrawEchoSource(V2PlayViewModel vm, Rect rect, bool portrait)
+        {
+            if (vm.EchoSources.Count == 0) return;
+            var echo = vm.EchoSources[vm.EchoSources.Count - 1];
+            DrawGlassPanel(rect, .86f);
+            Fill(new Rect(rect.x, rect.y + 12, 5, rect.height - 24),
+                new Color(.96f, .66f, .3f));
+            GUI.Label(new Rect(rect.x + 24, rect.y + 8, rect.width - 48, rect.height - 16),
+                $"지난 밤의 리듬 · {echo.Cause}\n지금 · {echo.Change}\n대응 · {echo.ResponseHint}",
+                LabelStyle(portrait ? 21 : 18, FontStyle.Bold,
+                    new Color(.96f, .92f, .84f), TextAnchor.MiddleLeft));
         }
 
         private void DrawPlayScene(V2PlayViewModel vm, Rect rect, bool portrait)
@@ -1759,10 +1782,11 @@ namespace NotANap.App
             Panel(new Rect(720, 200, 1090, 680));
             GUI.Label(new Rect(770, 245, 980, 36), "육아일지", _caption);
             GUI.Label(new Rect(770, 300, 940, 85), vm.LearnedSignal, _headline);
-            GUI.Label(new Rect(770, 405, 940, 70), vm.CaregiverGrowth, _body);
-            DrawLandscapeHabitNotes(vm, 770, 490);
-            GUI.Label(new Rect(770, 625, 940, 62), vm.NextNightNote, _body);
-            GUI.Label(new Rect(770, 700, 940, 62), vm.ShareCardText, _caption);
+            GUI.Label(new Rect(770, 395, 940, 64), vm.ActionLearning, _body);
+            GUI.Label(new Rect(770, 465, 940, 58), vm.CaregiverFactReflection, _body);
+            DrawLandscapeHabitNotes(vm, 770, 530);
+            GUI.Label(new Rect(770, 650, 940, 62), vm.FamilyUnderstanding, _body);
+            GUI.Label(new Rect(770, 725, 940, 62), vm.ShareCardText, _caption);
             string nextLabel = vm.HasNextNight ? NextNightButtonLabel(vm.NightId) : "엔딩 보기 →";
             if (GUI.Button(new Rect(1290, 920, 520, 76), nextLabel, _button))
             {
@@ -1831,7 +1855,17 @@ namespace NotANap.App
             Fill(new Rect(0, 0, PortraitWidth, PortraitHeight), new Color(0.01f, 0.02f, 0.035f, 0.36f));
             GUI.Label(new Rect(48, 55, 750, 74), $"{vm.NightLabel} · 밤 준비", _display);
             if (vm.IsFirstNight) DrawCarePairSetup(vm, true);
-            else GUI.Label(new Rect(48, 145, 984, 100), $"“{vm.TemperamentHint}” · {vm.CaregiverStyleName}", _body);
+            else
+            {
+                GUI.Label(new Rect(48, 135, 984, 45), vm.NightRoleTitle, _headline);
+                GUI.Label(new Rect(48, 182, 984, 72), vm.NightRoleSummary, _body);
+                if (vm.RhythmCards.Count > 0)
+                {
+                    var rhythm = vm.RhythmCards[0];
+                    GUI.Label(new Rect(48, 254, 984, 88),
+                        $"{rhythm.PreviousChoice}\n도움 · {rhythm.Help}\n부담 · {rhythm.Burden}", _caption);
+                }
+            }
             GUI.Label(new Rect(48, 354, 984, 72), $"가져갈 물건  {vm.SelectedCount} / {vm.Slots}",
                 OverlayLabelStyle(42, FontStyle.Bold, new Color(0.96f, 0.93f, 0.86f)));
             for (int i = 0; i < vm.Cards.Count; i++)
@@ -1868,9 +1902,11 @@ namespace NotANap.App
             Panel(new Rect(60, 880, 960, 700));
             GUI.Label(new Rect(110, 930, 860, 48), "육아일지", _caption);
             GUI.Label(new Rect(110, 1010, 860, 130), vm.LearnedSignal, _headline);
-            DrawPortraitHabitNotes(vm, 110, 1140);
-            GUI.Label(new Rect(110, 1375, 860, 90), vm.NextNightNote, _body);
-            GUI.Label(new Rect(110, 1470, 860, 90), vm.ShareCardText, _caption);
+            GUI.Label(new Rect(110, 1125, 860, 90), vm.ActionLearning, _body);
+            GUI.Label(new Rect(110, 1215, 860, 80), vm.CaregiverFactReflection, _body);
+            DrawPortraitHabitNotes(vm, 110, 1295);
+            GUI.Label(new Rect(110, 1515, 860, 100), vm.FamilyUnderstanding, _body);
+            GUI.Label(new Rect(110, 1620, 860, 72), vm.ShareCardText, _caption);
             string nextLabel = vm.HasNextNight ? NextNightButtonLabel(vm.NightId) : "엔딩 보기 →";
             if (GUI.Button(new Rect(100, 1730, 880, 110), nextLabel, _button))
             {
@@ -1923,15 +1959,21 @@ namespace NotANap.App
             symbolStyle.normal.textColor = accent;
             GUI.Label(new Rect(x + 60, y + 55, panelWidth - 120, 80),
                 $"백일의 밤 · {PresentationCopyMapper.EndingStatusLabel(vm.IsSuccess)}", statusStyle);
-            GUI.Label(new Rect(x + 60, y + 140, panelWidth - 120, 130), vm.Symbol, symbolStyle);
-            GUI.Label(new Rect(x + 60, y + 275, panelWidth - 120, 90), vm.Title, Centered(_display));
-            GUI.Label(new Rect(x + 110, y + 380, panelWidth - 220, 120), vm.Subtitle, Centered(_body));
-            GUI.Label(new Rect(x + 110, y + 515, panelWidth - 220, 55),
+            GUI.Label(new Rect(x + 110, y + 130, panelWidth - 220, 55),
                 $"지켜 낸 조건  {vm.MetConditionCount} / {vm.RequiredConditionCount}",
                 Centered(_headline));
-            GUI.Label(new Rect(x + 110, y + 580, panelWidth - 220, 130),
-                vm.MetConditions.Count > 0 ? string.Join("  ·  ", vm.MetConditions) : "다음 밤에 다시 이어갈 신호를 남겼어요.",
+            GUI.Label(new Rect(x + 60, y + 190, panelWidth - 120, 95), vm.Symbol, symbolStyle);
+            GUI.Label(new Rect(x + 60, y + 290, panelWidth - 120, 90), vm.Title, Centered(_display));
+            GUI.Label(new Rect(x + 110, y + 390, panelWidth - 220, 100), vm.Subtitle, Centered(_body));
+            GUI.Label(new Rect(x + 110, y + 490, panelWidth - 220, 72),
+                "지켜 낸 조건 · " +
+                (vm.MetConditions.Count > 0 ? string.Join(" · ", vm.MetConditions) : "없음"),
                 Centered(_caption));
+            GUI.Label(new Rect(x + 110, y + 558, panelWidth - 220, 88),
+                "다음에 이어갈 조건 · " +
+                (vm.UnmetConditions.Count > 0 ? string.Join(" · ", vm.UnmetConditions) : "세 가지 신호를 모두 지켰어요"),
+                Centered(_caption));
+            GUI.Label(new Rect(x + 110, y + 645, panelWidth - 220, 60), vm.RetrySuggestion, Centered(_caption));
             if (GUI.Button(new Rect(x + panelWidth * 0.2f, y + panelHeight - 135, panelWidth * 0.6f, 82),
                 "처음부터 다시 보기", _button))
             {
