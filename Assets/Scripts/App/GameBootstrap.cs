@@ -37,6 +37,9 @@ namespace NotANap.App
         private Texture2D _room;
         private Texture2D _kitchenRoom;
         private Texture2D _bathroomRoom;
+        private Texture2D _formulaTinArt;
+        private Texture2D _feedingBottleArt;
+        private Texture2D _coolingBasinArt;
         private readonly Dictionary<ItemId, Texture2D> _itemArt = new Dictionary<ItemId, Texture2D>();
         private GUIStyle _display;
         private GUIStyle _headline;
@@ -105,6 +108,9 @@ namespace NotANap.App
             _room = Resources.Load<Texture2D>("Art/nursery-night-empty");
             _kitchenRoom = Resources.Load<Texture2D>("Art/kitchen-night");
             _bathroomRoom = Resources.Load<Texture2D>("Art/bathroom-night");
+            _formulaTinArt = Resources.Load<Texture2D>("Art/Kitchen/formula-tin");
+            _feedingBottleArt = Resources.Load<Texture2D>("Art/Kitchen/feeding-bottle");
+            _coolingBasinArt = Resources.Load<Texture2D>("Art/Kitchen/cooling-basin");
             LoadItemArt(ItemId.Carrier, "carrier");
             LoadItemArt(ItemId.Pacifier, "pacifier");
             LoadItemArt(ItemId.Noise, "noise");
@@ -655,9 +661,10 @@ namespace NotANap.App
                     TextAnchor.MiddleRight));
             DrawProgress(new Rect(735, 145, 289, 5), 1f - vm.RemainingMinutes / 540f,
                 new Color(0.94f, 0.67f, 0.3f));
+            if (vm.EchoSources.Count > 0)
+                DrawEchoSource(vm, new Rect(58, 1390, 964, 132), true);
             DrawPortraitStatusOrnaments(vm);
-            DrawEchoSource(vm, new Rect(58, 772, 964, 132), true);
-            DrawSceneFeedback(vm, new Rect(58, 912, 964, 118), true);
+            DrawSceneFeedback(vm, new Rect(58, 1688, 964, 142), true);
         }
 
         private void DrawEchoSource(V2PlayViewModel vm, Rect rect, bool portrait)
@@ -854,9 +861,9 @@ namespace NotANap.App
 
         private void DrawKitchenPreparation(V2PlayViewModel vm, bool portrait)
         {
-            Rect powder = portrait ? new Rect(170, 435, 220, 270) : new Rect(520, 205, 220, 260);
-            Rect bottle = portrait ? new Rect(445, 420, 190, 310) : new Rect(825, 190, 190, 295);
-            Rect cooling = portrait ? new Rect(700, 470, 230, 235) : new Rect(1110, 250, 250, 215);
+            Rect powder = portrait ? new Rect(112, 500, 270, 330) : new Rect(480, 205, 255, 310);
+            Rect bottle = portrait ? new Rect(414, 490, 240, 360) : new Rect(825, 185, 220, 330);
+            Rect cooling = portrait ? new Rect(690, 570, 280, 250) : new Rect(1110, 270, 285, 235);
 
             DrawFormulaTin(powder, vm.FormulaMeasured, portrait);
             DrawFeedingBottleState(bottle, vm, portrait);
@@ -876,7 +883,7 @@ namespace NotANap.App
                 !vm.BottleMixed ? "빈 젖병 · 분유가루가 기다리고 있어요" :
                 !vm.BottleCooled ? "분유가 채워졌어요 · 이제 식혀주세요" :
                 "수유 준비 완료 · 아기에게 가져가세요";
-            GUI.Label(new Rect(portrait ? 120 : 500, portrait ? 735 : 500,
+            GUI.Label(new Rect(portrait ? 120 : 500, portrait ? 842 : 530,
                     portrait ? 840 : 900, portrait ? 58 : 46), state,
                 OverlayLabelStyle(portrait ? 25 : 21, FontStyle.Bold,
                     vm.FeedingReady ? new Color(.55f, .92f, .67f) : new Color(1f, .86f, .62f),
@@ -885,15 +892,8 @@ namespace NotANap.App
 
         private void DrawFormulaTin(Rect rect, bool measured, bool portrait)
         {
-            Fill(new Rect(rect.x + rect.width * .12f, rect.y + rect.height * .16f,
-                rect.width * .76f, rect.height * .68f),
-                new Color(.88f, .67f, .28f, .98f));
-            Fill(new Rect(rect.x + rect.width * .08f, rect.y + rect.height * .12f,
-                rect.width * .84f, rect.height * .13f),
-                new Color(.96f, .87f, .62f, .98f));
-            GUI.Label(new Rect(rect.x, rect.y + rect.height * .33f, rect.width, rect.height * .22f),
-                "분유", OverlayLabelStyle(portrait ? 31 : 27, FontStyle.Bold,
-                    Color.white, TextAnchor.MiddleCenter));
+            if (_formulaTinArt != null)
+                GUI.DrawTexture(rect, _formulaTinArt, ScaleMode.ScaleToFit, true);
             if (measured)
                 GUI.Label(new Rect(rect.x, rect.yMax - 48, rect.width, 42), "한 스푼 덜었어요",
                     OverlayLabelStyle(portrait ? 19 : 16, FontStyle.Bold,
@@ -902,19 +902,23 @@ namespace NotANap.App
 
         private void DrawFeedingBottleState(Rect rect, V2PlayViewModel vm, bool portrait)
         {
-            float width = rect.width * .46f;
-            var body = new Rect(rect.center.x - width * .5f, rect.y + rect.height * .2f,
-                width, rect.height * .68f);
-            GUI.DrawTexture(body, _diaperCloth, ScaleMode.StretchToFill, true);
+            var bottle = new Rect(rect.x, rect.y, rect.width, rect.height - 34f);
+            var body = new Rect(rect.x + rect.width * .405f, rect.y + rect.height * .46f,
+                rect.width * .19f, rect.height * .3f);
             float fill = vm.BottleMixed ? .72f : vm.FeedingWaterReady ? .42f : .06f;
             Color liquid = vm.BottleCooled
-                ? new Color(.94f, .78f, .42f, .9f)
-                : new Color(.98f, .68f, .28f, .88f);
-            Fill(new Rect(body.x + 8f, body.yMax - (body.height - 16f) * fill - 8f,
-                body.width - 16f, (body.height - 16f) * fill), liquid);
-            GUI.DrawTexture(new Rect(body.center.x - body.width * .2f,
-                body.y - body.height * .15f, body.width * .4f, body.height * .24f),
-                _caregiverHand, ScaleMode.StretchToFill, true);
+                ? new Color(.88f, .71f, .39f, .82f)
+                : new Color(.96f, .63f, .25f, .78f);
+            if (_feedingBottleArt != null)
+                GUI.DrawTexture(bottle, _feedingBottleArt, ScaleMode.ScaleToFit, true);
+            if (fill > .08f)
+            {
+                var liquidRect = new Rect(body.x, body.yMax - body.height * fill,
+                    body.width, body.height * fill);
+                Fill(liquidRect, liquid);
+                Fill(new Rect(liquidRect.x, liquidRect.y, liquidRect.width, 3f),
+                    new Color(1f, .88f, .62f, .9f));
+            }
             string label = !vm.BottleSanitized ? "미소독" :
                 !vm.BottleMixed ? "비어 있음" :
                 !vm.BottleCooled ? "분유 채움" : "먹일 준비 완료";
@@ -926,11 +930,9 @@ namespace NotANap.App
 
         private void DrawCoolingBasin(Rect rect, bool cooled, bool portrait)
         {
-            Fill(new Rect(rect.x + rect.width * .06f, rect.y + rect.height * .45f,
-                rect.width * .88f, rect.height * .34f),
-                new Color(.35f, .68f, .82f, .82f));
-            Fill(new Rect(rect.x, rect.y + rect.height * .38f, rect.width, rect.height * .12f),
-                new Color(.72f, .88f, .94f, .94f));
+            if (_coolingBasinArt != null)
+                GUI.DrawTexture(new Rect(rect.x, rect.y, rect.width, rect.height - 28f),
+                    _coolingBasinArt, ScaleMode.ScaleToFit, true);
             GUI.Label(new Rect(rect.x, rect.yMax - 38, rect.width, 38),
                 cooled ? "알맞게 식었어요" : "식힘 물",
                 OverlayLabelStyle(portrait ? 20 : 17, FontStyle.Bold,
@@ -1206,20 +1208,20 @@ namespace NotANap.App
 
         private void DrawPortraitStatusOrnaments(V2PlayViewModel vm)
         {
-            float y = 772f;
-            DrawStatusOrnament(new Rect(46, y, 310, 108), "연속 수면",
+            float y = 1562f;
+            DrawStatusOrnament(new Rect(46, y, 310, 94), "연속 수면",
                 FormatDuration(vm.CurrentSleepStretchMinutes),
                 Mathf.Clamp01(vm.CurrentSleepStretchMinutes / 300f),
                 new Color(0.4f, 0.72f, 0.91f), true);
-            DrawStatusOrnament(new Rect(385, y, 310, 108), "보호자 체력",
+            DrawStatusOrnament(new Rect(385, y, 310, 94), "보호자 체력",
                 $"{vm.ParentStamina:0}",
                 Mathf.Clamp01((float)vm.ParentStamina / 100f),
                 vm.ParentStamina >= 30 ? new Color(0.49f, 0.84f, 0.61f) : new Color(0.94f, 0.39f, 0.34f), true);
-            DrawStatusOrnament(new Rect(724, y, 310, 108), "마음의 여유",
+            DrawStatusOrnament(new Rect(724, y, 310, 94), "마음의 여유",
                 $"{vm.CaregiverComposure:0}",
                 Mathf.Clamp01((float)vm.CaregiverComposure / 100f),
                 new Color(0.72f, 0.56f, 0.94f), true);
-            DrawCaregiverBreathHotspot(vm, new Rect(385, y, 310, 108), true);
+            DrawCaregiverBreathHotspot(vm, new Rect(385, y, 310, 94), true);
         }
 
         private void DrawCaregiverBreathHotspot(V2PlayViewModel vm, Rect rect, bool portrait)
