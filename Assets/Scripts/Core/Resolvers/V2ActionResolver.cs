@@ -81,6 +81,7 @@ namespace NotANap.Core
                     Diagnose(run, night, WakeCause.Hunger, outcome, config);
                     outcome.HungerSignalStage = ObservationResolver.GetHungerStage(night.Baby.Hunger, config.V2);
                     ObservationResolver.AddHungerSignals(outcome.HungerSignalStage, outcome.ObservedSignals);
+                    RememberVisibleSignals(night, outcome);
                     break;
                 case V2ActionId.CheckEnvironment:
                     Consume(outcome, config.V2.DiagnosisActionMinutes, -2);
@@ -119,6 +120,7 @@ namespace NotANap.Core
                 case V2ActionId.CheckLimbRelaxation:
                     outcome.HungerSignalStage = HungerSignalStage.None;
                     ObservationResolver.AddSleepSignals(night.V2.SleepCycle, outcome.ObservedSignals);
+                    RememberVisibleSignals(night, outcome);
                     if (night.V2.SleepCycle.Stage == V2SleepStage.NremDeepSleep &&
                         night.V2.SleepCycle.IsLimbRelaxed)
                         night.V2.SleepCycle.DeepSleepObserved = true;
@@ -147,6 +149,8 @@ namespace NotANap.Core
                     night.Wearing.Carrier = !night.Wearing.Carrier;
                     // 벗긴 직후에는 아기가 맨손 품에 남아 있어 Held와 Carrier가 독립된다.
                     night.Baby.Held = true;
+                    night.V2.HeadSupported = true;
+                    outcome.HeadSupported = true;
                     break;
                 case V2ActionId.CheckMonitor:
                     if (!night.HasItem(ItemId.Monitor))
@@ -156,12 +160,18 @@ namespace NotANap.Core
                 case V2ActionId.CatchBreath:
                     Consume(outcome, config.V2.DefaultActionMinutes, 9);
                     night.V2.CryIntensity = CoreMath.Clamp(night.V2.CryIntensity + 3, 0, 100);
+                    ChangeComposure(night, outcome, 15);
+                    night.V2.GentleObservationCount++;
+                    AddAmbientSignals(night, outcome, config);
+                    RememberVisibleSignals(night, outcome);
                     break;
                 case V2ActionId.Hold:
                     if (night.Wearing.Carrier)
                         return Reject(outcome, V2ActionBlockReason.CarrierAlreadyWorn);
                     Consume(outcome, config.V2.DefaultActionMinutes, -8);
                     night.Baby.Held = true;
+                    night.V2.HeadSupported = true;
+                    outcome.HeadSupported = true;
                     night.Baby.Calm = CoreMath.Clamp(night.Baby.Calm +
                         12 * night.V2.Modifier.ComfortActionModifier, 0, 100);
                     night.Baby.Sleep = CoreMath.Clamp(night.Baby.Sleep +
@@ -179,10 +189,12 @@ namespace NotANap.Core
                     ApplyComfort(run, night, outcome, config, rng);
                     break;
                 case V2ActionId.SterilizeBottle:
+                    outcome.ActivityLocation = "주방";
                     Prepare(night, outcome, config, FeedingPreparationStep.SanitizeBottle);
                     night.V2.Feeding.BottleSanitized = true;
                     break;
                 case V2ActionId.PrepareWater:
+                    outcome.ActivityLocation = "주방";
                     // 실제 플레이의 첫 단계는 물·계량·혼합을 묶은 '분유 준비'다.
                     Prepare(night, outcome, config, FeedingPreparationStep.PrepareWater);
                     night.V2.Feeding.WaterReady = true;
@@ -190,15 +202,18 @@ namespace NotANap.Core
                     night.V2.Feeding.BottleMixed = true;
                     break;
                 case V2ActionId.MeasureFormula:
+                    outcome.ActivityLocation = "주방";
                     Prepare(night, outcome, config, FeedingPreparationStep.MeasureFormula);
                     night.V2.Feeding.FormulaMeasured = true;
                     break;
                 case V2ActionId.MixFormula:
+                    outcome.ActivityLocation = "주방";
                     if (!night.V2.Feeding.WaterReady || !night.V2.Feeding.FormulaMeasured) return Reject(outcome);
                     Prepare(night, outcome, config, FeedingPreparationStep.MixFormula);
                     night.V2.Feeding.BottleMixed = true;
                     break;
                 case V2ActionId.CoolBottle:
+                    outcome.ActivityLocation = "주방";
                     if (!night.V2.Feeding.BottleMixed) return Reject(outcome);
                     // 두 번째 단계에서 식힘과 온도 확인을 함께 끝낸다.
                     Prepare(night, outcome, config, FeedingPreparationStep.CoolBottle);
@@ -209,6 +224,7 @@ namespace NotANap.Core
                             ActionId.CheckBottleTemperature);
                     break;
                 case V2ActionId.CheckBottleTemperature:
+                    outcome.ActivityLocation = "주방";
                     if (!night.V2.Feeding.BottleCooled) return Reject(outcome);
                     Prepare(night, outcome, config, FeedingPreparationStep.CheckTemperature);
                     night.V2.Feeding.TemperatureChecked = true;
@@ -227,6 +243,40 @@ namespace NotANap.Core
 
             ApplyOutcomeAndTime(run, night, outcome, config, rng);
             return outcome;
+        }
+
+        private static void ChangeComposure(NightState night, V2ActionOutcome outcome, double delta)
+        {
+            double before = night.V2.CaregiverComposure;
+            night.V2.CaregiverComposure = CoreMath.Clamp(before + delta, 0, 100);
+            outcome.ComposureDelta = night.V2.CaregiverComposure - before;
+        }
+
+        private static void AddAmbientSignals(NightState night, V2ActionOutcome outcome,
+            GameBalanceConfig config)
+        {
+            ObservationResolver.AddHungerSignals(
+                ObservationResolver.GetHungerStage(night.Baby.Hunger, config.V2),
+                outcome.ObservedSignals);
+            ObservationResolver.AddSleepSignals(night.V2.SleepCycle, outcome.ObservedSignals);
+            if (night.V2.SleepCycle.Stage == V2SleepStage.Awake)
+            {
+                if (night.Baby.Calm < config.V2.DrowsyCalmThreshold)
+                    outcome.ObservedSignals.Add(ObservationSignalId.Squirming);
+                else
+                {
+                    outcome.ObservedSignals.Add(ObservationSignalId.Yawning);
+                    outcome.ObservedSignals.Add(ObservationSignalId.RubbingEyes);
+                }
+            }
+        }
+
+        private static void RememberVisibleSignals(NightState night, V2ActionOutcome outcome)
+        {
+            night.V2.VisibleSignals.Clear();
+            foreach (var signal in outcome.ObservedSignals)
+                if (!night.V2.VisibleSignals.Contains(signal))
+                    night.V2.VisibleSignals.Add(signal);
         }
 
         private static void ApplyComfort(RunState run, NightState night, V2ActionOutcome outcome,
@@ -317,6 +367,7 @@ namespace NotANap.Core
             if (rng.NextDouble() < chance)
             {
                 night.Baby.Held = false;
+                night.V2.HeadSupported = false;
                 if (bareHands) night.Stats.BareHandsLaydownSucceeded = true;
                 outcome.EventIds.Add(GameEventId.LaydownSucceeded);
                 if (deepObserved)

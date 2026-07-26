@@ -158,7 +158,7 @@
 
   async function upsertActionSummary() {
     const panelWidth = 2200;
-    const panelHeight = 1160;
+    const panelHeight = 1580;
     let panel = board.findOne(n => n.type === "FRAME" && n.name === "_REVIEW_ACTIONS_SUMMARY");
     if (!panel) {
       panel = figma.createFrame();
@@ -196,17 +196,23 @@
       body.lineHeight = { value: 38, unit: "PIXELS" };
       body.fills = [{ type: "SOLID", color: { r: 0.82, g: 0.86, b: 0.91 } }];
       body.textAutoResize = "HEIGHT";
-      body.resize(2080, 920);
+      body.resize(2080, 1340);
       body.x = 56;
       body.y = 120;
       panel.appendChild(body);
     }
     await setText(body,
+      "이번 반영 · 보호자 성향 3종 × 아기 기질 3종 설정(궁합 점수 없음)\n" +
+      "이번 반영 · 입·손·호흡·몸짓 신호 + 숨 고르기 + 마음의 여유\n" +
+      "이번 반영 · 목 받치고 안기 + 주방 이동/분유 준비 경과 시간\n" +
+      "이번 반영 · 신호·보호자 성장·엄마 이해 중심 육아일지\n" +
+      "이번 반영 · 서버 없는 검수 동행 문장과 마미톡 공유 카드 문안\n\n" +
       "P1 · #18  코드의 수면 포지셔너 명칭을 암막 커튼으로 교체\n" +
       "P1 · #20-2  원인별 관찰 신호를 결정론적 시드로 변주\n" +
       "P1 · #20-3  관찰 → 근거 → 권장 행동을 단계적으로 안내\n" +
       "P2 · #20-4  30초 광고 → 옆잠베개 활성화·깊은 수면 +5 제안 검토\n" +
-      "             안전 메시지·심사 규정·WebGL 광고 SDK·꾸미기 대안 비교 후 결정\n\n" +
+      "             안전·수면 판정 버프 제외. 심사·광고 표기·SDK·제품 안전 검토 후 결정\n" +
+      "제품 확장 · 실제 마미톡 로그인/공유, 익명 집계/응원, 브랜드 계약은 서버·운영 정책 후\n\n" +
       "완료 · #4 #5 #6 #8–#17 #19 #20-1 #21 #23\n" +
       "유지 · #7 #22 #24\n\n" +
       "전체 댓글별 처리표\n" +
@@ -273,6 +279,9 @@
   if (await appendReviewNote(awakeCopy,
     "IMPLEMENTED: BabyStateHeadline은 전지적 설명 대신 아빠가 보고 들을 수 있는 관찰을 사용. 기본 문구: ‘울지 않고 아빠를 빤히 바라본다.’",
     "FATHER_PERSPECTIVE")) changes += 1;
+  if (await appendReviewNote(awakeCopy,
+    "RELATIONAL PLAY: 표정 외 입맛 다시기·손 빨기·하품·호흡·몸의 방향을 관찰. CatchBreath는 ‘숨 고르고 신호 기다리기’이며 마음의 여유를 회복.",
+    "RELATIONAL_SIGNAL")) changes += 1;
 
   const pat = contractFor("M_TAB_CARE_PERSIST");
   if (await setBadge(pat, "REVIEW REQUIRED", { r: 1, g: 0.9, b: 0.68 })) changes += 1;
@@ -307,14 +316,14 @@
 
   const diary = contractFor("M_DAWN_OVERLAY");
   if (await appendReviewNote(diary,
-    "일지 중심: 오늘 알아차린 신호 / 통했던 반응 / 다음 밤에 기억할 한 가지 / 부모 성장 응원. 등급은 보조 정보. 다음에는 젖병을 미리 소독해두자처럼 구체적으로 기록.",
+    "일지 중심: 알아차린 신호 / 보호자 성향의 성장 / 엄마의 밤 이해 / 다른 보호자의 검수 응원 / 마미톡 공유 카드 문안. 경쟁·정답률·궁합 점수 없음.",
     "DIARY")) changes += 1;
 
   // 평소 젖병은 이미 소독되어 있다. 소독 화면/행동은 예외 상태에서만 살아난다.
   const feeding = contractFor("M_TAB_FEED_PERSIST");
   if (await setBadge(feeding, "REVIEW REQUIRED", { r: 1, g: 0.9, b: 0.68 })) changes += 1;
   if (await appendReviewNote(feeding,
-    "수유를 3단계로 축소: 분유 준비(물+계량+혼합) → 식히고 온도 확인 → 수유. 안고 기다리기는 체력↔울음 트레이드오프.",
+    "수유를 3단계로 축소: 분유 준비(물+계량+혼합) → 식히고 온도 확인 → 수유. 준비는 ‘주방’ 압축 이동이며 경과 분 동안 아기 상태도 계속 진행.",
     "FEEDING_FLOW")) changes += 1;
 
   const sterilize = contractFor("M_FEED_SANITIZED");

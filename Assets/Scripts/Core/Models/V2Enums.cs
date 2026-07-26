@@ -14,6 +14,7 @@ namespace NotANap.Core
     public enum FeedingPreparationStep { SanitizeBottle, PrepareWater, MeasureFormula, MixFormula, CoolBottle, CheckTemperature }
     public enum SleepIntervalChoice { RestTogether, CheckEnvironment, PrepareNextFeed }
     public enum RoomSeason { Summer, Winter }
+    public enum CaregiverStyle { Responsive, Observant, Methodical }
 
     public enum ObservationSignalId
     {

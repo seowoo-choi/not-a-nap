@@ -48,6 +48,13 @@ namespace NotANap.Presentation
             Run = RunState.CreateRandom(_rng);
         }
 
+        public void ConfigureCarePair(CaregiverStyle caregiverStyle, Temperament temperament)
+        {
+            if (Run == null || Night != null)
+                throw new InvalidOperationException("밤이 시작되기 전에만 성향을 설정할 수 있다.");
+            Run.ConfigureCarePair(caregiverStyle, temperament);
+        }
+
         public int ItemSlots => Run == null ? 0 : NightFactory.ItemSlots(Run.CurrentNightId);
 
         /// <summary>
@@ -202,7 +209,13 @@ namespace NotANap.Presentation
                 NightLabel = PresentationCopyMapper.NightLabel(Run.CurrentNightId),
                 TemperamentHint = Run.Temperament.Hint,
                 Slots = ItemSlots,
-                SelectedCount = selected.Count
+                SelectedCount = selected.Count,
+                IsFirstNight = Run.CurrentNightId == NightId.FirstNight,
+                CaregiverStyle = Run.CaregiverStyle,
+                CaregiverStyleName = PresentationCopyMapper.CaregiverStyleName(Run.CaregiverStyle),
+                CaregiverStyleDescription = PresentationCopyMapper.CaregiverStyleDescription(Run.CaregiverStyle),
+                TemperamentName = Run.Temperament.Name,
+                PairGuidance = BuildPairGuidance(Run.CaregiverStyle, Run.Temperament)
             };
             bool full = selected.Count >= vm.Slots;
             foreach (var def in definitions)
@@ -289,6 +302,7 @@ namespace NotANap.Presentation
                 DrowsyCalmThreshold = _config.V2.DrowsyCalmThreshold,
                 SleepStartCalmThreshold = _config.V2.SleepStartCalmThreshold,
                 ParentStamina = Night.Parent.Stamina,
+                CaregiverComposure = v2.CaregiverComposure,
                 CryIntensity = v2.CryIntensity,
                 Hunger = Night.Baby.Hunger,
                 BabyHeld = Night.Baby.Held,
@@ -307,6 +321,13 @@ namespace NotANap.Presentation
                 HasNoise = Night.HasItem(ItemId.Noise) && !Night.NoiseDisabled,
                 NoiseOn = Night.Wearing.Noise,
                 HasMonitor = Night.HasItem(ItemId.Monitor),
+                HeadSupported = v2.HeadSupported,
+                CurrentSignal = v2.VisibleSignals.Count > 0
+                    ? PresentationCopyMapper.ObservationSignal(v2.VisibleSignals[0])
+                    : DefaultSignal(v2, Night.Baby.Hunger),
+                CaregiverReflection = v2.CaregiverComposure >= 65
+                    ? "숨을 고르니 아기의 작은 변화가 조금 더 잘 보여요."
+                    : "서두르지 않아도 괜찮아요. 먼저 한 번 숨을 고르세요.",
                 Grade = Night.Over ? NightEvaluationResolver.Evaluate(Night, _config).Grade : null
             };
             foreach (V2ActionId action in Enum.GetValues(typeof(V2ActionId)))
@@ -378,7 +399,14 @@ namespace NotANap.Presentation
                     : "다음 밤에도 관찰한 신호에 맞는 반응을 하나씩 이어가자.",
                 Encouragement = m.ParentStaminaAtDawn >= 30
                     ? "아기와 보호자 모두를 돌보는 지속 가능한 밤에 가까워지고 있다."
-                    : "힘든 밤을 버틴 것도 돌봄이다. 다음에는 보호자의 숨 고르기도 먼저 챙기자."
+                    : "힘든 밤을 버틴 것도 돌봄이다. 다음에는 보호자의 숨 고르기도 먼저 챙기자.",
+                CaregiverGrowth = BuildCaregiverGrowth(Run.CaregiverStyle, Night.V2),
+                MotherInsight = Night.NightId == NightId.HundredthNight
+                    ? "말하지 못하는 존재를 기다리며, 같은 밤을 먼저 견뎌 온 엄마의 시간도 비로소 보였다."
+                    : "오늘의 돌봄을 지나며 엄마가 매일 읽어 왔던 작은 신호들을 조금 이해하게 됐다.",
+                CompanionMessage = CompanionMessageFor(Night.NightId),
+                ShareCardText = $"오늘 알아차린 신호 · {PrimaryLearnedSignal(Night.V2)}\n" +
+                    "정답보다 서로의 리듬을 알아가는 밤"
             };
         }
 
@@ -394,6 +422,47 @@ namespace NotANap.Presentation
             _v2DiaryBuilt = false;
             return true;
         }
+
+        private static string BuildPairGuidance(CaregiverStyle style, Temperament temperament)
+        {
+            if (temperament == Temperament.Sensitive)
+                return style == CaregiverStyle.Responsive
+                    ? "빠르게 다가가되 한 번에 한 가지 자극만 건네보세요."
+                    : "작은 소리와 자세 변화 뒤에 적응할 시간을 주세요.";
+            if (temperament == Temperament.Hungry)
+                return style == CaregiverStyle.Observant
+                    ? "입과 손의 초기 신호를 보면 울음이 커지기 전에 반응할 수 있어요."
+                    : "강한 울음 전의 입맛 다시기와 손 빨기를 기억해보세요.";
+            return "조용한 반응도 하나의 신호예요. 반응이 작다고 서둘러 행동을 바꾸지 않아도 괜찮아요.";
+        }
+
+        private static string DefaultSignal(V2NightState v2, double hunger)
+        {
+            if (v2.SleepCycle.Stage == V2SleepStage.NremDeepSleep)
+                return "숨이 고르고 팔다리의 힘이 편안하게 풀려 있어요.";
+            if (v2.SleepCycle.Stage == V2SleepStage.RemActiveSleep)
+                return "눈꺼풀과 손끝이 움직여요. 아직 깊은 잠은 아니에요.";
+            if (hunger >= 35) return "입을 오물거리거나 손을 입으로 가져가는지 살펴보세요.";
+            return "표정만 보지 말고 입·손·호흡·몸의 방향을 함께 살펴보세요.";
+        }
+
+        private static string PrimaryLearnedSignal(V2NightState v2)
+            => v2.VisibleSignals.Count > 0
+                ? PresentationCopyMapper.ObservationSignal(v2.VisibleSignals[0])
+                : "아기의 호흡과 몸의 긴장";
+
+        private static string BuildCaregiverGrowth(CaregiverStyle style, V2NightState v2)
+            => $"{PresentationCopyMapper.CaregiverStyleName(style)}로 시작한 나는 " +
+               (v2.GentleObservationCount > 0
+                   ? "행동하기 전에 기다리고 관찰하는 순간을 만들었다."
+                   : "다음 밤에는 행동 하나 사이에 아기의 답을 기다려보기로 했다.");
+
+        private static string CompanionMessageFor(NightId night) => night switch
+        {
+            NightId.FirstNight => "함께 이 밤을 건너는 보호자의 문장 · “완벽하지 않아도, 알아차리려는 마음은 전해져요.”",
+            NightId.SecondNight => "함께 이 밤을 건너는 보호자의 문장 · “울음은 실패가 아니라 아직 해석 중인 말이래요.”",
+            _ => "당신과 같은 밤을 건너는 보호자들이 있어요. 서로 다른 리듬도 모두 돌봄의 기록입니다."
+        };
 
         private void BuildActions(PlayViewModel vm)
         {

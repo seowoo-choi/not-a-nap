@@ -53,7 +53,7 @@ namespace NotANap.Presentation
 
         public static string V2ActionLabel(V2ActionId action) => action switch
         {
-            V2ActionId.Hold => "품에 안기",
+            V2ActionId.Hold => "목을 받치고 품에 안기",
             V2ActionId.Pat => "천천히 토닥이기",
             V2ActionId.Laydown => "조심히 눕히기",
             V2ActionId.Pacifier => "쪽쪽이 건네기",
@@ -77,8 +77,45 @@ namespace NotANap.Presentation
             V2ActionId.ToggleCarrier => "아기띠 착용/벗기",
             V2ActionId.ToggleNoise => "백색소음기 켜기/끄기",
             V2ActionId.CheckMonitor => "베이비 모니터 확인",
-            V2ActionId.CatchBreath => "물 한 잔 마시며 숨 고르기",
+            V2ActionId.CatchBreath => "숨 고르고 신호 기다리기",
             _ => action.ToString()
+        };
+
+        public static string CaregiverStyleName(CaregiverStyle style) => style switch
+        {
+            CaregiverStyle.Responsive => "바로 반응하는 보호자",
+            CaregiverStyle.Methodical => "차례로 확인하는 보호자",
+            _ => "잠시 관찰하는 보호자"
+        };
+
+        public static string CaregiverStyleDescription(CaregiverStyle style) => style switch
+        {
+            CaregiverStyle.Responsive => "빠르게 다가가는 힘이 있어요. 반응 사이에 아기의 다음 신호도 기다려보세요.",
+            CaregiverStyle.Methodical => "원인을 하나씩 찾는 힘이 있어요. 계획보다 아기의 변화를 먼저 봐도 괜찮아요.",
+            _ => "작은 변화를 발견하는 힘이 있어요. 강한 신호에는 조금 더 빠르게 반응해도 괜찮아요."
+        };
+
+        public static string ObservationSignal(ObservationSignalId signal) => signal switch
+        {
+            ObservationSignalId.LipSmacking => "입맛을 다시고 있어요",
+            ObservationSignalId.MouthOpening => "입을 벌려 무언가를 찾고 있어요",
+            ObservationSignalId.HandSucking => "손을 입으로 가져가 빨고 있어요",
+            ObservationSignalId.Rooting => "볼이 닿는 쪽으로 고개를 돌려요",
+            ObservationSignalId.LeaningToCaregiver => "보호자 쪽으로 몸을 기울여요",
+            ObservationSignalId.Squirming => "몸을 꼼지락거리며 불편함을 알려요",
+            ObservationSignalId.RapidBreathing => "숨이 빠르고 울음이 커지고 있어요",
+            ObservationSignalId.HeadTurning => "고개를 좌우로 돌리며 찾아요",
+            ObservationSignalId.HungerCry => "배고픔 울음이 강해졌어요",
+            ObservationSignalId.Yawning => "하품하며 졸린 신호를 보내요",
+            ObservationSignalId.RubbingEyes => "눈을 비비며 쉬고 싶다고 알려요",
+            ObservationSignalId.EyelidFlutter => "눈꺼풀이 가볍게 움직여요",
+            ObservationSignalId.IrregularBreathing => "숨의 간격이 아직 고르지 않아요",
+            ObservationSignalId.FacialMovement => "잠든 얼굴이 조금씩 움직여요",
+            ObservationSignalId.LimbMovement => "팔다리에 작은 움직임이 남아 있어요",
+            ObservationSignalId.RegularBreathing => "숨이 천천히 고르게 이어져요",
+            ObservationSignalId.CalmFace => "얼굴의 힘이 편안하게 풀렸어요",
+            ObservationSignalId.RelaxedLimbs => "팔다리가 묵직하게 이완됐어요",
+            _ => "말 대신 몸으로 작은 신호를 보내고 있어요"
         };
 
         public static string V2StageLabel(V2SleepStage stage) => stage switch
@@ -150,11 +187,11 @@ namespace NotANap.Presentation
         public static string OverlayTitle(GameEventId id) => id switch
         {
             GameEventId.LaydownSucceeded => "눕히기 성공",
-            GameEventId.LaydownFailed => "눕히기 실패",
+            GameEventId.LaydownFailed => "아직 품이 필요한 순간",
             GameEventId.BabyFullyWoke => "아기가 깼다",
             GameEventId.HungerCueAppeared => "배꼽시계",
             GameEventId.BottleFoundUnsanitized => "준비해 둔 젖병이 없다",
-            GameEventId.ParentExhausted => "보호자 체력이 바닥났다",
+            GameEventId.ParentExhausted => "보호자에게도 돌봄이 필요해요",
             GameEventId.NightCompleted => "아침이 밝았다",
             _ => "…"
         };
@@ -166,7 +203,7 @@ namespace NotANap.Presentation
             GameEventId.BabyFullyWoke => "겨우 재웠는데… 다시 처음부터다.",
             GameEventId.HungerCueAppeared => "배꼽시계가 울렸다. 아기가 배고파 깬다.",
             GameEventId.BottleFoundUnsanitized => "오늘은 소독된 젖병을 다 썼다. 이번 수유에만 먼저 소독해야 한다.",
-            GameEventId.ParentExhausted => "손에 힘이 들어가지 않는다. 물을 마시고 잠깐 숨을 고른 뒤 다시 돌보자.",
+            GameEventId.ParentExhausted => "지금은 행동을 서두르지 않아도 괜찮아요. 물을 마시고 숨을 고르면 다시 돌볼 수 있어요.",
             GameEventId.NightCompleted => "긴 밤이 끝났다. 오늘의 육아일지를 확인하자.",
             _ => string.Empty
         };
