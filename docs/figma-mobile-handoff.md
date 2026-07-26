@@ -1,6 +1,6 @@
 # NOT A NAP — 모바일 Figma 전면 개편 핸드오프
 
-> 기준: 2026-07-21 로컬 diff
+> 기준: 2026-07-26 배포 코드 `799d17b`
 > 목적: 기존 1920×1080 스토리보드의 PLAY 35장을 모바일 세로 구조와 실제 C# 계약에 맞게 재작성한다.
 > 판정 원본: `docs/code-first-development-plan.md` + `Assets/Scripts/Core`
 > Figma 역할: Core/ViewModel 상태를 시각화하고 클릭 흐름을 표현한다. Figma가 성공·실패·숨은 원인을 판정하지 않는다.
@@ -13,8 +13,9 @@
 | 세로 플레이 | `GameBootstrap.DrawPortraitPlay()` | 아기 상태 → 밤 지표 → 큰 상태 문장 → 행동 탭 순서 |
 | 탭 상태 | `GameBootstrap.ActionGroup` | `Diagnose / Care / Feed` 중 하나를 유지 |
 | 새 각성 식별 | `DiagnosisState.EncounterSequence` | 값이 바뀐 새 각성에서만 `Diagnose`로 최초 1회 초기화 |
-| 탭 클릭 | `GameBootstrap.DrawTab()` | 같은 각성 안에서는 사용자가 선택한 탭을 계속 유지 |
-| 아기 비주얼 | `GameBootstrap.DrawBabyStateVisual()` | `V2PlayViewModel` 값만 읽고 화면에서 판정하지 않음 |
+| 탭 클릭 | `GameBootstrap.DrawCommandTab()` | 같은 각성 안에서는 사용자가 선택한 탭을 계속 유지 |
+| 아기 비주얼 | `GameBootstrap.DrawAnimatedBaby()` + `DrawBabyActionAnimation()` | ViewModel 상태와 직전 action outcome만 시각화하며 화면에서 판정하지 않음 |
+| 방 이동 | `GameBootstrap.DrawRoomRibbon()` | 미니맵 없이 `아기방 / 주방 / 욕실` 알약 버튼으로 이동 |
 | 입력 잠금 | `GameSessionPresenter.InputLocked` | 결과 오버레이가 열렸을 때만 행동 버튼 잠금 |
 | 제한시간 | `GameBootstrap.UpdateDecisionTimer()` | `EncounterSequence`당 타이머 1회 시작, 만료 시 `Hesitate` 1회 전달 |
 
@@ -29,12 +30,17 @@
 
 ```text
 시계 / 새벽까지 남은 시간
-아기 그림과 큰 상태 문장
-연속 수면 / 보호자 체력
-현재 사건·관찰 결과
+신호 리본과 아기 그림
+아기방 / 주방 / 욕실 이동
+연속 수면 / 보호자 체력 / 마음의 여유
+현재 행동 결과
 살펴보기 / 돌보기 / 수유 준비
 현재 탭의 행동 버튼
 ```
+
+Unity 기준 좌표는 신호 리본 `46,176,760,104`, 방 이동 `y=720`, 상태 카드 `y=772`,
+피드백 `58,912,964,118`, 행동 덱 `y=1060`이다. Figma 플러그인은 이 좌표를
+`CODE_SYNC_UNITY_PRESENTATION_V8` 레이어로 재생성한다.
 
 ## 3. 탭 클릭 계약
 
@@ -70,25 +76,28 @@ DiagnosisState.EncounterSequence 증가 + CauseResolved=false
 | 살펴보기 | `BTN_CHECK_DIAPER` | `CheckDiaper` |
 | 살펴보기 | `BTN_CHECK_HUNGER` | `CheckHungerSignals` |
 | 살펴보기 | `BTN_CHECK_ENVIRONMENT` | `CheckEnvironment` |
+| 살펴보기 | `BTN_CHECK_MONITOR` | `CheckMonitor` |
 | 살펴보기 | `BTN_CHECK_RELAXATION` | `CheckLimbRelaxation` |
 | 살펴보기 | `BTN_HESITATE` | `Hesitate` |
+| 살펴보기 | `BTN_CATCH_BREATH` | `CatchBreath` |
 | 돌보기 | `BTN_HOLD` | `Hold` |
+| 돌보기 | `BTN_TOGGLE_CARRIER` | `ToggleCarrier` |
 | 돌보기 | `BTN_PAT` | `Pat` |
 | 돌보기 | `BTN_PACIFIER` | `Pacifier` |
+| 돌보기 | `BTN_TOGGLE_NOISE` | `ToggleNoise` |
 | 돌보기 | `BTN_LAYDOWN` | `Laydown` |
 | 돌보기 | `BTN_CHANGE_DIAPER` | `ChangeDiaper` |
 | 돌보기 | `BTN_ADJUST_TEMPERATURE` | `AdjustTemperature` |
 | 돌보기 | `BTN_ADJUST_HUMIDITY` | `AdjustHumidity` |
 | 수유 준비 | `BTN_SANITIZE_BOTTLE` | `SterilizeBottle` |
 | 수유 준비 | `BTN_PREPARE_WATER` | `PrepareWater` |
-| 수유 준비 | `BTN_MEASURE_FORMULA` | `MeasureFormula` |
-| 수유 준비 | `BTN_MIX_FORMULA` | `MixFormula` |
 | 수유 준비 | `BTN_COOL_BOTTLE` | `CoolBottle` |
-| 수유 준비 | `BTN_CHECK_BOTTLE_TEMP` | `CheckBottleTemperature` |
-| 수유 준비 | `BTN_HOLD_WHILE_PREPARING` | `HoldWhilePreparing` |
 | 수유 준비 | `BTN_FEED_PREPARED` | `FeedPreparedBottle` |
 
-버튼 활성 조건의 최종 원본은 P0-4 이후 `GameSessionPresenter.BuildV2Play()`이다. 현재 모든 V2 버튼이 밤 종료 전 활성화되는 구현을 Figma의 최종 계약으로 복제하지 않는다.
+별도 `CheckBodyTemperature` 버튼은 현재 PLAY UI에서 노출하지 않는다. 체온 관련 Core 계약은
+남아 있지만 Figma 화면 계약에는 복제하지 않는다. 버튼 활성 조건의 원본은
+`GameSessionPresenter.BuildV2Play()`이며, 화면에 노출할 행동 목록의 원본은
+`GameBootstrap.ActionsFor()`이다.
 
 ## 5. 아기 비주얼 상태 계약
 
@@ -119,12 +128,12 @@ REM/NREM은 정지 그림만 바꾸지 않고 최소 2프레임 또는 Smart Ani
 
 ## 6. 아이템 화면 계약
 
-- SETUP은 고정 2×2 종결 화면이 아니라 세로 스크롤 카드 목록 또는 가로 스냅 카드 구조로 확장한다.
-- 카드에는 이름, 핵심 효과 한 문장, 주의점, 선택 상태, 잠금 상태를 큰 글자로 표시한다.
-- 실제 선택 가능 여부는 `V2NightFactory.IsSelectableItem()`과 P0-4 아이템 계약을 따른다.
-- 효과가 연결되지 않은 Carrier/Noise/Monitor를 최종 카드로 확정하지 않는다. P0-4에서 효과 연결 또는 임시 제거를 먼저 결정한다.
-- `ItemId.Bouncer`는 V1 LEGACY이며 신규 카드에서 숨긴다.
-- 옆잠베개·암막 커튼·토닥이인형은 `UNLOCK_CANDIDATE / NOT PLAYABLE` 그룹으로 분리한다.
+- SETUP은 현재 Unity와 동일한 2×2 진열형 구조를 사용한다.
+- 아기띠·쪽쪽이·백색소음기·베이비 모니터를 카드 박스보다 소품 자체가 크게 보이게 배치한다.
+- 이름과 선택 배지는 소품 아래, 효과 설명은 네 슬롯과 겹치지 않는 별도 패널에 표시한다.
+- 실제 선택 가능 여부는 `V2NightFactory.IsSelectableItem()`과 `ToggleV2Item(ItemId)`를 따른다.
+- `ItemId.Bouncer`는 V1 LEGACY이며 신규 화면에서 숨긴다.
+- 암막 커튼 등 후속 후보는 `UNLOCK_CANDIDATE / NOT PLAYABLE` 그룹으로 분리한다.
 - 안전·월령·제품 지침이 확정되기 전에는 수면 성공률, 모로반사 감소, 재입면 보너스를 표시하지 않는다.
 
 ## 7. PLAY 35장 재작성 목록
@@ -166,27 +175,16 @@ REM/NREM은 정지 그림만 바꾸지 않고 최소 2프레임 또는 Smart Ani
 | 31 | `M_SLEEP_FAST_FORWARD` | 수면 중 시간 보내기 |
 | 32 | `M_WAKE_OVERLAY` | 새 각성 오버레이, 입력 잠금 |
 | 33 | `M_DAWN_OVERLAY` | 밤 종료 오버레이 |
-| 34 | `M_ITEM_SCROLL` | 확장 카드·스크롤·선택 상태 |
+| 34 | `M_ITEM_SCROLL` | 2×2 진열형 소품·독립 설명 패널·선택 상태 |
 | 35 | `M_UNLOCK_CANDIDATES` | 안전·월령 검토 전 후속 후보, 선택 불가 |
 
-## 8. 현재 diff와 Figma의 차이
+## 8. 현재 코드와 Figma 동기화 범위
 
-### 이미 코드에 반영됨
+- `CODE_SYNC_UNITY_PRESENTATION_V8`: 현재 세로 PLAY 좌표, 방 이동 알약, 상태·피드백·행동 덱.
+- `CODE_SYNC_SETUP_PRESENTATION_V8`: 2×2 아이템 진열과 독립 설명 패널.
+- `_ACTION_MOTION_SPEC_V8`: 기저귀 확인·갈기, 배고픔·이완 확인, 품에 안기,
+  토닥이기, 쪽쪽이, 눕히기, 수유의 0%/50%/100% QA 키프레임.
+- 안전·월령 조건이 있는 후속 해금 아이템만 `NOT PLAYABLE`로 유지한다.
 
-- 1080×1920 세로 PLAY/TITLE/SETUP/DIARY 배치.
-- 글자와 버튼 확대.
-- 새 각성에서만 살펴보기 탭 초기화.
-- 같은 각성에서 돌보기·수유 준비 탭 유지.
-- Awake/수면/큰 울음의 기본 얼굴 구분.
-
-### Figma에는 그리되 `P0 연결 전` 표기 필요
-
-- 약한 보챔 전용 그림.
-- 배고픔 초기/후기 지속 비주얼.
-- REM/NREM/이완 애니메이션.
-- 모로반사 결과 애니메이션.
-- 쪽쪽이 수용/거부 결과 애니메이션.
-- 실제 선행조건에 따른 버튼 활성/비활성.
-- 안전·월령 조건이 있는 후속 해금 아이템.
-
-위 항목은 화면이 Core보다 앞서 판정을 만들어내지 않도록 Figma annotation에 연결 예정 Core 필드를 반드시 적는다.
+Figma는 Core보다 앞서 성공·실패를 판정하지 않는다. 각 모션 프레임은 실행된 action outcome을
+표현하는 QA 계약이며, 게임 수치나 조건을 새로 만들지 않는다.
