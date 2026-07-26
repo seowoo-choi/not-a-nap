@@ -45,6 +45,9 @@ namespace NotANap.App
         private GUIStyle _tabSelected;
         private Texture2D _speechBubble;
         private Texture2D _lockIcon;
+        private Texture2D _itemGlow;
+        private Texture2D _itemShadow;
+        private ItemId? _setupFocus;
 
         private System.Random _ambientRandom;
         private int _ambientFrame;
@@ -111,6 +114,8 @@ namespace NotANap.App
             _tabButton = ButtonStyle(18, new Color(0.07f, 0.11f, 0.17f, 0.68f), new Color(0.28f, 0.36f, 0.45f, 0.9f), new Color(0.82f, 0.85f, 0.88f));
             _tabSelected = ButtonStyle(18, new Color(0.78f, 0.54f, 0.23f, 0.98f), new Color(0.95f, 0.76f, 0.44f), Color.white);
             _speechBubble = RoundedTexture(new Color(0.97f, 0.94f, 0.87f, 0.98f), 14);
+            _itemGlow = RoundedTexture(new Color(1f, 0.69f, 0.27f, 0.2f), 48);
+            _itemShadow = RoundedTexture(new Color(0f, 0f, 0f, 0.44f), 28);
         }
 
         private GUIStyle LabelStyle(int size, FontStyle weight, Color color, TextAnchor align = TextAnchor.UpperLeft)
@@ -301,7 +306,7 @@ namespace NotANap.App
         {
             var vm = _flow.BuildV2Setup();
             if (_portrait) { DrawPortraitSetup(vm); return; }
-            Fill(new Rect(0, 0, LandscapeWidth, LandscapeHeight), new Color(0.015f, 0.035f, 0.065f, 0.78f));
+            Fill(new Rect(0, 0, LandscapeWidth, LandscapeHeight), new Color(0.015f, 0.035f, 0.065f, 0.46f));
             GUI.Label(new Rect(90, 64, 900, 56), $"{vm.NightLabel}  ·  밤 준비", _display);
             GUI.Label(new Rect(1450, 75, 360, 44), $"가져갈 물건  {vm.SelectedCount} / {vm.Slots}", Right(_headline));
             if (vm.IsFirstNight)
@@ -309,41 +314,133 @@ namespace NotANap.App
             else
                 GUI.Label(new Rect(92, 130, 1500, 40), $"“{vm.TemperamentHint}” · {vm.CaregiverStyleName}", _body);
 
-            const float cardW = 400f;
-            const float cardH = 270f;
+            const float displayWidth = 400f;
+            const float gap = 48f;
             for (int i = 0; i < vm.Cards.Count; i++)
             {
                 var card = vm.Cards[i];
-                int col = i % 4;
-                int row = i / 4;
-                var rect = new Rect(90 + col * 435, 340 + row * 290, cardW, cardH);
-                DrawItemCard(rect, card, vm.SelectedCount, vm.Slots);
+                var rect = new Rect(88 + i * (displayWidth + gap), 330, displayWidth, 390);
+                DrawCollectibleItem(rect, card, false);
             }
-            GUI.Label(new Rect(90, 735, 900, 34), "오늘 밤에 실제로 사용할 물건만 고르세요.", _caption);
+
+            var focused = FocusedSetupCard(vm);
+            if (focused != null)
+                DrawSetupItemDetail(new Rect(130, 748, 1120, 174), focused, false);
+            GUI.Label(new Rect(130, 930, 940, 34), "소품을 눌러 오늘 밤의 진열대에 올리세요.", _caption);
 
             var oldEnabled = GUI.enabled;
             GUI.enabled = vm.CanStart;
             string next = vm.CanStart ? "이 준비로 밤 시작하기  →" : $"물건을 {vm.Slots}개 골라주세요";
-            if (GUI.Button(new Rect(1300, 900, 520, 82), next, _button)) _flow.ConfirmV2Setup();
+            if (GUI.Button(new Rect(1300, 900, 520, 82), next, _button))
+            {
+                _audio?.PlayUi();
+                _flow.ConfirmV2Setup();
+            }
             GUI.enabled = oldEnabled;
         }
 
-        private void DrawItemCard(Rect rect, ItemCardViewModel card, int selected, int slots)
+        private void DrawCollectibleItem(Rect area, ItemCardViewModel card, bool portrait)
         {
-            Color panel = card.Selected ? new Color(0.32f, 0.23f, 0.12f, 0.98f) : new Color(0.055f, 0.09f, 0.14f, 0.96f);
-            if (card.Disabled) panel.a = 0.52f;
-            Fill(rect, panel);
-            Fill(new Rect(rect.x, rect.y, card.Selected ? 7 : 2, rect.height), card.Selected ? new Color(0.92f, 0.7f, 0.36f) : new Color(0.2f, 0.28f, 0.36f));
-            DrawItemArt(card.Id, new Rect(rect.x + 18, rect.y + 24, 104, 104));
-            GUI.Label(new Rect(rect.x + 146, rect.y + 20, rect.width - 166, 52), card.Name, _headline);
-            GUI.Label(new Rect(rect.x + 146, rect.y + 72, rect.width - 166, 122), card.Desc, _body);
-            Fill(new Rect(rect.x + 18, rect.y + rect.height - 88, rect.width - 36, 1),
-                new Color(0.45f, 0.5f, 0.56f, 0.3f));
-            GUI.Label(new Rect(rect.x + 20, rect.y + rect.height - 80, rect.width - 40, 76), $"주의  {card.Side}", _caption);
+            bool hovered = area.Contains(Event.current.mousePosition);
+            if (hovered) _setupFocus = card.Id;
+            float artSize = portrait ? 270f : 276f;
+            float lift = card.Selected
+                ? 15f + Mathf.Sin(Time.unscaledTime * 4.5f) * 3f
+                : hovered && !card.Disabled ? 9f : 0f;
+            float centerX = area.x + area.width * 0.5f;
+            var artRect = new Rect(centerX - artSize * 0.5f, area.y + 30f - lift, artSize, artSize);
+            var shadowRect = new Rect(centerX - artSize * 0.34f, area.y + 276f, artSize * 0.68f, portrait ? 34f : 28f);
+
+            if (card.Selected)
+                GUI.DrawTexture(new Rect(centerX - artSize * 0.55f, area.y + 5f - lift,
+                    artSize * 1.1f, artSize * 1.1f), _itemGlow, ScaleMode.StretchToFill, true);
+            GUI.DrawTexture(shadowRect, _itemShadow, ScaleMode.StretchToFill, true);
+
+            Color oldColor = GUI.color;
+            if (card.Disabled) GUI.color = new Color(0.62f, 0.65f, 0.69f, 0.52f);
+            else if (hovered || card.Selected) GUI.color = new Color(1.08f, 1.04f, 0.96f);
+            DrawItemArt(card.Id, artRect);
+            GUI.color = oldColor;
+
+            if (card.Selected)
+            {
+                DrawItemSparkle(area.x + 48f, area.y + 58f, portrait ? 18f : 15f);
+                DrawItemSparkle(area.xMax - 52f, area.y + 136f, portrait ? 14f : 12f);
+            }
+
+            var nameStyle = new GUIStyle(_headline)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = portrait ? 32 : 30,
+                normal = { textColor = card.Selected
+                    ? new Color(1f, 0.83f, 0.5f)
+                    : new Color(0.96f, 0.93f, 0.86f) }
+            };
+            GUI.Label(new Rect(area.x, area.y + 306, area.width, 48), card.Name, nameStyle);
+            if (card.Selected)
+            {
+                var badge = new GUIStyle(_caption)
+                {
+                    alignment = TextAnchor.MiddleCenter,
+                    normal = { textColor = new Color(1f, 0.78f, 0.36f) }
+                };
+                GUI.Label(new Rect(area.x, area.y + 352, area.width, 30), "✓ 오늘 밤에 챙김", badge);
+            }
+            else if (card.Disabled)
+                GUI.Label(new Rect(area.x, area.y + 352, area.width, 30), "선택 칸이 가득 찼어요", Centered(_caption));
+            else if (hovered)
+                GUI.Label(new Rect(area.x, area.y + 352, area.width, 30), "눌러서 챙기기", Centered(_caption));
+
             var oldEnabled = GUI.enabled;
             GUI.enabled = !card.Disabled;
-            if (GUI.Button(rect, GUIContent.none, GUIStyle.none)) _flow.ToggleV2Item(card.Id);
+            if (GUI.Button(area, GUIContent.none, GUIStyle.none))
+            {
+                _setupFocus = card.Id;
+                _audio?.PlayUi();
+                _flow.ToggleV2Item(card.Id);
+            }
             GUI.enabled = oldEnabled;
+        }
+
+        private static void DrawItemSparkle(float x, float y, float size)
+        {
+            Color color = new Color(1f, 0.76f, 0.28f, 0.92f);
+            Fill(new Rect(x - size * 0.12f, y - size, size * 0.24f, size * 2f), color);
+            Fill(new Rect(x - size, y - size * 0.12f, size * 2f, size * 0.24f), color);
+            Fill(new Rect(x - size * 0.42f, y - size * 0.42f, size * 0.84f, size * 0.84f),
+                new Color(1f, 0.9f, 0.58f, 0.82f));
+        }
+
+        private ItemCardViewModel FocusedSetupCard(SetupViewModel vm)
+        {
+            ItemCardViewModel first = null;
+            ItemCardViewModel selected = null;
+            foreach (var card in vm.Cards)
+            {
+                if (first == null) first = card;
+                if (card.Selected && selected == null) selected = card;
+                if (_setupFocus.HasValue && card.Id == _setupFocus.Value) return card;
+            }
+            return selected ?? first;
+        }
+
+        private void DrawSetupItemDetail(Rect rect, ItemCardViewModel card, bool portrait)
+        {
+            Fill(rect, new Color(0.025f, 0.05f, 0.08f, 0.78f));
+            Fill(new Rect(rect.x, rect.y, 6f, rect.height), card.Selected
+                ? new Color(1f, 0.72f, 0.32f)
+                : new Color(0.48f, 0.57f, 0.66f));
+            float inset = portrait ? 34f : 42f;
+            GUI.Label(new Rect(rect.x + inset, rect.y + 18, rect.width - inset * 2f, 42),
+                card.Selected ? $"{card.Name} · 오늘 밤에 챙겼어요" : card.Name, _headline);
+            GUI.Label(new Rect(rect.x + inset, rect.y + 68, rect.width - inset * 2f, 50),
+                card.Desc, _body);
+            var warning = new GUIStyle(_caption)
+            {
+                normal = { textColor = new Color(0.94f, 0.76f, 0.52f) }
+            };
+            GUI.Label(new Rect(rect.x + inset, rect.y + 124, rect.width - inset * 2f, rect.height - 128),
+                $"기억할 점 · {card.Side}", warning);
         }
 
         private void LoadItemArt(ItemId id, string resourceName)
@@ -1153,14 +1250,14 @@ namespace NotANap.App
         {
             if (portrait)
             {
-                GUI.Label(new Rect(48, 145, 984, 35), "나는 보통 · 정답 없는 보호자 성향", _caption);
-                DrawCareStyleButton(new Rect(48, 188, 305, 56), "바로 반응", CaregiverStyle.Responsive, vm.CaregiverStyle);
-                DrawCareStyleButton(new Rect(388, 188, 305, 56), "잠시 관찰", CaregiverStyle.Observant, vm.CaregiverStyle);
-                DrawCareStyleButton(new Rect(727, 188, 305, 56), "차례로 확인", CaregiverStyle.Methodical, vm.CaregiverStyle);
-                GUI.Label(new Rect(48, 258, 984, 35), "아기 반응 경향 · 의학적 진단이 아닙니다", _caption);
-                DrawTemperamentButton(new Rect(48, 300, 305, 50), "반응이 잔잔함", Temperament.Soft, vm);
-                DrawTemperamentButton(new Rect(388, 300, 305, 50), "자극에 민감", Temperament.Sensitive, vm);
-                DrawTemperamentButton(new Rect(727, 300, 305, 50), "배고픔 신호 빠름", Temperament.Hungry, vm);
+                GUI.Label(new Rect(48, 145, 984, 42), "나는 보통 · 정답 없는 보호자 성향", _caption);
+                DrawCareStyleButton(new Rect(48, 190, 305, 56), "바로 반응", CaregiverStyle.Responsive, vm.CaregiverStyle);
+                DrawCareStyleButton(new Rect(388, 190, 305, 56), "잠시 관찰", CaregiverStyle.Observant, vm.CaregiverStyle);
+                DrawCareStyleButton(new Rect(727, 190, 305, 56), "차례로 확인", CaregiverStyle.Methodical, vm.CaregiverStyle);
+                GUI.Label(new Rect(48, 252, 984, 42), "아기 반응 경향 · 의학적 진단이 아닙니다", _caption);
+                DrawTemperamentButton(new Rect(48, 298, 305, 50), "반응이 잔잔함", Temperament.Soft, vm);
+                DrawTemperamentButton(new Rect(388, 298, 305, 50), "자극에 민감", Temperament.Sensitive, vm);
+                DrawTemperamentButton(new Rect(727, 298, 305, 50), "배고픔 신호 빠름", Temperament.Hungry, vm);
                 return;
             }
 
@@ -1194,36 +1291,31 @@ namespace NotANap.App
 
         private void DrawPortraitSetup(SetupViewModel vm)
         {
-            Fill(new Rect(0, 0, PortraitWidth, PortraitHeight), new Color(0.015f, 0.035f, 0.065f, 0.86f));
+            Fill(new Rect(0, 0, PortraitWidth, PortraitHeight), new Color(0.015f, 0.035f, 0.065f, 0.52f));
             GUI.Label(new Rect(48, 55, 750, 74), $"{vm.NightLabel} · 밤 준비", _display);
             if (vm.IsFirstNight) DrawCarePairSetup(vm, true);
             else GUI.Label(new Rect(48, 145, 984, 100), $"“{vm.TemperamentHint}” · {vm.CaregiverStyleName}", _body);
             GUI.Label(new Rect(48, 365, 984, 50), $"가져갈 물건  {vm.SelectedCount} / {vm.Slots}", _headline);
-            const float cardW = 474f;
-            const float cardH = 420f;
             for (int i = 0; i < vm.Cards.Count; i++)
             {
                 var card = vm.Cards[i];
                 int col = i % 2;
                 int row = i / 2;
-                var rect = new Rect(48 + col * 510, 425 + row * 405, cardW, 380);
-                Color panel = card.Selected ? new Color(0.32f, 0.23f, 0.12f, 0.98f) : new Color(0.055f, 0.09f, 0.14f, 0.96f);
-                if (card.Disabled) panel.a = 0.52f;
-                Fill(rect, panel);
-                Fill(new Rect(rect.x, rect.y, card.Selected ? 9 : 3, rect.height), card.Selected ? new Color(0.92f, 0.7f, 0.36f) : new Color(0.2f, 0.28f, 0.36f));
-                DrawItemArt(card.Id, new Rect(rect.x + 24, rect.y + 28, 132, 132));
-                GUI.Label(new Rect(rect.x + 176, rect.y + 30, 274, 66), card.Name, _headline);
-                GUI.Label(new Rect(rect.x + 176, rect.y + 108, 274, 142), card.Desc, _body);
-                GUI.Label(new Rect(rect.x + 24, rect.y + 270, 426, 90), $"주의 · {card.Side}", _caption);
-                var oldEnabled = GUI.enabled;
-                GUI.enabled = !card.Disabled;
-                if (GUI.Button(rect, GUIContent.none, GUIStyle.none)) _flow.ToggleV2Item(card.Id);
-                GUI.enabled = oldEnabled;
+                var rect = new Rect(48 + col * 510, 425 + row * 390, 474, 370);
+                DrawCollectibleItem(rect, card, true);
             }
-            GUI.Label(new Rect(48, 1250, 984, 55), "오늘 밤에 실제로 사용할 물건만 고르세요.", _caption);
+
+            var focused = FocusedSetupCard(vm);
+            if (focused != null)
+                DrawSetupItemDetail(new Rect(48, 1218, 984, 230), focused, true);
+            GUI.Label(new Rect(48, 1470, 984, 55), "소품을 눌러 오늘 밤의 진열대에 올리세요.", _caption);
             var previous = GUI.enabled;
             GUI.enabled = vm.CanStart;
-            if (GUI.Button(new Rect(100, 1370, 880, 120), vm.CanStart ? "밤 시작하기 →" : $"물건을 {vm.Slots}개 골라주세요", _button)) _flow.ConfirmV2Setup();
+            if (GUI.Button(new Rect(100, 1710, 880, 120), vm.CanStart ? "밤 시작하기 →" : $"물건을 {vm.Slots}개 골라주세요", _button))
+            {
+                _audio?.PlayUi();
+                _flow.ConfirmV2Setup();
+            }
             GUI.enabled = previous;
         }
 
