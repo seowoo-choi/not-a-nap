@@ -41,6 +41,7 @@ namespace NotANap.App
         private Texture2D _formulaTinArt;
         private Texture2D _feedingBottleArt;
         private Texture2D _coolingBasinArt;
+        private Texture2D _introBabyArt;
         private readonly Dictionary<V2ActionId, Texture2D[]> _interactionFrames =
             new Dictionary<V2ActionId, Texture2D[]>();
         private Texture2D[] _carrierBabyFrames;
@@ -62,6 +63,7 @@ namespace NotANap.App
         private Texture2D _caregiverHand;
         private Texture2D _diaperCloth;
         private ItemId? _setupFocus;
+        private int _introBeat;
 
         private System.Random _ambientRandom;
         private int _ambientFrame;
@@ -115,6 +117,7 @@ namespace NotANap.App
             _formulaTinArt = Resources.Load<Texture2D>("Art/Kitchen/formula-tin");
             _feedingBottleArt = Resources.Load<Texture2D>("Art/Kitchen/feeding-bottle");
             _coolingBasinArt = Resources.Load<Texture2D>("Art/Kitchen/cooling-basin");
+            _introBabyArt = Resources.Load<Texture2D>("Art/Baby/cry_hard");
             _carrierBabyFrames = LoadFrameSet("carrier", 4);
             _interactionFrames[V2ActionId.Pat] = LoadFrameSet("pat", 4);
             _interactionFrames[V2ActionId.Hold] = LoadFrameSet("hold", 4);
@@ -297,6 +300,7 @@ namespace NotANap.App
             switch (_flow.Screen)
             {
                 case ScreenState.Title: DrawTitle(); break;
+                case ScreenState.Intro: DrawIntro(); break;
                 case ScreenState.Setup: DrawSetup(); break;
                 case ScreenState.Play: DrawPlay(); break;
                 case ScreenState.Diary: DrawDiary(); break;
@@ -352,10 +356,99 @@ namespace NotANap.App
             Fill(new Rect(830, 356, 260, 3), new Color(0.93f, 0.66f, 0.29f, 0.84f));
             GUI.Label(new Rect(610, 405, 700, 100),
                 "오늘 밤은 아빠 차례다.\n울음보다 먼저 오는 신호를 읽어보자.", Centered(_body));
-            if (DrawPrimaryButton(new Rect(750, 650, 420, 82), "첫째 밤 시작하기  →"))
-                _flow.StartGame();
+            if (DrawPrimaryButton(new Rect(750, 650, 420, 82), "내 시점으로 들어가기  →"))
+            {
+                _introBeat = 0;
+                _flow.BeginIntro();
+            }
             GUI.Label(new Rect(650, 762, 620, 34),
                 "약 5분 · 정답보다 서로의 리듬을 알아가는 밤", Centered(_caption));
+        }
+
+        private void DrawIntro()
+        {
+            float width = _portrait ? PortraitWidth : LandscapeWidth;
+            float height = _portrait ? PortraitHeight : LandscapeHeight;
+            Fill(new Rect(0, 0, width, height), new Color(0.01f, 0.015f, 0.025f, 0.48f));
+
+            float babySize = _portrait ? 760f : 620f;
+            var babyRect = _portrait
+                ? new Rect(160f, 360f, babySize, babySize)
+                : new Rect(650f, 170f, babySize, babySize);
+            if (_introBabyArt != null)
+            {
+                GUI.DrawTexture(new Rect(babyRect.center.x - babySize * 0.28f,
+                    babyRect.yMax - babySize * 0.12f, babySize * 0.56f, babySize * 0.09f),
+                    _itemShadow, ScaleMode.StretchToFill, true);
+                GUI.DrawTexture(babyRect, _introBabyArt, ScaleMode.ScaleToFit, true);
+            }
+
+            // 화면 아래의 두 손으로 카메라가 아빠의 눈이라는 점을 먼저 전달한다.
+            if (_introBeat >= 1)
+            {
+                float handWidth = _portrait ? 230f : 190f;
+                float handHeight = _portrait ? 175f : 145f;
+                float handY = height - (_portrait ? 360f : 220f);
+                DrawCaregiverHand(new Rect(55f, handY, handWidth, handHeight));
+                DrawCaregiverHand(new Rect(width - handWidth - 55f, handY,
+                    handWidth, handHeight), true);
+            }
+
+            string eyebrow;
+            string title;
+            string body;
+            switch (_introBeat)
+            {
+                case 0:
+                    eyebrow = "21:00 · 불이 꺼진 뒤";
+                    title = "작은 울음에 눈을 떴다";
+                    body = "방 건너편에서 짧은 울음이 들린다.\n오늘 밤은 내가 먼저 가보기로 했다.";
+                    break;
+                case 1:
+                    eyebrow = "아빠의 시점";
+                    title = "문을 열자 아기가 나를 찾는다";
+                    body = "정답을 고르는 대신 표정과 입, 손, 호흡을 직접 살핀다.\n내 손으로 안고 토닥이며 아기의 대답을 기다린다.";
+                    break;
+                default:
+                    eyebrow = "첫째 밤";
+                    title = "울음보다 먼저 오는 신호를 읽어보자";
+                    body = "완벽하게 재우는 밤이 아니라,\n우리 가족이 계속 이어갈 수 있는 리듬을 만드는 밤이다.";
+                    break;
+            }
+
+            var copyPanel = _portrait
+                ? new Rect(72f, 1120f, 936f, 410f)
+                : new Rect(120f, 190f, 530f, 480f);
+            DrawGlassPanel(copyPanel, 0.82f);
+            GUI.Label(new Rect(copyPanel.x + 38f, copyPanel.y + 32f,
+                copyPanel.width - 76f, 42f), eyebrow,
+                OverlayLabelStyle(_portrait ? 25 : 20, FontStyle.Bold,
+                    new Color(0.96f, 0.69f, 0.31f)));
+            GUI.Label(new Rect(copyPanel.x + 38f, copyPanel.y + 92f,
+                copyPanel.width - 76f, _portrait ? 120f : 110f), title,
+                OverlayLabelStyle(_portrait ? 42 : 34, FontStyle.Bold,
+                    Color.white, TextAnchor.UpperLeft));
+            GUI.Label(new Rect(copyPanel.x + 38f, copyPanel.y + (_portrait ? 228f : 215f),
+                copyPanel.width - 76f, 140f), body,
+                OverlayLabelStyle(_portrait ? 29 : 23, FontStyle.Normal,
+                    new Color(0.9f, 0.92f, 0.94f), TextAnchor.UpperLeft));
+
+            var nextRect = _portrait
+                ? new Rect(140f, 1605f, 800f, 118f)
+                : new Rect(1180f, 820f, 560f, 82f);
+            string next = _introBeat < 2 ? "한 걸음 가까이  →" : "오늘 밤 준비하기  →";
+            if (DrawPrimaryButton(nextRect, next))
+            {
+                _audio?.PlayUi();
+                if (_introBeat < 2) _introBeat++;
+                else _flow.CompleteIntro();
+            }
+
+            var skipRect = _portrait
+                ? new Rect(390f, 1750f, 300f, 64f)
+                : new Rect(1480f, 920f, 260f, 48f);
+            if (GUI.Button(skipRect, "인트로 건너뛰기", _buttonSmall))
+                _flow.CompleteIntro();
         }
 
         private void DrawSetup()
@@ -2333,8 +2426,11 @@ namespace NotANap.App
             Fill(new Rect(410, 520, 260, 4), new Color(0.93f, 0.66f, 0.29f, 0.84f));
             GUI.Label(new Rect(140, 595, 800, 160),
                 "오늘 밤은 아빠 차례다.\n울음보다 먼저 오는 신호를 읽어보자.", Centered(_body));
-            if (DrawPrimaryButton(new Rect(140, 1030, 800, 120), "첫째 밤 시작하기  →"))
-                _flow.StartGame();
+            if (DrawPrimaryButton(new Rect(140, 1030, 800, 120), "내 시점으로 들어가기  →"))
+            {
+                _introBeat = 0;
+                _flow.BeginIntro();
+            }
             GUI.Label(new Rect(140, 1190, 800, 60),
                 "약 5분 · 정답보다 서로의 리듬을 알아가는 밤", Centered(_caption));
         }

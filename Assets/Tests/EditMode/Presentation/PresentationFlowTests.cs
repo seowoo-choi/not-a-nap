@@ -29,6 +29,21 @@ namespace NotANap.Presentation.Tests
         // ── TITLE / SETUP ───────────────────────────────────────
 
         [Test]
+        public void Intro_IsPresentationOnly_AndCreatesRunAfterCompletion()
+        {
+            var flow = NewFlow();
+
+            flow.BeginIntro();
+            Assert.AreEqual(ScreenState.Intro, flow.Screen);
+            Assert.IsNull(flow.Session.Run);
+
+            flow.CompleteIntro();
+            Assert.AreEqual(ScreenState.Setup, flow.Screen);
+            Assert.IsNotNull(flow.Session.Run);
+            Assert.IsNull(flow.Session.Night);
+        }
+
+        [Test]
         public void StartGame_CreatesRunOnce_AndMovesToSetup()
         {
             var flow = NewFlow();

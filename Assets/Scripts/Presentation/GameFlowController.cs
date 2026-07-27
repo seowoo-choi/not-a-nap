@@ -5,7 +5,7 @@ using NotANap.Core;
 namespace NotANap.Presentation
 {
     /// <summary>
-    /// TITLE → SETUP → PLAY → DIARY → ENDING 화면 흐름만 담당하는 Presentation 전용 상태 머신.
+    /// TITLE → INTRO → SETUP → PLAY → DIARY → ENDING 화면 흐름만 담당하는 Presentation 전용 상태 머신.
     /// 게임 판정은 전혀 하지 않고 GameSessionPresenter를 통해서만 Core를 부른다.
     /// </summary>
     public sealed class GameFlowController
@@ -38,15 +38,25 @@ namespace NotANap.Presentation
 
         // ── TITLE ───────────────────────────────────────────────
 
-        /// <summary>새 런을 정확히 한 번 생성하고 SETUP으로 이동. 중복 클릭은 무시.</summary>
-        public void StartGame()
+        /// <summary>판정이나 시간을 만들지 않고 1인칭 도입 화면으로 이동한다.</summary>
+        public void BeginIntro()
         {
-            if (_runStarted) return;
+            if (Screen != ScreenState.Title || _runStarted) return;
+            GoTo(ScreenState.Intro);
+        }
+
+        /// <summary>인트로 완료/스킵 뒤 새 런을 정확히 한 번 생성하고 SETUP으로 이동한다.</summary>
+        public void CompleteIntro()
+        {
+            if (_runStarted || (Screen != ScreenState.Intro && Screen != ScreenState.Title)) return;
             _runStarted = true;
             Session.StartRun();
             _selected.Clear();
             GoTo(ScreenState.Setup);
         }
+
+        /// <summary>기존 호출부 호환. 새 화면에서는 BeginIntro/CompleteIntro를 사용한다.</summary>
+        public void StartGame() => CompleteIntro();
 
         // ── SETUP ───────────────────────────────────────────────
 
