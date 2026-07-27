@@ -347,6 +347,7 @@ namespace NotANap.Presentation
                 BottleTemperatureChecked = v2.Feeding.TemperatureChecked,
                 HasCarrier = Night.HasItem(ItemId.Carrier),
                 CarrierOn = Night.Wearing.Carrier,
+                HasPacifier = Night.HasItem(ItemId.Pacifier),
                 HasNoise = Night.HasItem(ItemId.Noise) && !Night.NoiseDisabled,
                 NoiseOn = Night.Wearing.Noise,
                 HasMonitor = Night.HasItem(ItemId.Monitor),

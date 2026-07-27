@@ -211,6 +211,7 @@ namespace NotANap.Presentation
         public bool BottleTemperatureChecked;
         public bool HasCarrier;
         public bool CarrierOn;
+        public bool HasPacifier;
         public bool HasNoise;
         public bool NoiseOn;
         public bool HasMonitor;

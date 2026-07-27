@@ -65,6 +65,17 @@ namespace NotANap.Presentation.Tests
         }
 
         [Test]
+        public void PreparedPacifierIsExposedAsANurserySceneProp()
+        {
+            var flow = StartV2();
+
+            var vm = flow.BuildV2Play();
+
+            Assert.IsTrue(vm.HasPacifier);
+            Assert.IsTrue(vm.Actions.Exists(action => action.Action == V2ActionId.Pacifier));
+        }
+
+        [Test]
         public void SecondNightShowsSanitationIncidentThenAllowsSterilizing()
         {
             var presenter = new GameSessionPresenter(new SystemRandomSource(4));

@@ -40,6 +40,9 @@ namespace NotANap.App
         private Texture2D _formulaTinArt;
         private Texture2D _feedingBottleArt;
         private Texture2D _coolingBasinArt;
+        private readonly Dictionary<V2ActionId, Texture2D[]> _interactionFrames =
+            new Dictionary<V2ActionId, Texture2D[]>();
+        private Texture2D[] _carrierBabyFrames;
         private readonly Dictionary<ItemId, Texture2D> _itemArt = new Dictionary<ItemId, Texture2D>();
         private GUIStyle _display;
         private GUIStyle _headline;
@@ -78,7 +81,7 @@ namespace NotANap.App
         private Color _impactColor = Color.clear;
         private V2ActionId? _animatedAction;
         private float _actionAnimationStarted = -10f;
-        private const float ActionAnimationDuration = 1.05f;
+        private const float DefaultActionAnimationDuration = 1.6f;
         private float _roomTransitionStarted = -10f;
         private HomeLocation _roomTransitionFrom;
         private HomeLocation _roomTransitionTo;
@@ -111,6 +114,12 @@ namespace NotANap.App
             _formulaTinArt = Resources.Load<Texture2D>("Art/Kitchen/formula-tin");
             _feedingBottleArt = Resources.Load<Texture2D>("Art/Kitchen/feeding-bottle");
             _coolingBasinArt = Resources.Load<Texture2D>("Art/Kitchen/cooling-basin");
+            _carrierBabyFrames = LoadFrameSet("carrier", 4);
+            _interactionFrames[V2ActionId.Pat] = LoadFrameSet("pat", 4);
+            _interactionFrames[V2ActionId.Hold] = LoadFrameSet("hold", 4);
+            _interactionFrames[V2ActionId.ToggleCarrier] = _carrierBabyFrames;
+            _interactionFrames[V2ActionId.FeedPreparedBottle] = LoadFrameSet("feed", 4);
+            _interactionFrames[V2ActionId.Pacifier] = LoadFrameSet("pacifier", 4);
             LoadItemArt(ItemId.Carrier, "carrier");
             LoadItemArt(ItemId.Pacifier, "pacifier");
             LoadItemArt(ItemId.Noise, "noise");
@@ -118,6 +127,14 @@ namespace NotANap.App
             _ambientRandom = new System.Random(Environment.TickCount ^ GetInstanceID());
             _nextAmbientMotionAt = Time.unscaledTime + RandomRange(0.4f, 1.4f);
             _nextBabbleAt = Time.unscaledTime + RandomRange(1.8f, 4.5f);
+        }
+
+        private static Texture2D[] LoadFrameSet(string name, int count)
+        {
+            var frames = new Texture2D[count];
+            for (int i = 0; i < count; i++)
+                frames[i] = Resources.Load<Texture2D>($"Art/Baby/Interaction/{name}_{i}");
+            return frames;
         }
 
         private void EnsureStyles()
@@ -691,17 +708,22 @@ namespace NotANap.App
             bool babyVisible = vm.BabyLocation == vm.CaregiverLocation;
             if (babyVisible)
             {
-                float babySize = portrait ? 570f : 620f;
+                float babySize = portrait ? 720f : 600f;
                 var babyRect = new Rect(
                     rect.center.x - babySize * 0.5f,
-                    portrait ? 300f : 105f,
+                    portrait ? 270f : 86f,
                     babySize, babySize);
-                babyRect = AnimatedBabyActionRect(babyRect);
+                bool compositeAction = HasCompositeAction();
+                if (!compositeAction) babyRect = AnimatedBabyActionRect(babyRect);
                 GUI.DrawTexture(new Rect(babyRect.center.x - babySize * 0.24f,
                     babyRect.yMax - babySize * 0.12f, babySize * 0.48f, babySize * 0.09f),
                     _itemShadow, ScaleMode.StretchToFill, true);
-                DrawAnimatedBaby(vm, babyRect);
-                DrawBabyActionAnimation(babyRect, portrait);
+                bool compositeDrawn = DrawCompositeBaby(vm, babyRect, portrait);
+                if (!compositeDrawn)
+                {
+                    DrawAnimatedBaby(vm, babyRect);
+                    DrawBabyActionAnimation(babyRect, portrait);
+                }
                 DrawSignalMotionCue(vm, babyRect, portrait);
                 DrawBabbleBubble(vm, babyRect, portrait);
                 DrawBabyDirectInteraction(vm, babyRect, portrait);
@@ -718,9 +740,62 @@ namespace NotANap.App
             DrawRoomTravelMoment(portrait);
         }
 
+        private bool HasCompositeAction()
+            => _animatedAction.HasValue && _interactionFrames.ContainsKey(_animatedAction.Value);
+
+        private bool DrawCompositeBaby(V2PlayViewModel vm, Rect babyRect, bool portrait)
+        {
+            Texture2D frame = null;
+            string caption = null;
+            if (_animatedAction.HasValue &&
+                _interactionFrames.TryGetValue(_animatedAction.Value, out var frames))
+            {
+                V2ActionId action = _animatedAction.Value;
+                float progress = BabyActionProgress();
+                if (!_animatedAction.HasValue) return false;
+                int index;
+                if (action == V2ActionId.Pat)
+                    index = Mathf.FloorToInt(progress * 16f) % frames.Length;
+                else
+                    index = Mathf.Clamp(Mathf.FloorToInt(progress * frames.Length), 0, frames.Length - 1);
+                frame = frames[index];
+                caption = CompositeActionCaption(action, progress);
+            }
+            else if (vm.CarrierOn && _carrierBabyFrames != null)
+            {
+                int index = IsSleeping(vm) ? 3 : vm.CryIntensity > 45 ? 2 :
+                    vm.CryIntensity > 14 ? 1 : 0;
+                frame = _carrierBabyFrames[index];
+            }
+
+            if (frame == null) return false;
+            GUI.DrawTexture(babyRect, frame, ScaleMode.ScaleToFit, true);
+            if (!string.IsNullOrEmpty(caption))
+                GUI.Label(new Rect(babyRect.center.x - (portrait ? 250f : 220f),
+                        babyRect.yMax - (portrait ? 48f : 42f), portrait ? 500f : 440f,
+                        portrait ? 54f : 46f), caption,
+                    OverlayLabelStyle(portrait ? 25 : 20, FontStyle.Bold,
+                        new Color(1f, .88f, .66f), TextAnchor.MiddleCenter));
+            return true;
+        }
+
+        private static string CompositeActionCaption(V2ActionId action, float progress) => action switch
+        {
+            V2ActionId.Pat => progress < .25f ? "손을 포근히 가져가요" :
+                progress < .8f ? "토닥 · 토닥 · 천천히" : "같은 리듬으로 한 번 더",
+            V2ActionId.Hold => progress < .35f ? "목과 등을 함께 받쳐요" :
+                "아빠 품에 꼭 · 살랑살랑",
+            V2ActionId.ToggleCarrier => "몸을 포근히 감싸고 얼굴은 편안하게",
+            V2ActionId.FeedPreparedBottle => progress < .3f ? "목을 받치고 젖병을 가까이" :
+                "꿀꺽 · 꿀꺽 · 아기 속도에 맞춰요",
+            V2ActionId.Pacifier => progress < .45f ? "쪽쪽이를 입가에 살며시" :
+                "편안하게 쪽쪽 · 숨을 살펴봐요",
+            _ => null
+        };
+
         private void DrawBabyDirectInteraction(V2PlayViewModel vm, Rect babyRect, bool portrait)
         {
-            if (_flow.InputLocked || RoomTransitionActive()) return;
+            if (_flow.InputLocked || RoomTransitionActive() || _animatedAction.HasValue) return;
             float pulse = (Mathf.Sin(Time.unscaledTime * 4.2f) + 1f) * .5f;
             var mouth = new Rect(babyRect.x + babyRect.width * .38f,
                 babyRect.y + babyRect.height * .17f, babyRect.width * .24f, babyRect.height * .2f);
@@ -848,6 +923,10 @@ namespace NotANap.App
                     DrawRoomObject(vm, V2ActionId.ToggleNoise,
                         portrait ? new Rect(70, 500, 170, 210) : new Rect(340, 265, 170, 200),
                         vm.NoiseOn ? "백색소음 끄기" : "백색소음기", ItemId.Noise, portrait);
+                    if (vm.HasPacifier)
+                        DrawPacifierProp(vm,
+                            portrait ? new Rect(835, 1015, 145, 145) : new Rect(1435, 470, 125, 125),
+                            portrait);
                     if (!vm.CarrierOn)
                         DrawRoomObject(vm, V2ActionId.ToggleCarrier,
                             portrait ? new Rect(870, 560, 120, 150) : new Rect(1320, 305, 130, 150),
@@ -859,6 +938,28 @@ namespace NotANap.App
             }
             if (IsSleeping(vm)) DrawSleepSceneChoices(portrait);
             DrawRoomPickupAnimation(vm, portrait);
+        }
+
+        private void DrawPacifierProp(V2PlayViewModel vm, Rect rect, bool portrait)
+        {
+            var action = DirectAction(vm, V2ActionId.Pacifier);
+            float pulse = (Mathf.Sin(Time.unscaledTime * 3.2f) + 1f) * .5f;
+            if (action != null)
+            {
+                var old = GUI.color;
+                GUI.color = new Color(1f, .75f, .34f, .18f + pulse * .34f);
+                GUI.DrawTexture(new Rect(rect.x - 12f, rect.y - 12f,
+                    rect.width + 24f, rect.height + 24f), _itemGlow, ScaleMode.StretchToFill, true);
+                GUI.color = old;
+                DrawCareSparkles(rect.center, .35f + pulse * .35f, 2);
+            }
+            DrawItemArt(ItemId.Pacifier, rect);
+            GUI.Label(new Rect(rect.x - 35f, rect.yMax - 6f, rect.width + 70f,
+                    portrait ? 42f : 34f), "쪽쪽이",
+                OverlayLabelStyle(portrait ? 20 : 16, FontStyle.Bold,
+                    new Color(1f, .9f, .72f), TextAnchor.MiddleCenter));
+            if (action != null && GUI.Button(rect, GUIContent.none, GUIStyle.none))
+                PerformV2Action(V2ActionId.Pacifier);
         }
 
         private void DrawSleepSceneChoices(bool portrait)
@@ -897,11 +998,11 @@ namespace NotANap.App
         private void DrawKitchenPreparation(V2PlayViewModel vm, bool portrait, bool babyVisible)
         {
             bool splitPortrait = portrait && babyVisible;
-            Rect powder = splitPortrait ? new Rect(90, 940, 245, 300)
+            Rect powder = splitPortrait ? new Rect(92, 1050, 215, 265)
                 : portrait ? new Rect(112, 500, 270, 330) : new Rect(480, 205, 255, 310);
-            Rect bottle = splitPortrait ? new Rect(420, 920, 215, 330)
+            Rect bottle = splitPortrait ? new Rect(435, 1035, 185, 285)
                 : portrait ? new Rect(414, 490, 240, 360) : new Rect(825, 185, 220, 330);
-            Rect cooling = splitPortrait ? new Rect(710, 1000, 255, 225)
+            Rect cooling = splitPortrait ? new Rect(735, 1100, 220, 195)
                 : portrait ? new Rect(690, 570, 280, 250) : new Rect(1110, 270, 285, 235);
 
             DrawFormulaTin(powder, vm.FormulaMeasured, portrait);
@@ -922,7 +1023,7 @@ namespace NotANap.App
                 !vm.BottleMixed ? "빈 젖병 · 분유가루가 기다리고 있어요" :
                 !vm.BottleCooled ? "분유가 채워졌어요 · 이제 식혀주세요" :
                 "수유 준비 완료 · 아기에게 가져가세요";
-            float stateY = splitPortrait ? 1260f : portrait ? 842f : 530f;
+            float stateY = splitPortrait ? 1350f : portrait ? 842f : 530f;
             GUI.Label(new Rect(portrait ? 120 : 500, stateY,
                     portrait ? 840 : 900, portrait ? 58 : 46), state,
                 OverlayLabelStyle(portrait ? 25 : 21, FontStyle.Bold,
@@ -1511,11 +1612,22 @@ namespace NotANap.App
         private float BabyActionProgress()
         {
             if (!_animatedAction.HasValue) return 1f;
-            float progress = (Time.unscaledTime - _actionAnimationStarted) / ActionAnimationDuration;
+            float progress = (Time.unscaledTime - _actionAnimationStarted) /
+                ActionAnimationDuration(_animatedAction.Value);
             if (progress < 1f) return Mathf.Clamp01(progress);
             _animatedAction = null;
             return 1f;
         }
+
+        private static float ActionAnimationDuration(V2ActionId action) => action switch
+        {
+            V2ActionId.Pat => 3.4f,
+            V2ActionId.Hold => 3.2f,
+            V2ActionId.ToggleCarrier => 2.8f,
+            V2ActionId.FeedPreparedBottle => 3.4f,
+            V2ActionId.Pacifier => 2.8f,
+            _ => DefaultActionAnimationDuration
+        };
 
         private Rect AnimatedBabyActionRect(Rect rect)
         {
@@ -1790,7 +1902,8 @@ namespace NotANap.App
 
         private void DrawBabbleBubble(V2PlayViewModel vm, Rect babyRect, bool portrait)
         {
-            if (IsSleeping(vm) || Time.unscaledTime >= _babbleUntil || string.IsNullOrEmpty(_currentBabble)) return;
+            if (_animatedAction.HasValue || IsSleeping(vm) ||
+                Time.unscaledTime >= _babbleUntil || string.IsNullOrEmpty(_currentBabble)) return;
 
             var bubble = new Rect(babyRect.xMax - (portrait ? 88f : 108f),
                 babyRect.y + (portrait ? 38f : 42f), portrait ? 180f : 200f,
