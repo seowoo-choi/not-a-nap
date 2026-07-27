@@ -42,6 +42,9 @@ namespace NotANap.App
         private Texture2D _feedingBottleArt;
         private Texture2D _coolingBasinArt;
         private Texture2D _introBabyArt;
+        private Texture2D _geneticMonolidStraight;
+        private Texture2D _geneticMonolidCurly;
+        private Texture2D _geneticDoubleStraight;
         private readonly Dictionary<V2ActionId, Texture2D[]> _interactionFrames =
             new Dictionary<V2ActionId, Texture2D[]>();
         private Texture2D[] _carrierBabyFrames;
@@ -64,6 +67,15 @@ namespace NotANap.App
         private Texture2D _diaperCloth;
         private ItemId? _setupFocus;
         private int _introBeat;
+        private bool _dadDoubleEyelid = true;
+        private bool _momDoubleEyelid;
+        private bool _dadCurlyHair = true;
+        private bool _momCurlyHair;
+        private bool _babyDoubleEyelid;
+        private bool _babyCurlyHair;
+        private int _babyVoiceVariant;
+        private int _familyRollCount;
+        private bool _familyRolled;
 
         private System.Random _ambientRandom;
         private int _ambientFrame;
@@ -118,6 +130,9 @@ namespace NotANap.App
             _feedingBottleArt = Resources.Load<Texture2D>("Art/Kitchen/feeding-bottle");
             _coolingBasinArt = Resources.Load<Texture2D>("Art/Kitchen/cooling-basin");
             _introBabyArt = Resources.Load<Texture2D>("Art/Baby/cry_hard");
+            _geneticMonolidStraight = Resources.Load<Texture2D>("Art/Baby/Genetics/monolid_straight");
+            _geneticMonolidCurly = Resources.Load<Texture2D>("Art/Baby/Genetics/monolid_curly");
+            _geneticDoubleStraight = Resources.Load<Texture2D>("Art/Baby/Genetics/double_straight");
             _carrierBabyFrames = LoadFrameSet("carrier", 4);
             _interactionFrames[V2ActionId.Pat] = LoadFrameSet("pat", 4);
             _interactionFrames[V2ActionId.Hold] = LoadFrameSet("hold", 4);
@@ -300,6 +315,7 @@ namespace NotANap.App
             switch (_flow.Screen)
             {
                 case ScreenState.Title: DrawTitle(); break;
+                case ScreenState.FamilySetup: DrawFamilySetup(); break;
                 case ScreenState.Intro: DrawIntro(); break;
                 case ScreenState.Setup: DrawSetup(); break;
                 case ScreenState.Play: DrawPlay(); break;
@@ -356,10 +372,10 @@ namespace NotANap.App
             Fill(new Rect(830, 356, 260, 3), new Color(0.93f, 0.66f, 0.29f, 0.84f));
             GUI.Label(new Rect(610, 405, 700, 100),
                 "오늘 밤은 아빠 차례다.\n울음보다 먼저 오는 신호를 읽어보자.", Centered(_body));
-            if (DrawPrimaryButton(new Rect(750, 650, 420, 82), "내 시점으로 들어가기  →"))
+            if (DrawPrimaryButton(new Rect(750, 650, 420, 82), "우리 아기 만들기  →"))
             {
                 _introBeat = 0;
-                _flow.BeginIntro();
+                _flow.BeginFamilySetup();
             }
             GUI.Label(new Rect(650, 762, 620, 34),
                 "약 5분 · 정답보다 서로의 리듬을 알아가는 밤", Centered(_caption));
@@ -451,6 +467,160 @@ namespace NotANap.App
                 : new Rect(1480f, 920f, 260f, 48f);
             if (GUI.Button(skipRect, "인트로 건너뛰기", _buttonSmall))
                 _flow.CompleteIntro();
+        }
+
+        private void DrawFamilySetup()
+        {
+            float width = _portrait ? PortraitWidth : LandscapeWidth;
+            float height = _portrait ? PortraitHeight : LandscapeHeight;
+            Fill(new Rect(0, 0, width, height), new Color(0.01f, 0.02f, 0.035f, 0.52f));
+            GUI.Label(_portrait
+                    ? new Rect(60f, 55f, 960f, 78f)
+                    : new Rect(90f, 50f, 1000f, 64f),
+                "우리 가족을 닮은 아기", _display);
+            GUI.Label(_portrait
+                    ? new Rect(60f, 130f, 960f, 60f)
+                    : new Rect(90f, 112f, 1250f, 44f),
+                "아빠와 엄마의 외형을 고른 뒤 무료로 뽑아보세요 · 능력치에는 영향 없음",
+                _caption);
+
+            if (_portrait)
+            {
+                DrawParentTraitPanel(new Rect(48f, 220f, 474f, 390f), "아빠",
+                    ref _dadDoubleEyelid, ref _dadCurlyHair);
+                DrawParentTraitPanel(new Rect(558f, 220f, 474f, 390f), "엄마",
+                    ref _momDoubleEyelid, ref _momCurlyHair);
+                DrawBabyGachaResult(new Rect(240f, 650f, 600f, 650f));
+                if (DrawPrimaryButton(new Rect(110f, 1370f, 860f, 115f),
+                    _familyRolled ? "다시 뽑기  ↻" : "가족 특징 섞어 아기 뽑기"))
+                    RollFamilyBaby();
+                if (DrawPrimaryButton(new Rect(110f, 1520f, 860f, 115f),
+                    "이 아기로 시작하기  →", _familyRolled))
+                {
+                    _introBeat = 0;
+                    _flow.BeginIntro();
+                }
+            }
+            else
+            {
+                DrawParentTraitPanel(new Rect(90f, 200f, 480f, 420f), "아빠",
+                    ref _dadDoubleEyelid, ref _dadCurlyHair);
+                DrawParentTraitPanel(new Rect(600f, 200f, 480f, 420f), "엄마",
+                    ref _momDoubleEyelid, ref _momCurlyHair);
+                DrawBabyGachaResult(new Rect(1120f, 165f, 610f, 650f));
+                if (DrawPrimaryButton(new Rect(160f, 720f, 420f, 82f),
+                    _familyRolled ? "다시 뽑기  ↻" : "아기 뽑기"))
+                    RollFamilyBaby();
+                if (DrawPrimaryButton(new Rect(610f, 720f, 470f, 82f),
+                    "이 아기로 시작하기  →", _familyRolled))
+                {
+                    _introBeat = 0;
+                    _flow.BeginIntro();
+                }
+            }
+        }
+
+        private void DrawParentTraitPanel(Rect rect, string title,
+            ref bool doubleEyelid, ref bool curlyHair)
+        {
+            DrawGlassPanel(rect, 0.76f);
+            GUI.Label(new Rect(rect.x + 28f, rect.y + 22f, rect.width - 56f, 48f),
+                title, OverlayLabelStyle(_portrait ? 31 : 27, FontStyle.Bold,
+                    new Color(1f, 0.85f, 0.62f)));
+            GUI.Label(new Rect(rect.x + 28f, rect.y + 90f, rect.width - 56f, 36f),
+                "눈매", _caption);
+            float gap = 14f;
+            float choiceWidth = (rect.width - 56f - gap) * 0.5f;
+            if (DrawChoiceButton(new Rect(rect.x + 28f, rect.y + 132f,
+                    choiceWidth, 72f), "무쌍", !doubleEyelid))
+            {
+                doubleEyelid = false;
+                _familyRolled = false;
+            }
+            if (DrawChoiceButton(new Rect(rect.x + 28f + choiceWidth + gap, rect.y + 132f,
+                    choiceWidth, 72f), "유쌍", doubleEyelid))
+            {
+                doubleEyelid = true;
+                _familyRolled = false;
+            }
+            GUI.Label(new Rect(rect.x + 28f, rect.y + 230f, rect.width - 56f, 36f),
+                "머리결", _caption);
+            if (DrawChoiceButton(new Rect(rect.x + 28f, rect.y + 272f,
+                    choiceWidth, 72f), "직모", !curlyHair))
+            {
+                curlyHair = false;
+                _familyRolled = false;
+            }
+            if (DrawChoiceButton(new Rect(rect.x + 28f + choiceWidth + gap, rect.y + 272f,
+                    choiceWidth, 72f), "곱슬", curlyHair))
+            {
+                curlyHair = true;
+                _familyRolled = false;
+            }
+        }
+
+        private void DrawBabyGachaResult(Rect area)
+        {
+            if (!_familyRolled)
+            {
+                DrawGlassPanel(new Rect(area.x + 45f, area.y + 80f, area.width - 90f, 390f), 0.5f);
+                GUI.Label(new Rect(area.x + 70f, area.y + 195f, area.width - 140f, 110f),
+                    "아직 만나지 못한\n우리 아기", Centered(_headline));
+                return;
+            }
+
+            Texture2D portrait = GeneticBabyPortrait();
+            float artSize = Mathf.Min(area.width, _portrait ? 480f : 430f);
+            var artRect = new Rect(area.center.x - artSize * 0.5f, area.y, artSize, artSize);
+            GUI.DrawTexture(new Rect(artRect.center.x - artSize * 0.3f,
+                artRect.yMax - 26f, artSize * 0.6f, 28f),
+                _itemShadow, ScaleMode.StretchToFill, true);
+            if (portrait != null) GUI.DrawTexture(artRect, portrait, ScaleMode.ScaleToFit, true);
+            string eyeSource = TraitSource(_babyDoubleEyelid, _dadDoubleEyelid, _momDoubleEyelid);
+            string hairSource = TraitSource(_babyCurlyHair, _dadCurlyHair, _momCurlyHair);
+            string voice = _babyVoiceVariant == 0 ? "작고 가는 울음" :
+                _babyVoiceVariant == 1 ? "또렷한 울음" : "힘찬 울음";
+            var resultPanel = new Rect(area.x + 20f, area.y + artSize - 5f,
+                area.width - 40f, 155f);
+            DrawGlassPanel(resultPanel, 0.82f);
+            GUI.Label(new Rect(resultPanel.x + 24f, resultPanel.y + 14f,
+                    resultPanel.width - 48f, 42f),
+                $"{(_babyDoubleEyelid ? "유쌍" : "무쌍")} · {(_babyCurlyHair ? "곱슬" : "직모")}",
+                OverlayLabelStyle(_portrait ? 27 : 23, FontStyle.Bold,
+                    Color.white, TextAnchor.MiddleCenter));
+            GUI.Label(new Rect(resultPanel.x + 24f, resultPanel.y + 62f,
+                    resultPanel.width - 48f, 70f),
+                $"눈매는 {eyeSource}, 머리결은 {hairSource}를 닮았어요\n목소리 · {voice}",
+                OverlayLabelStyle(_portrait ? 21 : 18, FontStyle.Normal,
+                    new Color(0.86f, 0.9f, 0.94f), TextAnchor.MiddleCenter));
+        }
+
+        private void RollFamilyBaby()
+        {
+            _familyRollCount++;
+            int seed = _familyRollCount * 1103515245 + 12345;
+            _babyDoubleEyelid = (seed & 1) == 0 ? _dadDoubleEyelid : _momDoubleEyelid;
+            _babyCurlyHair = (seed & 2) == 0 ? _dadCurlyHair : _momCurlyHair;
+            _babyVoiceVariant = Mathf.Abs(seed >> 3) % 3;
+            _familyRolled = true;
+            _audio?.SetBabyVoiceVariant(_babyVoiceVariant);
+            _audio?.PlayUi();
+        }
+
+        private Texture2D GeneticBabyPortrait()
+        {
+            if (_babyDoubleEyelid && _babyCurlyHair)
+                return Resources.Load<Texture2D>("Art/Baby/awake_calm");
+            if (_babyDoubleEyelid) return _geneticDoubleStraight;
+            return _babyCurlyHair ? _geneticMonolidCurly : _geneticMonolidStraight;
+        }
+
+        private static string TraitSource(bool babyTrait, bool dadTrait, bool momTrait)
+        {
+            if (dadTrait == momTrait)
+                return "아빠와 엄마";
+
+            return babyTrait == dadTrait ? "아빠" : "엄마";
         }
 
         private void DrawSetup()
@@ -1983,6 +2153,12 @@ namespace NotANap.App
             var outcome = ActiveVisualOutcome();
             var current = _babyVisual.AnimationFrameFor(vm, outcome, _ambientFrame);
             var previous = _babyVisual.AnimationFrameFor(vm, outcome, _previousAmbientFrame);
+            if (_familyRolled && outcome == null &&
+                _babyVisual.Resolve(vm, null) == BabyVisualPresenter.VisualState.AwakeCalm)
+            {
+                current = GeneticBabyPortrait();
+                previous = current;
+            }
             float blend = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((now - _ambientTransitionStarted) / _ambientTransitionDuration));
             Color oldColor = GUI.color;
             if (current == previous)
@@ -2428,10 +2604,10 @@ namespace NotANap.App
             Fill(new Rect(410, 520, 260, 4), new Color(0.93f, 0.66f, 0.29f, 0.84f));
             GUI.Label(new Rect(140, 595, 800, 160),
                 "오늘 밤은 아빠 차례다.\n울음보다 먼저 오는 신호를 읽어보자.", Centered(_body));
-            if (DrawPrimaryButton(new Rect(140, 1030, 800, 120), "내 시점으로 들어가기  →"))
+            if (DrawPrimaryButton(new Rect(140, 1030, 800, 120), "우리 아기 만들기  →"))
             {
                 _introBeat = 0;
-                _flow.BeginIntro();
+                _flow.BeginFamilySetup();
             }
             GUI.Label(new Rect(140, 1190, 800, 60),
                 "약 5분 · 정답보다 서로의 리듬을 알아가는 밤", Centered(_caption));

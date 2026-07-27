@@ -44,6 +44,20 @@ namespace NotANap.Presentation.Tests
         }
 
         [Test]
+        public void FamilyAppearanceSetup_PrecedesIntroWithoutCreatingRun()
+        {
+            var flow = NewFlow();
+
+            flow.BeginFamilySetup();
+            Assert.AreEqual(ScreenState.FamilySetup, flow.Screen);
+            Assert.IsNull(flow.Session.Run);
+
+            flow.BeginIntro();
+            Assert.AreEqual(ScreenState.Intro, flow.Screen);
+            Assert.IsNull(flow.Session.Run);
+        }
+
+        [Test]
         public void StartGame_CreatesRunOnce_AndMovesToSetup()
         {
             var flow = NewFlow();

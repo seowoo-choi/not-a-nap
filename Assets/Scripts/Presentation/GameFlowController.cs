@@ -38,10 +38,16 @@ namespace NotANap.Presentation
 
         // ── TITLE ───────────────────────────────────────────────
 
+        public void BeginFamilySetup()
+        {
+            if (Screen != ScreenState.Title || _runStarted) return;
+            GoTo(ScreenState.FamilySetup);
+        }
+
         /// <summary>판정이나 시간을 만들지 않고 1인칭 도입 화면으로 이동한다.</summary>
         public void BeginIntro()
         {
-            if (Screen != ScreenState.Title || _runStarted) return;
+            if ((Screen != ScreenState.Title && Screen != ScreenState.FamilySetup) || _runStarted) return;
             GoTo(ScreenState.Intro);
         }
 

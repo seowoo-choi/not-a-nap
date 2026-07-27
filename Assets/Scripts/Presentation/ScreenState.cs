@@ -7,6 +7,7 @@ namespace NotANap.Presentation
     public enum ScreenState
     {
         Title,
+        FamilySetup,
         Intro,
         Setup,
         Play,

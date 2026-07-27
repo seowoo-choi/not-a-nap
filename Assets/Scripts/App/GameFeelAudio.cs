@@ -28,6 +28,7 @@ namespace NotANap.App
         private float _cryIntensity;
         private bool _sleeping;
         private float _nextBabySoundAt;
+        private float _babyVoicePitch = 1f;
 
         public static GameFeelAudio Attach(GameObject target)
             => target.GetComponent<GameFeelAudio>() ?? target.AddComponent<GameFeelAudio>();
@@ -73,6 +74,9 @@ namespace NotANap.App
                         vm.SleepStage == V2SleepStage.NremDeepSleep;
         }
 
+        public void SetBabyVoiceVariant(int variant)
+            => _babyVoicePitch = variant == 0 ? 1.12f : variant == 2 ? 0.9f : 1f;
+
         public void PlayAction(V2ActionOutcome outcome)
         {
             if (outcome == null) return;
@@ -96,17 +100,17 @@ namespace NotANap.App
             if (Time.unscaledTime < _nextBabySoundAt || _sfx.isPlaying) return;
             if (_sleeping)
             {
-                Play(_breath, 0.18f);
+                PlayBaby(_breath, 0.18f);
                 _nextBabySoundAt = Time.unscaledTime + 4.5f;
             }
             else if (_cryIntensity >= 45f)
             {
-                Play(_hardCry, Mathf.Lerp(0.3f, 0.62f, _cryIntensity / 100f));
+                PlayBaby(_hardCry, Mathf.Lerp(0.3f, 0.62f, _cryIntensity / 100f));
                 _nextBabySoundAt = Time.unscaledTime + 1.4f;
             }
             else if (_cryIntensity > 8f)
             {
-                Play(_softCry, 0.28f);
+                PlayBaby(_softCry, 0.28f);
                 _nextBabySoundAt = Time.unscaledTime + 2.8f;
             }
             else _nextBabySoundAt = Time.unscaledTime + 2f;
@@ -114,6 +118,13 @@ namespace NotANap.App
 
         private void Play(AudioClip clip, float volume)
         {
+            _sfx.pitch = 1f;
+            if (clip != null) _sfx.PlayOneShot(clip, volume);
+        }
+
+        private void PlayBaby(AudioClip clip, float volume)
+        {
+            _sfx.pitch = _babyVoicePitch;
             if (clip != null) _sfx.PlayOneShot(clip, volume);
         }
 
