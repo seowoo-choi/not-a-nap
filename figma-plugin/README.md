@@ -1,60 +1,33 @@
-# NOT A NAP — V9 Journey Code Sync
+# NOT A NAP — V11 Direct Care Code Sync
 
-`MOBILE_QA_STORYBOARD_V6` 원본은 보존하고, 현재 Unity의 생활 동선과 돌봄 모션을
-최신 CODE_SYNC 보드에 동기화하는 Figma 개발 플러그인입니다.
-
-코멘트 후속 액션의 단일 기준은 [`docs/figma-review-actions.md`](../docs/figma-review-actions.md)입니다.
+현재 Unity의 큰 아기, 신체 직접 터치, 방 소품 직접조작, 완성 합성 돌봄 이미지를 기존
+Figma V6 코드 싱크 보드에 반영하는 개발 플러그인입니다.
 
 ## 실행
 
-1. Figma Desktop에서 V6 보드가 있는 파일을 엽니다.
-2. `Plugins → Development → Import plugin from manifest...`를 선택합니다.
-3. 이 폴더의 `manifest.json`을 선택합니다.
-4. `NOT A NAP — V9 Journey Code Sync`를 실행합니다.
+1. Figma Desktop에서 `MOBILE_QA_STORYBOARD_V6`가 있는 파일을 엽니다.
+2. `Plugins → Development → Import plugin from manifest...`에서 `manifest.json`을 고릅니다.
+3. `NOT A NAP — V11 Direct Care Code Sync`를 실행합니다.
 
-## 동작
+원본 V6는 보존합니다. 첫 실행만 코드 싱크 보드를 복제하고 이후에는 가장 최신
+`MOBILE_QA_STORYBOARD_V6_CODE_SYNC_*`를 제자리 갱신합니다.
 
-- 원본 V6 보드는 보존합니다. 싱크 보드가 없을 때만 같은 페이지 오른쪽에 최초 1회 복제합니다.
-- 이후 실행은 가장 최신 `MOBILE_QA_STORYBOARD_V6_CODE_SYNC_*`를 제자리에서 갱신하며 새 보드를 만들지 않습니다.
-- 구형 `CODE_SYNC_HOME_MAP`과 단순 방 알약 계약을 현재 생활 동선 지도로 교체합니다.
-- PLAY QA 프레임에 `CODE_SYNC_UNITY_PRESENTATION_V9` 레이어를 한 개만 생성합니다.
-- Unity 세로 좌표를 그대로 사용합니다: 신호 리본 `46,176,760,104`, 생활 동선 지도
-  `816,176,232,332`, 상태 카드 `y=772`, 피드백 `58,912,964,118`, 행동 덱 `y=1060`.
-- 지도에는 아기방·주방·욕실의 점선 이동 경로와 아빠 토큰·아기 하트를 표시합니다.
-- 아기를 안지 않았으면 아기 하트는 아기방에 남고, 안았으면 두 토큰이 함께 이동합니다.
-- 이동 중 방 배경은 0.9초 크로스페이드되고 목적에 맞는 짧은 생활 문장이 나타납니다.
-- 검은 타원 버튼 대신 직선형 반투명 패널, 금색 선택선, 충분한 한글 line-height를 사용합니다.
-- `M_ITEM_SCROLL`을 실제 Unity의 2×2 진열형 SETUP 구조로 교체하고 설명 패널과 CTA를 분리합니다.
-- `_ACTION_MOTION_SPEC_V9`에 9개 아기 상호작용의 진입/접촉/정리 키프레임과
-  방 이동 0%/50%/100% 프레임을 생성합니다.
-- 기저귀 확인·갈기, 배고픔·이완 확인, 품에 안기, 토닥이기, 쪽쪽이, 눕히기, 수유 프레임에는 행동 모션 라벨을 표시합니다.
-- 같은 화면에서 다시 실행하면 V8 동기화 레이어를 교체하므로 레이어가 중복되지 않습니다.
-- 최신 싱크 보드의 `REVIEW ACTIONS · 다음 구현` 영역에 전체 댓글 처리표 링크와 P0/P1 액션을 갱신합니다.
-- `Presenter.TryExecuteV2Action`을 실제 진입점인 `GameFlowController.ActV2`로 교체합니다.
-- `M_ITEM_SCROLL`의 가상 `SelectItem` 계약을 실제 `ToggleV2Item(ItemId)` 계약으로 교체합니다.
-- 현재 코드에 연결된 아기 상태 비주얼 계약을 `IMPLEMENTED`로 갱신합니다.
-- `M_TIMEOUT`, `M_SLEEP_FAST_FORWARD`, `M_UNLOCK_CANDIDATES`를 현재 구현 상태로 갱신합니다.
-- 백색소음기·베이비 모니터의 실제 PLAY 행동 계약을 추가합니다.
-- 맨손 안기와 아기띠 착용/벗기 행동, 계절별 실제 방 온도(여름 23°C·겨울 26°C) 계약을 동기화합니다.
-- 조기 눕히기 거부, 배고픔 단계 안내, 온·습도 숫자 표시, 다음 밤 진행 계약을 동기화합니다.
-- `M_DIAPER_CHECK_WET/CLEAN`을 실제 젖음·깨끗함 결과 및 무해한 우선 검사 계약에 연결합니다.
-- 체력 0의 `ParentExhausted` 안내와 `CatchBreath` 회복 선택을 계약에 추가합니다.
-- 맨손 안기/아기띠/수유 중 안기 분리, 침대 토닥임 후 눕히기 금지, 수유 3단계 축소 계약을 갱신합니다.
-- 삭제 요청된 부적절 장비를 암막 커튼으로 교체하고, 루팅 반사·신호 중심 육아일지 계약을 추가합니다.
-- 수면 구간을 `같이 쉬기 / 환경 점검 / 다음 수유 준비` 선택으로 확장하는 계약과 아빠 시점의 관찰 문구를 추가합니다.
-- 수유 준비는 `BottleSanitized=true`가 기본이며, 둘째 밤의 `BottleFoundUnsanitized` 돌발에서만 젖병 소독을 `EXCEPTION ONLY`로 노출합니다.
-- 아이템 구성과 PLAY/SETUP 화면 구조를 현재 구현 상태인 `IMPLEMENTED`로 갱신합니다.
-- 보호자 성향 3종×아기 기질 3종, 몸짓 신호, 마음의 여유, 목 받치기, 주방 이동 시간, 관계 중심 육아일지 계약을 기존 싱크 보드에 갱신합니다.
-- 마미톡·실제 커뮤니티·브랜드 광고는 구현 완료로 표시하지 않고 안전·운영·SDK 검토가 필요한 제품 확장으로 구분합니다.
-- 아기방·주방·욕실 직접 이동 시간과 보호자/아기 위치 계약을 생활 동선 지도와 이동 토큰으로 시각화합니다.
+## V11에서 교체되는 것
 
-플러그인은 게임 수치나 판정 계약을 변경하지 않습니다.
+- PLAY의 하단 버튼 덱과 행동 탭을 제거하고 큰 아기 직접 터치 무대로 교체
+- 입·등·가슴·기저귀·팔다리·매트리스의 투명 대형 히트 영역 표시
+- 추천 영역 하나만 반짝이는 규칙 명시
+- 토닥 3.4초, 안기 3.2초, 아기띠 2.8초, 수유 3.4초, 쪽쪽이 2.8초 계약
+- 제품 PNG 오버레이 금지와 완성 합성 스프라이트 20종 계약
+- 주방의 분유통·젖병·식힘 물 직접조작과 젖병 내용물 상태
+- 쪽쪽이를 소지했을 때 아기방 소품으로 항상 표시
+- V10의 결정론적 일지·엔딩·기억 계약 유지
 
-## 생성·교체되는 주요 레이어
+생성·교체 레이어:
 
-- `CODE_SYNC_UNITY_PRESENTATION_V9`
-- `CODE_SYNC_SETUP_PRESENTATION_V9`
-- `_ACTION_MOTION_SPEC_V9`
+- `CODE_SYNC_UNITY_PRESENTATION_V11`
+- `CODE_SYNC_SETUP_PRESENTATION_V11`
+- `_ACTION_MOTION_SPEC_V11`
 - `_REVIEW_ACTIONS_SUMMARY`
 
-구형 `CODE_SYNC_HOME_MAP`은 실행 중 자동 삭제됩니다.
+게임 수치, 확률, 판정, 승패는 변경하지 않습니다.

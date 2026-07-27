@@ -1,4 +1,4 @@
-/* NOT A NAP — Unity V9 journey and care-motion contract synchronizer.
+/* NOT A NAP — Unity V11 direct-care interaction contract synchronizer.
  * MOBILE_QA_STORYBOARD_V6 is preserved. The latest editable CODE_SYNC board is updated.
  */
 
@@ -192,7 +192,7 @@
     return candidates.sort((a, b) => a.width * a.height - b.width * b.height)[0] || null;
   }
 
-  const SYNC_VERSION = "V9 · 생활 동선 + 돌봄 모션 · 2026-07-26";
+  const SYNC_VERSION = "V11 · 직접 돌봄 + 완성 합성 아트 · 2026-07-27";
   const THEME = {
     ink: { r: 0.012, g: 0.025, b: 0.045 },
     glass: { r: 0.025, g: 0.055, b: 0.09 },
@@ -279,7 +279,7 @@
   }
 
   function addHomeJourneyMap(parent) {
-    const map = addSyncFrame(parent, "HOME_JOURNEY_MAP_V9", 816, 176, 232, 332,
+    const map = addSyncFrame(parent, "HOME_JOURNEY_MAP_V11", 816, 176, 232, 332,
       THEME.glass, 0.66, THEME.line, 0);
     addSyncFrame(map, "MAP_ACCENT", 14, 14, 4, 304, THEME.gold, 0.8, null, 0);
     addSyncText(map, "MAP_TITLE", "우리 집 새벽 동선", 28, 8, 190, 19,
@@ -355,13 +355,14 @@
     const staleLayers = screen.findAll(n =>
       n.name === "CODE_SYNC_HOME_MAP" ||
       n.name === "CODE_SYNC_UNITY_PRESENTATION_V8" ||
-      n.name === "CODE_SYNC_UNITY_PRESENTATION_V9");
+      n.name === "CODE_SYNC_UNITY_PRESENTATION_V9" ||
+      n.name === "CODE_SYNC_UNITY_PRESENTATION_V11");
     for (const stale of staleLayers) stale.remove();
 
     const sx = screen.width / 1080;
     const sy = screen.height / 1920;
     const overlay = figma.createFrame();
-    overlay.name = "CODE_SYNC_UNITY_PRESENTATION_V9";
+    overlay.name = "CODE_SYNC_UNITY_PRESENTATION_V11";
     overlay.resize(1080, 1920);
     overlay.x = 0;
     overlay.y = 0;
@@ -398,32 +399,36 @@
     addSyncText(feedback, "FEEDBACK_BODY", "표정과 입·손·호흡의 방향을 함께 살펴보세요.",
       28, 58, 908, 27, false, THEME.muted, "LEFT");
 
-    const deck = addSyncFrame(overlay, "COMMAND_DECK", 0, 1060, 1080, 860,
-      THEME.ink, 0.46, null, 0);
-    addSyncFrame(deck, "COMMAND_TOP_LINE", 0, 0, 1080, 3, THEME.gold, 0.72, null, 0);
-    addSyncText(deck, "COMMAND_TITLE", "어떻게 돌볼까요?", 48, 30, 700, 33,
-      true, THEME.cream, "LEFT");
-    const tabs = ["살펴보기", "돌보기", "수유 준비"];
-    for (let i = 0; i < tabs.length; i++) {
-      const tab = addSyncFrame(deck, "TAB__" + tabs[i], 48 + i * 339, 100, 305, 68,
-        THEME.glass, i === 0 ? 0.82 : 0.58, i === 0 ? THEME.gold : THEME.line, 0);
-      addSyncText(tab, "TAB_LABEL", tabs[i], 12, 11, 281, 30, true,
-        i === 0 ? THEME.cream : THEME.muted, "CENTER");
+    const stage = addSyncFrame(overlay, "DIRECT_CARE_STAGE", 48, 1038, 984, 770,
+      THEME.ink, 0.18, null, 28);
+    addSyncText(stage, "DIRECT_TITLE", "아기에게 직접 돌봐주세요", 28, 12, 928, 30,
+      true, THEME.cream, "CENTER");
+    addSyncText(stage, "DIRECT_RULE", "추천 부위 한 곳만 반짝임 · 나머지 터치 영역은 보이지 않게 크게",
+      28, 58, 928, 20, false, THEME.muted, "CENTER");
+    const baby = figma.createEllipse();
+    baby.name = "BABY_ART__720PX_REFERENCE";
+    baby.resize(510, 600);
+    baby.x = 237;
+    baby.y = 112;
+    baby.fills = [{ type: "SOLID", color: THEME.skin, opacity: 0.9 }];
+    stage.appendChild(baby);
+    const zones = [
+      ["MOUTH__HUNGER_FEED_PACIFIER", 420, 195, 145, 105, "입 · 신호/수유/쪽쪽이"],
+      ["BACK__PAT", 575, 340, 165, 210, "등 · 토닥이기"],
+      ["CHEST__HOLD_CARRIER", 340, 345, 180, 190, "가슴 · 안기/아기띠"],
+      ["DIAPER__CHECK_CHANGE", 420, 535, 160, 110, "기저귀 · 확인/갈기"],
+      ["LIMBS__RELAXATION", 285, 625, 410, 95, "팔다리 · 이완 확인"]
+    ];
+    for (let i = 0; i < zones.length; i++) {
+      const zone = addSyncFrame(stage, "HIT_ZONE__" + zones[i][0],
+        zones[i][1], zones[i][2], zones[i][3], zones[i][4],
+        THEME.gold, i === 1 ? 0.18 : 0.025, null, 32);
+      if (i === 1) addSyncText(stage, "RECOMMENDED_TOUCH", zones[i][5],
+        610, 296, 280, 20, true, THEME.gold, "CENTER");
     }
-    const actions = ["기저귀 확인", "배고픔 신호 확인", "온도·습도", "팔다리 이완 확인",
-      "잠시 망설임", "숨 고르고 신호 기다리기"];
-    for (let i = 0; i < actions.length; i++) {
-      const col = i % 2;
-      const row = Math.floor(i / 2);
-      const action = addSyncFrame(deck, "ACTION__" + actions[i],
-        48 + col * 501, 194 + row * 112, 483, 94, THEME.glass, 0.66, THEME.line, 0);
-      const sigil = addSyncFrame(action, "ACTION_SIGIL", 12, 13, 68, 68,
-        { r: 0.62, g: 0.34, b: 0.12 }, 0.94, null, 0);
-      addSyncText(sigil, "SIGIL_TEXT", actions[i].slice(0, 1), 4, 11, 60, 25,
-        true, THEME.cream, "CENTER");
-      addSyncText(action, "ACTION_LABEL", actions[i], 98, 17, 365, 30,
-        true, THEME.cream, "LEFT");
-    }
+    addSyncText(stage, "NO_BUTTON_DECK",
+      "금지 · 하단 행동 버튼/탭/컨텍스트 칩/아기 위 제품 PNG\n장착·돌봄 결과는 아기와 손이 한 장면으로 합성된 완성 이미지로 표시",
+      46, 704, 892, 20, true, THEME.gold, "CENTER");
 
     const motionLabel = actionMotionFor(screenId);
     if (motionLabel) addActionMotion(overlay, motionLabel);
@@ -440,11 +445,12 @@
     if (!screen) return false;
     const staleLayers = screen.findAll(n =>
       n.name === "CODE_SYNC_SETUP_PRESENTATION_V8" ||
-      n.name === "CODE_SYNC_SETUP_PRESENTATION_V9");
+      n.name === "CODE_SYNC_SETUP_PRESENTATION_V9" ||
+      n.name === "CODE_SYNC_SETUP_PRESENTATION_V11");
     for (const stale of staleLayers) stale.remove();
 
     const overlay = figma.createFrame();
-    overlay.name = "CODE_SYNC_SETUP_PRESENTATION_V9";
+    overlay.name = "CODE_SYNC_SETUP_PRESENTATION_V11";
     overlay.resize(1080, 1920);
     overlay.x = 0;
     overlay.y = 0;
@@ -517,7 +523,7 @@
 
   async function upsertMotionSpec() {
     let panel = board.findOne(n => n.type === "FRAME" &&
-      (n.name === "_ACTION_MOTION_SPEC_V9" || n.name === "_ACTION_MOTION_SPEC_V8"));
+      (n.name === "_ACTION_MOTION_SPEC_V11" || n.name === "_ACTION_MOTION_SPEC_V9" || n.name === "_ACTION_MOTION_SPEC_V8"));
     const summary = board.findOne(n => n.type === "FRAME" && n.name === "_REVIEW_ACTIONS_SUMMARY");
     if (!panel) {
       panel = figma.createFrame();
@@ -528,7 +534,7 @@
       panel.cornerRadius = 32;
       board.appendChild(panel);
     }
-    panel.name = "_ACTION_MOTION_SPEC_V9";
+    panel.name = "_ACTION_MOTION_SPEC_V11";
     for (const child of [...panel.children]) child.remove();
     panel.resize(2200, 1900);
     addSyncText(panel, "MOTION_SPEC_TITLE", "ACTION MOTION + HOME JOURNEY · Presentation 계약",
@@ -542,11 +548,11 @@
       ["CHANGE_DIAPER", "기저귀 갈기", "새 기저귀가 아래에서 올라옴"],
       ["CHECK_HUNGER", "배고픔 신호", "손이 입가 바깥까지 접근"],
       ["CHECK_RELAXATION", "팔다리 이완", "양손이 팔다리를 천천히 확인"],
-      ["HOLD", "품에 안기", "아기가 54px 들리고 좌우로 흔들림"],
-      ["PAT", "토닥이기", "손이 3회 왕복하고 아기가 작게 흔들림"],
-      ["PACIFIER", "쪽쪽이", "소품이 화면 밖에서 입가로 이동"],
+      ["HOLD_CARRIER", "안기 3.2초 / 아기띠 2.8초", "맨손 안기 4상태 + 아기띠 calm/fuss/cry/sleep 완성 합성"],
+      ["PAT", "토닥이기 · 3.4초", "보호자 손이 보이는 느린 3회 왕복 완성 합성 4상태"],
+      ["PACIFIER", "쪽쪽이 · 2.8초", "방 소품 → 입가 접근 → 수용/거절 완성 합성 4상태"],
       ["LAYDOWN", "눕히기", "양손이 받친 채 아기가 34px 내려감"],
-      ["FEED", "수유", "젖병이 입가로 이동하고 내용물이 표시됨"]
+      ["FEED", "수유 · 3.4초", "목 받친 손·젖병·아기가 한 장면인 완성 합성 4상태"]
     ];
     for (let i = 0; i < actions.length; i++) {
       const col = i % 3;
@@ -579,7 +585,7 @@
           12, 168, 156, 16, true, THEME.gold, "CENTER");
       }
     }
-    const travel = addSyncFrame(panel, "ROOM_TRAVEL_SEQUENCE_V9",
+    const travel = addSyncFrame(panel, "ROOM_TRAVEL_SEQUENCE_V11",
       56, 1598, 2048, 230, THEME.glass, 0.72, THEME.line, 0);
     addSyncText(travel, "TRAVEL_TITLE", "방 이동 · 아빠 토큰과 아기 하트가 생활 동선을 따라 이동",
       28, 18, 1992, 28, true, THEME.cream, "LEFT");
@@ -651,9 +657,11 @@
       "동기화 기준 · " + SYNC_VERSION + "\n" +
       "이번 반영 · 공주풍 아기방/주방/욕실 독립 배경 + 아기 중심 구도\n" +
       "이번 반영 · 집 동선 미니맵 + 아빠/아기 토큰 + 동행 여부가 보이는 방 이동\n" +
-      "이번 반영 · 직선형 반투명 HUD + 금색 선택선 + 충분한 한글 line-height\n" +
+      "이번 반영 · 큰 아기 + 투명 대형 신체 터치 영역 + 추천 부위 하나만 반짝임\n" +
       "이번 반영 · 진열형 아이템 2×2 + 독립 설명 패널 + 선택 광택\n" +
-      "이번 반영 · 기저귀/배고픔/이완/안기/토닥임/쪽쪽이/눕히기/수유 3단계 행동 모션\n" +
+      "이번 반영 · 버튼 덱/탭/컨텍스트 칩 제거 + 아기와 방 소품 직접조작\n" +
+      "이번 반영 · 토닥/안기/아기띠/수유/쪽쪽이 완성 합성 스프라이트 20종\n" +
+      "이번 반영 · 주방 분유통/젖병/식힘 물 직접 터치 + 내용물 상태 가시화\n" +
       "이번 반영 · 빌드 용량 상한 제거. 필수 WebGL 산출물 정합성만 검사\n\n" +
       "완료 · #18  부적절한 수면 보조 장비를 암막 커튼으로 교체\n" +
       "P1 · #20-2  원인별 관찰 신호를 결정론적 시드로 변주\n" +
@@ -691,7 +699,7 @@
   }
 
   // 현재 Unity 세로 PLAY와 생활 동선 미니맵을 복제한다.
-  // 같은 화면에서 다시 실행하면 V8/V9 동기화 레이어를 교체하므로 중복되지 않는다.
+  // 같은 화면에서 다시 실행하면 구형 동기화 레이어를 교체하므로 중복되지 않는다.
   const presentationScreens = visualImplemented.concat([
     "M_DIAPER_CHECK_WET", "M_DIAPER_CHECK_CLEAN", "M_ENVIRONMENT_CHECK",
     "M_TAB_CARE_PERSIST", "M_TAB_FEED_PERSIST", "M_SLEEP_FAST_FORWARD",
@@ -787,7 +795,7 @@
   const feeding = contractFor("M_TAB_FEED_PERSIST");
   if (await setBadge(feeding, "IMPLEMENTED", green)) changes += 1;
   if (await appendReviewNote(feeding,
-    "CURRENT UNITY: 평상시 수유 UI는 분유 준비(PrepareWater) → 식히기(CoolBottle) → 수유(FeedPreparedBottle) 3단계. 젖병 소독은 둘째 밤 돌발에서만 예외 노출. 각 행동은 위치·선행조건을 Core에서 검증한다.",
+    "CURRENT UNITY: 버튼 UI가 아니라 분유통(PrepareWater) → 식힘 물(CoolBottle) → 아기 입(FeedPreparedBottle)을 직접 터치한다. 젖병 소독은 둘째 밤 돌발에서만 예외 노출하며 위치·선행조건은 Core에서 검증한다.",
     "FEEDING_FLOW")) changes += 1;
   if (await appendReviewNote(feeding,
     "HOME JOURNEY MAP: 세 방의 점선 동선과 아빠/아기 토큰을 표시. 아기방↔주방/욕실 2분, 주방↔욕실 3분. Held=false면 아기 하트는 아기방에 남고 Held=true면 두 토큰이 함께 이동하며 방 배경이 크로스페이드.",
@@ -912,15 +920,15 @@
   const boardTitle = textNodes(board).find(n => n.name === "BOARD_TITLE" || n.characters.indexOf("스토리보드 V6") >= 0);
   if (boardTitle) {
     const baseTitle = boardTitle.characters
-      .replace(/\s*·\s*CODE SYNC(?:\s*·\s*V[89])?/g, "")
+      .replace(/\s*·\s*CODE SYNC(?:\s*·\s*V(?:8|9|10|11))?/g, "")
       .replace(/\s*·\s*Unity [0-9a-f]+/g, "");
-    await setText(boardTitle, baseTitle + " · CODE SYNC · V10");
+    await setText(boardTitle, baseTitle + " · CODE SYNC · V11");
     changes += 1;
   }
 
   figma.currentPage.selection = [board];
   figma.viewport.scrollAndZoomIntoView([board]);
-  figma.closePlugin("V10 리듬·일지·엔딩 계약 동기화 완료 · " +
+  figma.closePlugin("V11 직접 돌봄·완성 합성 계약 동기화 완료 · " +
     (created ? "싱크 보드 최초 생성" : "기존 최신 싱크 보드 갱신") +
     " · " + changes + "개 항목 갱신");
 })();
