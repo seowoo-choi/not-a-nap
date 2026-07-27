@@ -1880,6 +1880,21 @@ namespace NotANap.App
                 Color.Lerp(new Color(0.95f, 0.72f, 0.45f), new Color(0.55f, 0.9f, 0.72f), pulse),
                 TextAnchor.MiddleCenter);
             GUI.Label(cueRect, cue, style);
+
+            V2ActionId cueAction = vm.FeedingReady
+                ? V2ActionId.FeedPreparedBottle
+                : !vm.CauseResolved ? V2ActionId.CheckHungerSignals : V2ActionId.Pacifier;
+            if (DirectAction(vm, cueAction) == null) return;
+
+            var old = GUI.color;
+            GUI.color = new Color(1f, 0.76f, 0.38f, 0.08f + pulse * 0.1f);
+            GUI.DrawTexture(cueRect, _itemGlow, ScaleMode.StretchToFill, true);
+            GUI.color = old;
+            if (GUI.Button(cueRect, GUIContent.none, GUIStyle.none))
+            {
+                _directHintSeen = true;
+                PerformV2Action(cueAction);
+            }
         }
 
         private float BabyActionProgress()
