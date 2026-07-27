@@ -386,11 +386,13 @@ namespace NotANap.App
             // 화면 아래의 두 손으로 카메라가 아빠의 눈이라는 점을 먼저 전달한다.
             if (_introBeat >= 1)
             {
-                float handWidth = _portrait ? 230f : 190f;
-                float handHeight = _portrait ? 175f : 145f;
-                float handY = height - (_portrait ? 360f : 220f);
-                DrawCaregiverHand(new Rect(55f, handY, handWidth, handHeight));
-                DrawCaregiverHand(new Rect(width - handWidth - 55f, handY,
+                float handWidth = _portrait ? 180f : 160f;
+                float handHeight = _portrait ? 136f : 120f;
+                // 손은 아기에게 다가가는 시선 영역에만 둔다. 카피·CTA 안전 영역 침범 금지.
+                float handY = _portrait ? 890f : 650f;
+                float handInset = _portrait ? 82f : 420f;
+                DrawCaregiverHand(new Rect(handInset, handY, handWidth, handHeight));
+                DrawCaregiverHand(new Rect(width - handWidth - handInset, handY,
                     handWidth, handHeight), true);
             }
 
