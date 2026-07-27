@@ -401,11 +401,14 @@ namespace NotANap.Presentation
                 action == V2ActionId.CoolBottle || action == V2ActionId.CheckBottleTemperature)
                 return location == HomeLocation.Kitchen;
             if (action == V2ActionId.FeedPreparedBottle) return withBaby;
-            if (action == V2ActionId.CheckEnvironment || action == V2ActionId.AdjustTemperature ||
+            if (action == V2ActionId.CheckEnvironment)
+                return location == HomeLocation.Nursery || location == HomeLocation.Bathroom;
+            if (action == V2ActionId.AdjustTemperature ||
                 action == V2ActionId.AdjustHumidity || action == V2ActionId.ToggleNoise)
                 return location == HomeLocation.Nursery;
             if (action == V2ActionId.CheckBodyTemperature)
-                return withBaby && Night.V2.BathThermometerRetrieved && Night.V2.CryIntensity >= 45;
+                return location == HomeLocation.Bathroom && withBaby &&
+                    Night.V2.BathThermometerRetrieved;
             if (action == V2ActionId.CheckMonitor) return Night.HasItem(ItemId.Monitor);
             if (action == V2ActionId.CatchBreath || action == V2ActionId.Hesitate) return true;
             if (!withBaby) return false;

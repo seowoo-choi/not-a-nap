@@ -261,7 +261,10 @@ namespace NotANap.Core
                 action == V2ActionId.CoolBottle || action == V2ActionId.CheckBottleTemperature)
                 return location == HomeLocation.Kitchen
                     ? V2ActionBlockReason.None : V2ActionBlockReason.WrongLocation;
-            if (action == V2ActionId.CheckEnvironment || action == V2ActionId.AdjustTemperature ||
+            if (action == V2ActionId.CheckEnvironment)
+                return location == HomeLocation.Nursery || location == HomeLocation.Bathroom
+                    ? V2ActionBlockReason.None : V2ActionBlockReason.WrongLocation;
+            if (action == V2ActionId.AdjustTemperature ||
                 action == V2ActionId.AdjustHumidity || action == V2ActionId.ToggleNoise ||
                 action == V2ActionId.Laydown)
                 return location == HomeLocation.Nursery

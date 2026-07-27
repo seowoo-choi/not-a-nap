@@ -661,6 +661,23 @@ namespace NotANap.Core.Tests
         }
 
         [Test]
+        public void BathroomEnvironmentCanBeInspectedWithoutReturningToNursery()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+
+            HomeMovementResolver.MoveTo(run, night, HomeLocation.Bathroom,
+                config, new SequenceRandomSource(0));
+            var result = V2ActionResolver.Apply(run, night, V2ActionId.CheckEnvironment,
+                config, new SequenceRandomSource(0));
+
+            Assert.IsTrue(result.Accepted);
+            Assert.IsTrue(night.V2.Environment.IsTemperatureChecked);
+            Assert.IsTrue(night.V2.Environment.IsHumidityChecked);
+        }
+
+        [Test]
         public void HomeMovementTracksCaregiverAndBabyLocationsDeterministically()
         {
             var config = GameBalanceConfig.Default();
