@@ -46,6 +46,7 @@ body {
   background: rgba(5, 17, 31, 0.9);
   text-align: center;
   backdrop-filter: blur(12px);
+  pointer-events: none;
 }
 
 #loading-title {

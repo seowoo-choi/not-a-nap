@@ -22,6 +22,8 @@ namespace NotANap.Presentation
 
         /// <summary>TITLE 시작 버튼 중복 입력 방지.</summary>
         private bool _runStarted;
+        private string _babyName = "아기";
+        public string BabyName => Session.Run?.BabyName ?? _babyName;
 
         public event Action<ScreenState> ScreenChanged;
 
@@ -51,12 +53,20 @@ namespace NotANap.Presentation
             GoTo(ScreenState.Intro);
         }
 
+        public void SetBabyName(string name)
+        {
+            if (Screen != ScreenState.FamilySetup || _runStarted) return;
+            string value = string.IsNullOrWhiteSpace(name) ? "아기" : name.Trim();
+            _babyName = value.Length > 8 ? value.Substring(0, 8) : value;
+        }
+
         /// <summary>인트로 완료/스킵 뒤 새 런을 정확히 한 번 생성하고 SETUP으로 이동한다.</summary>
         public void CompleteIntro()
         {
             if (_runStarted || (Screen != ScreenState.Intro && Screen != ScreenState.Title)) return;
             _runStarted = true;
             Session.StartRun();
+            Session.SetBabyName(_babyName);
             _selected.Clear();
             GoTo(ScreenState.Setup);
         }

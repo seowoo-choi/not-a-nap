@@ -56,6 +56,13 @@ namespace NotANap.Presentation
             Run.ConfigureCarePair(caregiverStyle, temperament);
         }
 
+        public void SetBabyName(string name)
+        {
+            if (Run == null || Night != null)
+                throw new InvalidOperationException("밤이 시작되기 전에만 이름을 설정할 수 있다.");
+            Run.BabyName = string.IsNullOrWhiteSpace(name) ? "아기" : name.Trim();
+        }
+
         public int ItemSlots => Run == null ? 0 : NightFactory.ItemSlots(Run.CurrentNightId);
 
         /// <summary>
@@ -404,14 +411,19 @@ namespace NotANap.Presentation
             if (action == V2ActionId.CheckEnvironment)
                 return location == HomeLocation.Nursery || location == HomeLocation.Bathroom;
             if (action == V2ActionId.AdjustTemperature ||
-                action == V2ActionId.AdjustHumidity || action == V2ActionId.ToggleNoise)
+                action == V2ActionId.AdjustHumidity)
                 return location == HomeLocation.Nursery;
             if (action == V2ActionId.CheckBodyTemperature)
                 return location == HomeLocation.Bathroom && withBaby &&
                     Night.V2.BathThermometerRetrieved;
-            if (action == V2ActionId.CheckMonitor) return Night.HasItem(ItemId.Monitor);
+            if (action == V2ActionId.ToggleNoise)
+                return location == HomeLocation.Nursery && Night.HasItem(ItemId.Noise) && !Night.NoiseDisabled;
+            if (action == V2ActionId.CheckMonitor)
+                return location == HomeLocation.Nursery && Night.HasItem(ItemId.Monitor);
             if (action == V2ActionId.CatchBreath)
                 return Night.Parent.Stamina <= 0 || Night.V2.CatchBreathUses < 3;
+            if (action == V2ActionId.Grandma)
+                return location == HomeLocation.Nursery && !Run.IsFinalNight && !Run.GrandmaUsed;
             if (action == V2ActionId.Hesitate) return true;
             if (!withBaby) return false;
             if (action == V2ActionId.Pacifier)
@@ -419,8 +431,6 @@ namespace NotANap.Presentation
             if (action == V2ActionId.ToggleCarrier)
                 return Night.HasItem(ItemId.Carrier) &&
                     !(Night.CarrierDisabledTurns > 0 && !Night.Wearing.Carrier);
-            if (action == V2ActionId.ToggleNoise) return Night.HasItem(ItemId.Noise) && !Night.NoiseDisabled;
-            if (action == V2ActionId.CheckMonitor) return Night.HasItem(ItemId.Monitor);
             if (action == V2ActionId.Laydown)
                 return location == HomeLocation.Nursery && Night.Baby.Held &&
                     (Night.V2.SleepCycle.Stage == V2SleepStage.RemActiveSleep ||

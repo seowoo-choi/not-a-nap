@@ -34,7 +34,7 @@ namespace NotANap.Core
         AdjustTemperature, AdjustHumidity, Hesitate,
         SterilizeBottle, PrepareWater, MeasureFormula, MixFormula, CoolBottle,
         CheckBottleTemperature, FeedPreparedBottle, HoldWhilePreparing,
-        ToggleCarrier, ToggleNoise, CheckMonitor, CatchBreath
+        ToggleCarrier, ToggleNoise, CheckMonitor, CatchBreath, Grandma
     }
 
     public enum V2ActionBlockReason

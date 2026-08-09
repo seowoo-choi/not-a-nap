@@ -197,6 +197,7 @@ namespace NotANap.Presentation
             V2ActionId.ToggleNoise => "백색소음기 켜기/끄기",
             V2ActionId.CheckMonitor => "베이비 모니터 확인",
             V2ActionId.CatchBreath => "숨 고르고 신호 기다리기",
+            V2ActionId.Grandma => "할머니에게 도움 청하기",
             _ => action.ToString()
         };
 

@@ -290,6 +290,7 @@ namespace NotANap.Core.Tests
             var config = GameBalanceConfig.Default();
             var run = RunState.Create(Temperament.Soft);
             var night = Night(run, config);
+            V2TimeResolver.TriggerWake(night, WakeCause.Hunger, config);
             night.Baby.Hunger = hunger;
             var result = V2ActionResolver.Apply(run, night, V2ActionId.CheckHungerSignals,
                 config, new SequenceRandomSource(0));
@@ -304,13 +305,50 @@ namespace NotANap.Core.Tests
             var run = RunState.Create(Temperament.Soft);
             var night = Night(run, config);
             V2TimeResolver.BeginSleep(night, V2SleepStage.NremDeepSleep);
-            double calm = night.Baby.Calm, sleep = night.Baby.Sleep, stamina = night.Parent.Stamina;
+            double stamina = night.Parent.Stamina;
+            int elapsed = night.V2.ElapsedMinutes;
             var result = V2ActionResolver.Apply(run, night, V2ActionId.CheckLimbRelaxation,
                 config, new SequenceRandomSource(0));
-            Assert.AreEqual(calm, night.Baby.Calm);
-            Assert.AreEqual(sleep, night.Baby.Sleep);
-            Assert.AreEqual(stamina, night.Parent.Stamina);
+            Assert.AreEqual(stamina - 2, night.Parent.Stamina);
+            Assert.AreEqual(elapsed + config.V2.DiagnosisActionMinutes, night.V2.ElapsedMinutes);
+            Assert.IsTrue(result.ConsumedTime);
             CollectionAssert.Contains(result.ObservedSignals, ObservationSignalId.RelaxedLimbs);
+        }
+
+        [Test]
+        public void HungerObservationDoesNotClaimStrongMatchForAnotherWakeCause()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            night.Baby.Hunger = 90;
+            V2TimeResolver.TriggerWake(night, WakeCause.Temperature, config);
+
+            var result = V2ActionResolver.Apply(run, night, V2ActionId.CheckHungerSignals,
+                config, new SequenceRandomSource(0));
+
+            Assert.IsFalse(result.HungerSignalsMatchCause);
+            Assert.AreEqual(HungerSignalStage.Early, result.HungerSignalStage);
+            CollectionAssert.DoesNotContain(result.ObservedSignals, ObservationSignalId.Rooting);
+            CollectionAssert.DoesNotContain(result.ObservedSignals, ObservationSignalId.HungerCry);
+        }
+
+        [Test]
+        public void WrongPreparedFeedMarksMisdiagnosisForPresentationFeedback()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            var feeding = night.V2.Feeding;
+            feeding.WaterReady = feeding.FormulaMeasured = feeding.BottleMixed = true;
+            feeding.BottleCooled = feeding.TemperatureChecked = true;
+            V2TimeResolver.TriggerWake(night, WakeCause.Temperature, config);
+
+            var result = V2ActionResolver.Apply(run, night, V2ActionId.FeedPreparedBottle,
+                config, new SequenceRandomSource(0));
+
+            Assert.IsTrue(result.WasMisdiagnosis);
+            Assert.AreEqual(1, night.V2.Metrics.MisdiagnosisCount);
         }
 
         [Test]
@@ -657,6 +695,34 @@ namespace NotANap.Core.Tests
             Assert.IsTrue(night.Wearing.Noise);
             Assert.IsTrue(V2ActionResolver.Apply(run, night, V2ActionId.CheckMonitor,
                 config, new SequenceRandomSource(0)).MonitorRead);
+        }
+
+        [Test]
+        public void GrandmaChanceIsPlayableOnceBeforeFinalNightAndRejectedOnFinalNight()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+
+            var first = V2ActionResolver.Apply(run, night, V2ActionId.Grandma,
+                config, new SequenceRandomSource(0));
+            Assert.IsTrue(first.Accepted);
+            Assert.IsTrue(run.GrandmaUsed);
+            Assert.IsTrue(night.Stats.Grandma);
+            Assert.IsTrue(night.Baby.Held);
+
+            var repeated = V2ActionResolver.Apply(run, night, V2ActionId.Grandma,
+                config, new SequenceRandomSource(0));
+            Assert.IsFalse(repeated.Accepted);
+            Assert.AreEqual(V2ActionBlockReason.ActionLimitReached, repeated.BlockReason);
+
+            var finalRun = TestHelpers.FinalRun();
+            var finalNight = NightFactory.CreateV2Night(finalRun,
+                new[] { ItemId.Pacifier, ItemId.Monitor }, new BabyProfile(), config);
+            var final = V2ActionResolver.Apply(finalRun, finalNight, V2ActionId.Grandma,
+                config, new SequenceRandomSource(0));
+            Assert.IsFalse(final.Accepted);
+            Assert.IsFalse(finalRun.GrandmaUsed);
         }
 
         [Test]

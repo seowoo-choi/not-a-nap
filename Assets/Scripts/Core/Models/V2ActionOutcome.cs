@@ -10,6 +10,10 @@ namespace NotANap.Core
         public int TimeDeltaMinutes;
         public double StaminaDelta;
         public bool CauseResolved;
+        /// <summary>선택한 돌봄이 현재 각성 원인과 달라 추가 부담이 발생했는지.</summary>
+        public bool WasMisdiagnosis;
+        /// <summary>관찰된 배고픔 신호가 이번 각성 원인과 같은 방향인지.</summary>
+        public bool HungerSignalsMatchCause;
         public V2ActionBlockReason BlockReason;
         public HungerSignalStage HungerSignalStage;
         public DiaperCheckResult DiaperCheckResult;

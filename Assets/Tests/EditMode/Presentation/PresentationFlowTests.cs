@@ -58,6 +58,31 @@ namespace NotANap.Presentation.Tests
         }
 
         [Test]
+        public void BabyNameChosenInFamilySetupPersistsIntoTheRun()
+        {
+            var flow = NewFlow();
+            flow.BeginFamilySetup();
+            flow.SetBabyName("별이");
+            Assert.AreEqual("별이", flow.BabyName);
+
+            flow.BeginIntro();
+            flow.CompleteIntro();
+
+            Assert.AreEqual("별이", flow.Session.Run.BabyName);
+            Assert.AreEqual("별이", flow.BabyName);
+        }
+
+        [Test]
+        public void BabyNameIsTrimmedAndLimitedToEightCharacters()
+        {
+            var flow = NewFlow();
+            flow.BeginFamilySetup();
+            flow.SetBabyName("  아주긴아기이름입니다  ");
+
+            Assert.AreEqual("아주긴아기이름입", flow.BabyName);
+        }
+
+        [Test]
         public void StartGame_CreatesRunOnce_AndMovesToSetup()
         {
             var flow = NewFlow();
