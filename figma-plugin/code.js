@@ -145,22 +145,35 @@
     const existing = textNodes(contract).find(n => n.name === noteName);
     if (existing) {
       await setText(existing, message);
+      layoutReviewNotes(contract);
       return true;
     }
     const note = figma.createText();
     note.name = noteName;
     note.fontName = fallbackBold ? fallbackBold.fontName : fallback.fontName;
-    note.fontSize = 16;
+    note.fontSize = 13;
     note.characters = message;
     note.fills = [{ type: "SOLID", color: { r: 0.65, g: 0.18, b: 0.2 } }];
     note.textAutoResize = "HEIGHT";
-    note.resize(Math.max(240, contract.width - 64), 60);
+    note.resize(Math.max(240, contract.width - 64), 48);
     note.x = 32;
-    const reviewNoteCount = textNodes(contract).filter(n =>
-      n.name.indexOf("CODE_SYNC_REVIEW_NOTE") === 0).length;
-    note.y = contract.height - 88 - reviewNoteCount * 72;
     contract.appendChild(note);
+    layoutReviewNotes(contract);
     return true;
+  }
+
+  function layoutReviewNotes(contract) {
+    const notes = textNodes(contract)
+      .filter(n => n.name.indexOf("CODE_SYNC_REVIEW_NOTE") === 0)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    let cursorY = contract.height - 28;
+    for (let i = notes.length - 1; i >= 0; i--) {
+      const note = notes[i];
+      note.x = 32;
+      cursorY -= note.height;
+      note.y = cursorY;
+      cursorY -= 10;
+    }
   }
 
   function screenFor(screenId) {
@@ -367,8 +380,10 @@
     overlay.resize(1080, 1920);
     overlay.x = 0;
     overlay.y = 0;
-    overlay.fills = [];
-    overlay.clipsContent = false;
+    // 기존 V6 화면 위에 투명 레이어를 얹으면 두 세대의 HUD와 문구가 겹친다.
+    // V12 프레젠테이션은 독립 화면이므로 불투명 바탕으로 이전 시각 레이어를 완전히 덮는다.
+    overlay.fills = [{ type: "SOLID", color: THEME.ink }];
+    overlay.clipsContent = true;
     screen.appendChild(overlay);
 
     addSyncText(overlay, "SYNC_VERSION", SYNC_VERSION, 48, 16, 984, 18, true,
@@ -456,8 +471,8 @@
     overlay.resize(1080, 1920);
     overlay.x = 0;
     overlay.y = 0;
-    overlay.fills = [{ type: "SOLID", color: THEME.ink, opacity: 0.38 }];
-    overlay.clipsContent = false;
+    overlay.fills = [{ type: "SOLID", color: THEME.ink }];
+    overlay.clipsContent = true;
     screen.appendChild(overlay);
 
     addSyncText(overlay, "SYNC_VERSION", SYNC_VERSION, 48, 16, 984, 18, true,
