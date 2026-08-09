@@ -193,6 +193,7 @@ namespace NotANap.Presentation.Tests
             StringAssert.Contains("엄마", diary.MotherInsight);
             StringAssert.Contains("함께", diary.CompanionMessage);
             StringAssert.Contains("정답보다", diary.ShareCardText);
+            StringAssert.Contains("아기", diary.BabyResponseReflection);
             StringAssert.Contains("백색소음", diary.HabitNotes.Single());
             Assert.IsNotEmpty(diary.HabitEffects.Single());
         }

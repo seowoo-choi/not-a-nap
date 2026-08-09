@@ -468,6 +468,7 @@ namespace NotANap.Presentation
                 HabitReflection = BuildHabitReflection(facts),
                 ActionLearning = BuildActionLearning(facts),
                 CaregiverFactReflection = BuildCaregiverFactReflection(facts),
+                BabyResponseReflection = BuildBabyResponseReflection(facts),
                 CompanionMessage = CompanionMessageFor(Night.NightId),
                 ShareCardText = $"오늘 알아차린 신호 · {PrimaryLearnedSignal(Night.V2)}\n" +
                     "정답보다 서로의 리듬을 알아가는 밤"
@@ -556,6 +557,20 @@ namespace NotANap.Presentation
             if (facts.LongestMovementDestination.HasValue)
                 return $"{PresentationCopyMapper.HomeLocationLabel(facts.LongestMovementDestination.Value)}으로 직접 움직이며 준비와 돌봄 사이의 시간을 체감했다.";
             return $"아기가 {facts.WakeCount}번 깨어난 뒤에도 보호자의 체력 {facts.ParentStamina:0}을 남기며 밤을 건넜다.";
+        }
+
+        private static string BuildBabyResponseReflection(DiaryFacts facts)
+        {
+            if (facts.RejectedAction.HasValue && facts.FollowupAction.HasValue)
+                return $"아기는 {PresentationCopyMapper.V2ActionLabel(facts.RejectedAction.Value)}에는 편안해지지 않았지만, " +
+                    $"{PresentationCopyMapper.V2ActionLabel(facts.FollowupAction.Value)}을 건네자 다른 반응을 보여줬다.";
+            if (facts.FirstNoticedSignal.HasValue)
+                return $"아기는 ‘{PresentationCopyMapper.ObservationLabel(facts.FirstNoticedSignal.Value)}’라는 움직임으로 먼저 말을 걸었다.";
+            if (facts.BareHandsLaydownAttempts > 0)
+                return facts.BareHandsLaydownSucceeded
+                    ? "품에서 침대로 옮겨진 뒤에도 아기의 숨은 고르게 이어졌다."
+                    : "등이 닿자 몸이 움찔했다. 아직 깊어진 숨을 조금 더 기다려 달라는 답이었다.";
+            return "울음만이 아니라 호흡과 몸의 힘도 아기가 건네는 대답이었다.";
         }
 
         private static CaregiverStyle NextStyle(CaregiverStyle style)

@@ -280,6 +280,7 @@ namespace NotANap.Presentation
         public string FamilyUnderstanding;
         public string ActionLearning;
         public string CaregiverFactReflection;
+        public string BabyResponseReflection;
         public readonly List<string> HabitNotes = new List<string>();
         public readonly List<string> HabitEffects = new List<string>();
     }
