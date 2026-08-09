@@ -188,7 +188,7 @@ namespace NotANap.App
             _speechBubble = RoundedTexture(new Color(0.97f, 0.94f, 0.87f, 0.98f), 14);
             _itemGlow = RoundedTexture(new Color(1f, 0.69f, 0.27f, 0.2f), 48);
             _itemShadow = RoundedTexture(new Color(0f, 0f, 0f, 0.44f), 28);
-            _caregiverHand = RoundedTexture(new Color(0.92f, 0.7f, 0.56f, 0.98f), 28);
+            _caregiverHand = Resources.Load<Texture2D>("Art/Caregiver/reaching-hand");
             _diaperCloth = RoundedTexture(new Color(0.97f, 0.92f, 0.77f, 0.98f), 18);
         }
 
@@ -2248,22 +2248,15 @@ namespace NotANap.App
 
         private void DrawCaregiverHand(Rect rect, bool mirror = false)
         {
-            float wristX = mirror ? rect.xMax - rect.width * 0.34f : rect.x;
-            float palmX = mirror ? rect.x + rect.width * 0.12f : rect.x + rect.width * 0.25f;
-            GUI.DrawTexture(new Rect(wristX, rect.y + rect.height * 0.2f,
-                rect.width * 0.34f, rect.height * 0.64f), _diaperCloth, ScaleMode.StretchToFill, true);
-            GUI.DrawTexture(new Rect(palmX, rect.y + rect.height * 0.08f,
-                rect.width * 0.63f, rect.height * 0.84f), _caregiverHand, ScaleMode.StretchToFill, true);
-            float fingerX = mirror ? rect.x : rect.x + rect.width * 0.77f;
-            for (int i = 0; i < 3; i++)
-            {
-                float fingerY = rect.y + rect.height * (0.13f + i * 0.24f);
-                GUI.DrawTexture(new Rect(fingerX, fingerY, rect.width * 0.28f, rect.height * 0.2f),
-                    _caregiverHand, ScaleMode.StretchToFill, true);
-            }
-            float thumbX = mirror ? palmX + rect.width * 0.45f : palmX - rect.width * 0.08f;
-            GUI.DrawTexture(new Rect(thumbX, rect.y + rect.height * 0.63f,
-                rect.width * 0.3f, rect.height * 0.28f), _caregiverHand, ScaleMode.StretchToFill, true);
+            if (_caregiverHand == null) return;
+
+            // 원화는 손가락과 소매가 한 실루엣으로 완결돼 있다. 조각 텍스처를 겹치지 않고
+            // 좌우 반전만 사용해 양손의 해부학적 형태와 화풍을 보존한다.
+            Matrix4x4 previous = GUI.matrix;
+            if (!mirror)
+                GUIUtility.ScaleAroundPivot(new Vector2(-1f, 1f), rect.center);
+            GUI.DrawTexture(rect, _caregiverHand, ScaleMode.ScaleToFit, true);
+            GUI.matrix = previous;
         }
 
         private void DrawActionMotionLabel(Rect babyRect, string label, bool portrait)
