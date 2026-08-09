@@ -1,4 +1,4 @@
-/* NOT A NAP — Unity V11 direct-care interaction contract synchronizer.
+/* NOT A NAP — Unity V12 three-night art interaction contract synchronizer.
  * MOBILE_QA_STORYBOARD_V6 is preserved. The latest editable CODE_SYNC board is updated.
  */
 
@@ -192,7 +192,7 @@
     return candidates.sort((a, b) => a.width * a.height - b.width * b.height)[0] || null;
   }
 
-  const SYNC_VERSION = "V11 · 직접 돌봄 + 완성 합성 아트 · 2026-07-27";
+  const SYNC_VERSION = "V12 · 3밤 회귀 + 신규 돌봄 아트 · 2026-08-09";
   const THEME = {
     ink: { r: 0.012, g: 0.025, b: 0.045 },
     glass: { r: 0.025, g: 0.055, b: 0.09 },
@@ -356,13 +356,14 @@
       n.name === "CODE_SYNC_HOME_MAP" ||
       n.name === "CODE_SYNC_UNITY_PRESENTATION_V8" ||
       n.name === "CODE_SYNC_UNITY_PRESENTATION_V9" ||
-      n.name === "CODE_SYNC_UNITY_PRESENTATION_V11");
+      n.name === "CODE_SYNC_UNITY_PRESENTATION_V11" ||
+      n.name === "CODE_SYNC_UNITY_PRESENTATION_V12");
     for (const stale of staleLayers) stale.remove();
 
     const sx = screen.width / 1080;
     const sy = screen.height / 1920;
     const overlay = figma.createFrame();
-    overlay.name = "CODE_SYNC_UNITY_PRESENTATION_V11";
+    overlay.name = "CODE_SYNC_UNITY_PRESENTATION_V12";
     overlay.resize(1080, 1920);
     overlay.x = 0;
     overlay.y = 0;
@@ -446,11 +447,12 @@
     const staleLayers = screen.findAll(n =>
       n.name === "CODE_SYNC_SETUP_PRESENTATION_V8" ||
       n.name === "CODE_SYNC_SETUP_PRESENTATION_V9" ||
-      n.name === "CODE_SYNC_SETUP_PRESENTATION_V11");
+      n.name === "CODE_SYNC_SETUP_PRESENTATION_V11" ||
+      n.name === "CODE_SYNC_SETUP_PRESENTATION_V12");
     for (const stale of staleLayers) stale.remove();
 
     const overlay = figma.createFrame();
-    overlay.name = "CODE_SYNC_SETUP_PRESENTATION_V11";
+    overlay.name = "CODE_SYNC_SETUP_PRESENTATION_V12";
     overlay.resize(1080, 1920);
     overlay.x = 0;
     overlay.y = 0;
@@ -523,20 +525,20 @@
 
   async function upsertMotionSpec() {
     let panel = board.findOne(n => n.type === "FRAME" &&
-      (n.name === "_ACTION_MOTION_SPEC_V11" || n.name === "_ACTION_MOTION_SPEC_V9" || n.name === "_ACTION_MOTION_SPEC_V8"));
+      (n.name === "_ACTION_MOTION_SPEC_V12" || n.name === "_ACTION_MOTION_SPEC_V11" || n.name === "_ACTION_MOTION_SPEC_V9" || n.name === "_ACTION_MOTION_SPEC_V8"));
     const summary = board.findOne(n => n.type === "FRAME" && n.name === "_REVIEW_ACTIONS_SUMMARY");
     if (!panel) {
       panel = figma.createFrame();
-      panel.resize(2200, 1900);
+      panel.resize(2200, 2370);
       panel.x = 80;
       panel.y = summary ? summary.y + summary.height + 80 : board.height + 80;
       panel.fills = [{ type: "SOLID", color: { r: 0.035, g: 0.06, b: 0.09 } }];
       panel.cornerRadius = 32;
       board.appendChild(panel);
     }
-    panel.name = "_ACTION_MOTION_SPEC_V11";
+    panel.name = "_ACTION_MOTION_SPEC_V12";
     for (const child of [...panel.children]) child.remove();
-    panel.resize(2200, 1900);
+    panel.resize(2200, 2370);
     addSyncText(panel, "MOTION_SPEC_TITLE", "ACTION MOTION + HOME JOURNEY · Presentation 계약",
       56, 48, 2088, 36, true, THEME.cream, "LEFT");
     addSyncText(panel, "MOTION_SPEC_SUBTITLE",
@@ -548,6 +550,7 @@
       ["CHANGE_DIAPER", "기저귀 갈기", "새 기저귀가 아래에서 올라옴"],
       ["CHECK_HUNGER", "배고픔 신호", "손이 입가 바깥까지 접근"],
       ["CHECK_RELAXATION", "팔다리 이완", "양손이 팔다리를 천천히 확인"],
+      ["CHECK_TEMPERATURE", "아기 체온 확인", "욕실에서 이마 체온계로 확인 · 의료 진단 단정 금지"],
       ["HOLD_CARRIER", "안기 3.2초 / 아기띠 2.8초", "맨손 안기 4상태 + 아기띠 calm/fuss/cry/sleep 완성 합성"],
       ["PAT", "토닥이기 · 3.4초", "보호자 손이 보이는 느린 3회 왕복 완성 합성 4상태"],
       ["PACIFIER", "쪽쪽이 · 2.8초", "방 소품 → 입가 접근 → 수용/거절 완성 합성 4상태"],
@@ -585,8 +588,8 @@
           12, 168, 156, 16, true, THEME.gold, "CENTER");
       }
     }
-    const travel = addSyncFrame(panel, "ROOM_TRAVEL_SEQUENCE_V11",
-      56, 1598, 2048, 230, THEME.glass, 0.72, THEME.line, 0);
+    const travel = addSyncFrame(panel, "ROOM_TRAVEL_SEQUENCE_V12",
+      56, 2068, 2048, 230, THEME.glass, 0.72, THEME.line, 0);
     addSyncText(travel, "TRAVEL_TITLE", "방 이동 · 아빠 토큰과 아기 하트가 생활 동선을 따라 이동",
       28, 18, 1992, 28, true, THEME.cream, "LEFT");
     addSyncText(travel, "TRAVEL_DETAIL",
@@ -660,7 +663,8 @@
       "이번 반영 · 큰 아기 + 투명 대형 신체 터치 영역 + 추천 부위 하나만 반짝임\n" +
       "이번 반영 · 진열형 아이템 2×2 + 독립 설명 패널 + 선택 광택\n" +
       "이번 반영 · 버튼 덱/탭/컨텍스트 칩 제거 + 아기와 방 소품 직접조작\n" +
-      "이번 반영 · 토닥/안기/아기띠/수유/쪽쪽이 완성 합성 스프라이트 20종\n" +
+      "이번 반영 · 기존 20종 + 눕히기/기저귀 확인/교체/팔다리 이완/체온 확인 합성 아트 5종\n" +
+      "이번 반영 · 체력 0 회복 선택 + 밤 종료 중복 방지 + 3밤/엔딩 전환 회귀\n" +
       "이번 반영 · 주방 분유통/젖병/식힘 물 직접 터치 + 내용물 상태 가시화\n" +
       "이번 반영 · 빌드 용량 상한 제거. 필수 WebGL 산출물 정합성만 검사\n\n" +
       "완료 · #18  부적절한 수면 보조 장비를 암막 커튼으로 교체\n" +
@@ -778,7 +782,7 @@
 
   const environment = contractFor("M_ENVIRONMENT_CHECK");
   if (await appendReviewNote(environment,
-    "IMPLEMENTED: 방 온도·습도를 실제 숫자로 표시. 첫째 밤 여름 23°C, 둘째·백일째 밤 겨울 26°C. 별도 ‘아기 체온 확인’ 버튼은 현재 UI에서 제거.",
+    "IMPLEMENTED: 아기방에서 방 온도·습도를 실제 숫자로 확인하고 조정. 욕실에서는 ‘아기 체온 확인’을 별도 행동과 합성 아트로 제공하며 의료 진단을 단정하지 않는다.",
     "BODY_TEMPERATURE")) changes += 1;
 
   const stamina = contractFor("M_PLAY_AWAKE_CALM");
@@ -920,15 +924,15 @@
   const boardTitle = textNodes(board).find(n => n.name === "BOARD_TITLE" || n.characters.indexOf("스토리보드 V6") >= 0);
   if (boardTitle) {
     const baseTitle = boardTitle.characters
-      .replace(/\s*·\s*CODE SYNC(?:\s*·\s*V(?:8|9|10|11))?/g, "")
+      .replace(/\s*·\s*CODE SYNC(?:\s*·\s*V(?:8|9|10|11|12))?/g, "")
       .replace(/\s*·\s*Unity [0-9a-f]+/g, "");
-    await setText(boardTitle, baseTitle + " · CODE SYNC · V11");
+    await setText(boardTitle, baseTitle + " · CODE SYNC · V12");
     changes += 1;
   }
 
   figma.currentPage.selection = [board];
   figma.viewport.scrollAndZoomIntoView([board]);
-  figma.closePlugin("V11 직접 돌봄·완성 합성 계약 동기화 완료 · " +
+  figma.closePlugin("V12 3밤 회귀·신규 돌봄 아트 계약 동기화 완료 · " +
     (created ? "싱크 보드 최초 생성" : "기존 최신 싱크 보드 갱신") +
     " · " + changes + "개 항목 갱신");
 })();
