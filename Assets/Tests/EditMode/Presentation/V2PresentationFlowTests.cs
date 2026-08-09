@@ -253,6 +253,7 @@ namespace NotANap.Presentation.Tests
             Assert.AreEqual(EndingId.MorningWon, flow.BuildEnding().Id);
             Assert.IsFalse(flow.BuildEnding().IsSuccess);
             Assert.AreEqual(2, flow.BuildEnding().RequiredConditionCount);
+            Assert.AreEqual(3, flow.BuildEnding().TotalConditionCount);
             Assert.AreEqual("아쉬운 밤",
                 PresentationCopyMapper.EndingStatusLabel(flow.BuildEnding().IsSuccess));
         }

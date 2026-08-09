@@ -114,6 +114,20 @@ namespace NotANap.App
 
         private enum ActionGroup { Diagnose, Care, Feed }
 
+        private readonly struct BodyActionLink
+        {
+            public readonly Rect Hotspot;
+            public readonly V2ActionId Action;
+            public readonly string Label;
+
+            public BodyActionLink(Rect hotspot, V2ActionId action, string label)
+            {
+                Hotspot = hotspot;
+                Action = action;
+                Label = label;
+            }
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
         {
@@ -188,7 +202,7 @@ namespace NotANap.App
             _speechBubble = RoundedTexture(new Color(0.97f, 0.94f, 0.87f, 0.98f), 14);
             _itemGlow = RoundedTexture(new Color(1f, 0.69f, 0.27f, 0.2f), 48);
             _itemShadow = RoundedTexture(new Color(0f, 0f, 0f, 0.44f), 28);
-            _caregiverHand = RoundedTexture(new Color(0.92f, 0.7f, 0.56f, 0.98f), 28);
+            _caregiverHand = Resources.Load<Texture2D>("Art/Caregiver/reaching-hand");
             _diaperCloth = RoundedTexture(new Color(0.97f, 0.92f, 0.77f, 0.98f), 18);
         }
 
@@ -1009,7 +1023,7 @@ namespace NotANap.App
             DrawProgress(new Rect(735, 145, 289, 5), 1f - vm.RemainingMinutes / 540f,
                 new Color(0.94f, 0.67f, 0.3f));
             if (vm.EchoSources.Count > 0)
-                DrawEchoSource(vm, new Rect(58, 1390, 964, 132), true);
+                DrawEchoSource(vm, new Rect(58, 1420, 964, 126), true);
             DrawPortraitStatusOrnaments(vm);
             DrawSceneFeedback(vm, new Rect(58, 1688, 964, 142), true);
         }
@@ -1044,7 +1058,7 @@ namespace NotANap.App
                     ? (portrait ? 540f : 460f)
                     : (portrait ? 720f : 600f);
                 float babyCenterX = heldOutsideNursery
-                    ? (portrait ? 810f : 1510f)
+                    ? (portrait ? 810f : 1650f)
                     : rect.center.x;
                 var babyRect = new Rect(
                     babyCenterX - babySize * 0.5f,
@@ -1182,91 +1196,129 @@ namespace NotANap.App
             V2ActionId diaperAction = vm.RevealedCause == WakeCause.Diaper
                 ? V2ActionId.ChangeDiaper : V2ActionId.CheckDiaper;
 
-            Rect recommendedRect = back;
             V2ActionId recommendedAction = V2ActionId.Pat;
-            string recommendedLabel = "등을 천천히 토닥여요";
             if (!vm.CauseResolved)
             {
-                recommendedRect = mouth;
                 recommendedAction = mouthAction;
-                recommendedLabel = "입과 손의 신호를 만져 살펴봐요";
             }
             if (vm.RevealedCause == WakeCause.Diaper)
             {
-                recommendedRect = diaper;
                 recommendedAction = diaperAction;
-                recommendedLabel = "기저귀 부분을 만져 확인해요";
             }
             if (vm.FeedingReady)
             {
-                recommendedRect = mouth;
                 recommendedAction = V2ActionId.FeedPreparedBottle;
-                recommendedLabel = "입가를 눌러 준비한 젖병을 먹여요";
             }
-            if (Time.unscaledTime >= _directCueHiddenUntil)
-                DrawRecommendedTouchCue(vm, recommendedRect, recommendedAction,
-                    recommendedLabel, pulse, portrait);
-
-            DrawBodyHotspot(vm, back, V2ActionId.Pat, "등을 토닥", pulse, portrait);
             V2ActionId chestAction = vm.CarrierOn ? V2ActionId.ToggleCarrier : V2ActionId.Hold;
-            DrawBodyHotspot(vm, chest, chestAction,
-                vm.CarrierOn ? "아기띠 풀어주기" : "품에 안기", 1f - pulse, portrait);
-            DrawBodyHotspot(vm, mouth, mouthAction,
-                mouthAction == V2ActionId.FeedPreparedBottle ? "준비한 분유 수유" :
-                mouthAction == V2ActionId.Pacifier ? "쪽쪽이 건네기" : "입과 손 신호 보기",
-                pulse, portrait);
-            DrawBodyHotspot(vm, diaper, diaperAction,
-                diaperAction == V2ActionId.ChangeDiaper ? "기저귀 갈기" : "기저귀 살피기",
-                1f - pulse, portrait);
-            DrawBodyHotspot(vm, limbs, V2ActionId.CheckLimbRelaxation,
-                "팔다리 힘 살피기", pulse * .8f, portrait);
+
+            var links = new List<BodyActionLink>(6)
+            {
+                new BodyActionLink(mouth, mouthAction,
+                    mouthAction == V2ActionId.FeedPreparedBottle ? "입가 · 준비한 분유 수유" :
+                    mouthAction == V2ActionId.Pacifier ? "입가 · 쪽쪽이 건네기" :
+                    "입과 손 · 배고픔 신호 살피기"),
+                new BodyActionLink(back, V2ActionId.Pat, "등 · 같은 리듬으로 토닥이기"),
+                new BodyActionLink(chest, chestAction,
+                    vm.CarrierOn ? "가슴 · 아기띠 풀어주기" : "가슴 · 목을 받쳐 품에 안기"),
+                new BodyActionLink(diaper, diaperAction,
+                    diaperAction == V2ActionId.ChangeDiaper ? "기저귀 · 깨끗하게 갈기" :
+                    "기저귀 · 젖었는지 살피기"),
+                new BodyActionLink(limbs, V2ActionId.CheckLimbRelaxation,
+                    "팔다리 · 힘이 풀렸는지 살피기")
+            };
             if (IsSleeping(vm))
-                DrawBodyHotspot(vm, mattress, V2ActionId.Laydown,
-                    "침대로 천천히", pulse, portrait);
+                links.Add(new BodyActionLink(mattress, V2ActionId.Laydown,
+                    "침대 · 천천히 내려놓기"));
+
+            DrawLinkedBodyActions(vm, links, recommendedAction, pulse, portrait);
         }
 
-        private void DrawBodyHotspot(V2PlayViewModel vm, Rect rect, V2ActionId id,
-            string label, float pulse, bool portrait)
+        private void DrawLinkedBodyActions(V2PlayViewModel vm, List<BodyActionLink> links,
+            V2ActionId recommendedAction, float pulse, bool portrait)
         {
-            var action = DirectAction(vm, id);
-            if (action == null) return;
-            bool hovered = rect.Contains(Event.current.mousePosition);
-            var old = GUI.color;
-            float idleGlow = .12f + pulse * .2f;
-            GUI.color = new Color(1f, .72f, .3f, hovered ? .62f : idleGlow);
-            GUI.DrawTexture(rect, _itemGlow, ScaleMode.StretchToFill, true);
-            GUI.color = old;
-            // 모바일에는 hover가 없으므로 활성 부위와 기능을 항상 짧게 표시한다.
-            var idleCaption = new Rect(rect.center.x - (portrait ? 86f : 74f),
-                rect.yMax - (portrait ? 34f : 28f), portrait ? 172f : 148f,
-                portrait ? 34f : 28f);
-            DrawGlassPanel(idleCaption, hovered ? .84f : .58f);
-            GUI.Label(idleCaption, label, OverlayLabelStyle(portrait ? 16 : 13,
-                FontStyle.Bold, hovered ? Color.white : new Color(1f, .9f, .7f),
-                TextAnchor.MiddleCenter));
-            if (GUI.Button(rect, GUIContent.none, GUIStyle.none))
+            var active = new List<BodyActionLink>(links.Count);
+            for (int i = 0; i < links.Count; i++)
+                if (DirectAction(vm, links[i].Action) != null) active.Add(links[i]);
+            if (active.Count == 0) return;
+
+            bool babyOnRight = !portrait && active[0].Hotspot.center.x > 1300f;
+            Rect panel = portrait
+                ? new Rect(58f, 1128f, 964f, active.Count > 4 ? 210f : 148f)
+                : new Rect(babyOnRight ? 1040f : 1510f, 365f, 360f,
+                    54f + active.Count * 48f);
+            DrawGlassPanel(panel, .7f);
+            GUI.Label(new Rect(panel.x + 18f, panel.y + 8f, panel.width - 36f, 32f),
+                "만져서 돌보기 · 문구와 아기 모두 클릭 가능",
+                OverlayLabelStyle(portrait ? 18 : 15, FontStyle.Bold,
+                    new Color(.94f, .88f, .76f), TextAnchor.MiddleLeft));
+
+            Vector2 mouse = Event.current.mousePosition;
+            for (int i = 0; i < active.Count; i++)
             {
+                BodyActionLink link = active[i];
+                Rect labelRect;
+                if (portrait)
+                {
+                    int column = i % 2;
+                    int row = i / 2;
+                    float gap = 12f;
+                    float width = (panel.width - 36f - gap) * .5f;
+                    labelRect = new Rect(panel.x + 18f + column * (width + gap),
+                        panel.y + 48f + row * 50f, width, 42f);
+                }
+                else
+                {
+                    labelRect = new Rect(panel.x + 14f, panel.y + 44f + i * 48f,
+                        panel.width - 28f, 40f);
+                }
+
+                bool bodyHovered = link.Hotspot.Contains(mouse);
+                bool labelHovered = labelRect.Contains(mouse);
+                bool recommended = link.Action == recommendedAction &&
+                    Time.unscaledTime >= _directCueHiddenUntil;
+                Color accent = bodyHovered
+                    ? new Color(.45f, .9f, .86f)
+                    : new Color(1f, .72f, .3f);
+
+                float glowAlpha = bodyHovered || labelHovered
+                    ? .5f
+                    : recommended ? .07f + pulse * .09f : .018f;
+                Color previousColor = GUI.color;
+                GUI.color = new Color(accent.r, accent.g, accent.b, glowAlpha);
+                GUI.DrawTexture(link.Hotspot, _itemGlow, ScaleMode.StretchToFill, true);
+                GUI.color = previousColor;
+
+                if (bodyHovered || labelHovered)
+                {
+                    DrawRectOutline(link.Hotspot, accent, portrait ? 4f : 3f);
+                    DrawCareSparkles(link.Hotspot.center, .42f, 2);
+                }
+
+                DrawGlassPanel(labelRect, bodyHovered || labelHovered ? .9f : .54f);
+                Fill(new Rect(labelRect.x, labelRect.y + 6f, bodyHovered ? 6f : 4f,
+                    labelRect.height - 12f), accent);
+                string prefix = recommended ? "추천 · " : "";
+                GUI.Label(new Rect(labelRect.x + 14f, labelRect.y,
+                        labelRect.width - 24f, labelRect.height), prefix + link.Label,
+                    OverlayLabelStyle(portrait ? 17 : 14, FontStyle.Bold,
+                        bodyHovered || labelHovered ? accent : new Color(.91f, .91f, .89f),
+                        TextAnchor.MiddleLeft));
+
+                bool clickedBody = GUI.Button(link.Hotspot, GUIContent.none, GUIStyle.none);
+                bool clickedLabel = GUI.Button(labelRect, GUIContent.none, GUIStyle.none);
+                if (!clickedBody && !clickedLabel) continue;
                 _directHintSeen = true;
-                PerformV2Action(id);
+                PerformV2Action(link.Action);
+                return;
             }
         }
 
-        private void DrawRecommendedTouchCue(V2PlayViewModel vm, Rect rect, V2ActionId id,
-            string label, float pulse, bool portrait)
+        private static void DrawRectOutline(Rect rect, Color color, float thickness)
         {
-            if (DirectAction(vm, id) == null) return;
-            float size = Mathf.Min(rect.width, rect.height) * (.46f + pulse * .08f);
-            var cue = new Rect(rect.center.x - size * .5f, rect.center.y - size * .5f, size, size);
-            var old = GUI.color;
-            GUI.color = new Color(1f, .74f, .34f, .32f + pulse * .34f);
-            GUI.DrawTexture(cue, _itemGlow, ScaleMode.StretchToFill, true);
-            GUI.color = old;
-            DrawCareSparkles(cue.center, .45f + pulse * .4f, 2);
-            var labelRect = new Rect(rect.center.x - (portrait ? 190f : 175f),
-                rect.yMax + 4f, portrait ? 380f : 350f, portrait ? 46f : 40f);
-            DrawGlassPanel(labelRect, 0.82f);
-            GUI.Label(labelRect, label, OverlayLabelStyle(portrait ? 21 : 17,
-                FontStyle.Bold, Color.white, TextAnchor.MiddleCenter));
+            Fill(new Rect(rect.x, rect.y, rect.width, thickness), color);
+            Fill(new Rect(rect.x, rect.yMax - thickness, rect.width, thickness), color);
+            Fill(new Rect(rect.x, rect.y, thickness, rect.height), color);
+            Fill(new Rect(rect.xMax - thickness, rect.y, thickness, rect.height), color);
         }
 
         private V2ActionButtonViewModel DirectAction(V2PlayViewModel vm, V2ActionId id)
@@ -1281,12 +1333,7 @@ namespace NotANap.App
                     DrawKitchenPreparation(vm, portrait, babyVisible);
                     break;
                 case HomeLocation.Bathroom:
-                    DrawSceneActionHotspot(vm,
-                        portrait ? new Rect(610, 430, 190, 250) : new Rect(1040, 215, 190, 245),
-                        V2ActionId.CheckBodyTemperature, "탕온계로 아기 체온 살피기", portrait);
-                    DrawSceneActionHotspot(vm,
-                        portrait ? new Rect(245, 470, 200, 230) : new Rect(650, 245, 200, 220),
-                        V2ActionId.CheckEnvironment, "욕실 온도와 습기 살피기", portrait);
+                    DrawBathroomGuidance(vm, portrait);
                     break;
                 default:
                     DrawSceneActionHotspot(vm,
@@ -1319,6 +1366,76 @@ namespace NotANap.App
             }
             if (IsSleeping(vm)) DrawSleepSceneChoices(portrait);
             DrawRoomPickupAnimation(vm, portrait);
+        }
+
+        private void DrawBathroomGuidance(V2PlayViewModel vm, bool portrait)
+        {
+            bool babyTogether = vm.BabyLocation == HomeLocation.Bathroom;
+            Rect panel = portrait
+                ? new Rect(58f, 310f, 448f, 286f)
+                : new Rect(52f, 226f, 410f, 252f);
+            DrawGlassPanel(panel, .84f);
+            Fill(new Rect(panel.x, panel.y + 14f, 5f, panel.height - 28f),
+                new Color(.42f, .82f, .9f));
+            GUI.Label(new Rect(panel.x + 22f, panel.y + 12f, panel.width - 44f, 36f),
+                "욕실에서 할 일",
+                OverlayLabelStyle(portrait ? 24 : 19, FontStyle.Bold,
+                    new Color(.78f, .94f, 1f), TextAnchor.MiddleLeft));
+            GUI.Label(new Rect(panel.x + 22f, panel.y + 48f, panel.width - 44f, 40f),
+                !babyTogether ? "아기를 안고 와야 체온을 살필 수 있어요" :
+                !vm.BabyTemperatureChecked ? "탕온계로 체온을 확인해 주세요" :
+                !vm.TemperatureChecked || !vm.HumidityChecked
+                    ? "욕실의 온도와 습기도 확인해 주세요"
+                    : "확인이 끝났어요. 아기방으로 돌아가세요",
+                OverlayLabelStyle(portrait ? 18 : 15, FontStyle.Normal,
+                    new Color(.9f, .91f, .9f), TextAnchor.MiddleLeft));
+
+            float rowY = panel.y + 96f;
+            DrawBathroomTask(vm, new Rect(panel.x + 20f, rowY, panel.width - 40f, 48f),
+                V2ActionId.CheckBodyTemperature, "1  탕온계로 아기 체온 살피기",
+                vm.BabyTemperatureChecked, babyTogether, portrait);
+            DrawBathroomTask(vm, new Rect(panel.x + 20f, rowY + 58f, panel.width - 40f, 48f),
+                V2ActionId.CheckEnvironment, "2  욕실 온도·습도 숫자 확인하기",
+                vm.TemperatureChecked && vm.HumidityChecked, true, portrait);
+
+            var returnRect = new Rect(panel.x + 20f, rowY + 116f, panel.width - 40f, 48f);
+            bool readyToReturn = vm.BabyTemperatureChecked &&
+                vm.TemperatureChecked && vm.HumidityChecked;
+            DrawGlassPanel(returnRect, readyToReturn ? .92f : .46f, readyToReturn);
+            GUI.Label(returnRect, readyToReturn ? "3  확인 완료 · 아기방으로 돌아가기  →" :
+                    "3  확인을 마치면 아기방으로 돌아가요",
+                OverlayLabelStyle(portrait ? 17 : 14, FontStyle.Bold,
+                    readyToReturn ? new Color(.62f, .96f, .74f) : new Color(.65f, .68f, .7f),
+                    TextAnchor.MiddleCenter));
+            bool previousEnabled = GUI.enabled;
+            GUI.enabled = previousEnabled && readyToReturn && !_flow.InputLocked;
+            if (GUI.Button(returnRect, GUIContent.none, GUIStyle.none))
+                MoveToRoom(HomeLocation.Nursery);
+            GUI.enabled = previousEnabled;
+        }
+
+        private void DrawBathroomTask(V2PlayViewModel vm, Rect rect, V2ActionId actionId,
+            string label, bool completed, bool prerequisiteMet, bool portrait)
+        {
+            bool available = !completed && prerequisiteMet && DirectAction(vm, actionId) != null;
+            bool hovered = available && rect.Contains(Event.current.mousePosition);
+            DrawGlassPanel(rect, completed ? .7f : hovered ? .92f : .58f, hovered);
+            Color accent = completed ? new Color(.56f, .92f, .68f) :
+                available ? new Color(1f, .76f, .38f) : new Color(.58f, .61f, .64f);
+            Fill(new Rect(rect.x, rect.y + 6f, hovered ? 6f : 4f, rect.height - 12f), accent);
+            string state = completed ? "  ✓ 완료" : !prerequisiteMet ? "  · 아기 필요" : "";
+            GUI.Label(new Rect(rect.x + 14f, rect.y, rect.width - 24f, rect.height), label + state,
+                OverlayLabelStyle(portrait ? 17 : 14, FontStyle.Bold, accent,
+                    TextAnchor.MiddleLeft));
+            bool previousEnabled = GUI.enabled;
+            GUI.enabled = previousEnabled && available && !_flow.InputLocked;
+            if (GUI.Button(rect, GUIContent.none, GUIStyle.none))
+            {
+                _roomObjectAction = actionId;
+                _roomObjectAnimationStarted = Time.unscaledTime;
+                PerformV2Action(actionId);
+            }
+            GUI.enabled = previousEnabled;
         }
 
         private void DrawPacifierProp(V2PlayViewModel vm, Rect rect, bool portrait)
@@ -1607,104 +1724,41 @@ namespace NotANap.App
         private void DrawHomeJourneyMap(V2PlayViewModel vm, bool portrait)
         {
             Rect map = portrait
-                ? new Rect(816, 176, 232, 332)
-                : new Rect(1510, 116, 360, 224);
-            DrawGlassPanel(map, 0.66f);
-            Fill(new Rect(map.x + 14, map.y + 14, 4, map.height - 28),
-                new Color(0.95f, 0.69f, 0.33f, 0.8f));
-            GUI.Label(new Rect(map.x + 28, map.y + 8, map.width - 42, portrait ? 40 : 32),
-                "우리 집 새벽 동선",
-                OverlayLabelStyle(portrait ? 19 : 16, FontStyle.Bold,
-                    new Color(0.98f, 0.88f, 0.7f), TextAnchor.MiddleLeft));
+                ? new Rect(58f, 1350f, 964f, 58f)
+                : new Rect(1540f, 690f, 330f, 62f);
+            DrawGlassPanel(map, 0.7f);
+            GUI.Label(new Rect(map.x + 12f, map.y, portrait ? 104f : 64f, map.height),
+                "동선", OverlayLabelStyle(portrait ? 18 : 14, FontStyle.Bold,
+                    new Color(.96f, .78f, .5f), TextAnchor.MiddleCenter));
 
-            Vector2 nursery = portrait
-                ? new Vector2(map.center.x, map.y + 100)
-                : new Vector2(map.x + 82, map.y + 126);
-            Vector2 kitchen = portrait
-                ? new Vector2(map.x + 64, map.y + 252)
-                : new Vector2(map.x + 190, map.y + 82);
-            Vector2 bathroom = portrait
-                ? new Vector2(map.x + 172, map.y + 252)
-                : new Vector2(map.x + 282, map.y + 160);
-            DrawDottedRoute(nursery, kitchen);
-            DrawDottedRoute(nursery, bathroom);
-            DrawDottedRoute(kitchen, bathroom);
-
-            DrawMapRoomNode(vm, HomeLocation.Nursery, nursery, portrait);
-            DrawMapRoomNode(vm, HomeLocation.Kitchen, kitchen, portrait);
-            DrawMapRoomNode(vm, HomeLocation.Bathroom, bathroom, portrait);
-
-            bool moving = RoomTransitionActive();
-            if (!moving || !_roomTransitionBabyAccompanied)
-                DrawMapToken(MapPoint(vm.BabyLocation, nursery, kitchen, bathroom) +
-                    new Vector2(portrait ? 24f : 19f, portrait ? -27f : -22f),
-                    "♥", new Color(0.95f, 0.65f, 0.72f), portrait);
-            if (moving)
+            HomeLocation[] rooms =
+                { HomeLocation.Nursery, HomeLocation.Kitchen, HomeLocation.Bathroom };
+            float startX = map.x + (portrait ? 116f : 70f);
+            float gap = portrait ? 12f : 7f;
+            float roomWidth = (map.xMax - startX - 12f - gap * 2f) / 3f;
+            for (int i = 0; i < rooms.Length; i++)
             {
-                float eased = Mathf.SmoothStep(0f, 1f, RoomTransitionProgress());
-                Vector2 from = MapPoint(_roomTransitionFrom, nursery, kitchen, bathroom);
-                Vector2 to = MapPoint(_roomTransitionTo, nursery, kitchen, bathroom);
-                Vector2 caregiver = Vector2.Lerp(from, to, eased) +
-                    new Vector2(portrait ? -24f : -19f, portrait ? -27f : -22f);
-                DrawMapToken(caregiver, "아", new Color(0.96f, 0.69f, 0.3f), portrait);
-                if (_roomTransitionBabyAccompanied)
-                    DrawMapToken(caregiver + new Vector2(portrait ? 38f : 31f, 0f),
-                        "♥", new Color(0.95f, 0.65f, 0.72f), portrait);
+                HomeLocation room = rooms[i];
+                var roomRect = new Rect(startX + i * (roomWidth + gap), map.y + 8f,
+                    roomWidth, map.height - 16f);
+                bool current = vm.CaregiverLocation == room;
+                bool babyHere = vm.BabyLocation == room;
+                DrawGlassPanel(roomRect, current ? .92f : .5f, current);
+                if (current)
+                    Fill(new Rect(roomRect.x, roomRect.y, 4f, roomRect.height),
+                        new Color(.96f, .68f, .3f));
+                string occupants = current && babyHere ? " · 나와 아기" :
+                    current ? " · 나" : babyHere ? " · 아기" : "";
+                GUI.Label(roomRect, HomeLocationLabel(room) + occupants,
+                    OverlayLabelStyle(portrait ? 16 : 12, FontStyle.Bold,
+                        current ? Color.white : new Color(.78f, .81f, .83f),
+                        TextAnchor.MiddleCenter));
+                bool enabled = !current && !_flow.InputLocked && !RoomTransitionActive();
+                bool previousEnabled = GUI.enabled;
+                GUI.enabled = previousEnabled && enabled;
+                if (GUI.Button(roomRect, GUIContent.none, GUIStyle.none)) MoveToRoom(room);
+                GUI.enabled = previousEnabled;
             }
-            else
-            {
-                DrawMapToken(MapPoint(vm.CaregiverLocation, nursery, kitchen, bathroom) +
-                    new Vector2(portrait ? -24f : -19f, portrait ? -27f : -22f),
-                    "아", new Color(0.96f, 0.69f, 0.3f), portrait);
-            }
-        }
-
-        private void DrawMapRoomNode(V2PlayViewModel vm, HomeLocation location, Vector2 center, bool portrait)
-        {
-            float width = portrait ? 94f : 92f;
-            float height = portrait ? 58f : 54f;
-            var room = new Rect(center.x - width * 0.5f, center.y - height * 0.5f, width, height);
-            bool current = vm.CaregiverLocation == location;
-            DrawGlassPanel(room, current ? 0.9f : 0.64f, current);
-            GUI.Label(room, HomeLocationLabel(location),
-                OverlayLabelStyle(portrait ? 17 : 14, FontStyle.Bold,
-                    current ? Color.white : new Color(0.84f, 0.86f, 0.87f),
-                    TextAnchor.MiddleCenter));
-            var old = GUI.enabled;
-            GUI.enabled = old && !current && !_flow.InputLocked && !RoomTransitionActive();
-            if (GUI.Button(room, GUIContent.none, GUIStyle.none)) MoveToRoom(location);
-            GUI.enabled = old;
-        }
-
-        private static Vector2 MapPoint(HomeLocation location, Vector2 nursery,
-            Vector2 kitchen, Vector2 bathroom) => location switch
-        {
-            HomeLocation.Kitchen => kitchen,
-            HomeLocation.Bathroom => bathroom,
-            _ => nursery
-        };
-
-        private static void DrawDottedRoute(Vector2 from, Vector2 to)
-        {
-            for (int i = 1; i < 8; i++)
-            {
-                float t = i / 8f;
-                Vector2 point = Vector2.Lerp(from, to, t);
-                float pulse = 4f + Mathf.Sin((Time.unscaledTime + t) * 4f) * 1.2f;
-                Fill(new Rect(point.x - pulse * 0.5f, point.y - pulse * 0.5f, pulse, pulse),
-                    new Color(0.88f, 0.7f, 0.43f, 0.46f));
-            }
-        }
-
-        private void DrawMapToken(Vector2 center, string label, Color color, bool portrait)
-        {
-            float size = portrait ? 34f : 28f;
-            var token = new Rect(center.x - size * 0.5f, center.y - size * 0.5f, size, size);
-            GUI.DrawTexture(token, _itemGlow, ScaleMode.StretchToFill, true);
-            Fill(new Rect(token.x + 4f, token.y + 4f, token.width - 8f, token.height - 8f),
-                new Color(color.r, color.g, color.b, 0.96f));
-            GUI.Label(token, label, OverlayLabelStyle(portrait ? 17 : 13, FontStyle.Bold,
-                Color.white, TextAnchor.MiddleCenter));
         }
 
         private void DrawRoomTravelMoment(bool portrait)
@@ -2248,22 +2302,15 @@ namespace NotANap.App
 
         private void DrawCaregiverHand(Rect rect, bool mirror = false)
         {
-            float wristX = mirror ? rect.xMax - rect.width * 0.34f : rect.x;
-            float palmX = mirror ? rect.x + rect.width * 0.12f : rect.x + rect.width * 0.25f;
-            GUI.DrawTexture(new Rect(wristX, rect.y + rect.height * 0.2f,
-                rect.width * 0.34f, rect.height * 0.64f), _diaperCloth, ScaleMode.StretchToFill, true);
-            GUI.DrawTexture(new Rect(palmX, rect.y + rect.height * 0.08f,
-                rect.width * 0.63f, rect.height * 0.84f), _caregiverHand, ScaleMode.StretchToFill, true);
-            float fingerX = mirror ? rect.x : rect.x + rect.width * 0.77f;
-            for (int i = 0; i < 3; i++)
-            {
-                float fingerY = rect.y + rect.height * (0.13f + i * 0.24f);
-                GUI.DrawTexture(new Rect(fingerX, fingerY, rect.width * 0.28f, rect.height * 0.2f),
-                    _caregiverHand, ScaleMode.StretchToFill, true);
-            }
-            float thumbX = mirror ? palmX + rect.width * 0.45f : palmX - rect.width * 0.08f;
-            GUI.DrawTexture(new Rect(thumbX, rect.y + rect.height * 0.63f,
-                rect.width * 0.3f, rect.height * 0.28f), _caregiverHand, ScaleMode.StretchToFill, true);
+            if (_caregiverHand == null) return;
+
+            // 원화는 손가락과 소매가 한 실루엣으로 완결돼 있다. 조각 텍스처를 겹치지 않고
+            // 좌우 반전만 사용해 양손의 해부학적 형태와 화풍을 보존한다.
+            Matrix4x4 previous = GUI.matrix;
+            if (!mirror)
+                GUIUtility.ScaleAroundPivot(new Vector2(-1f, 1f), rect.center);
+            GUI.DrawTexture(rect, _caregiverHand, ScaleMode.ScaleToFit, true);
+            GUI.matrix = previous;
         }
 
         private void DrawActionMotionLabel(Rect babyRect, string label, bool portrait)
@@ -2940,14 +2987,27 @@ namespace NotANap.App
             Fill(new Rect(x, y, panelWidth, 8), accent);
             var statusStyle = Centered(_caption);
             statusStyle.normal.textColor = accent;
-            var symbolStyle = Centered(new GUIStyle(_title) { fontSize = _portrait ? 110 : 84 });
-            symbolStyle.normal.textColor = accent;
             GUI.Label(new Rect(x + 60, y + 55, panelWidth - 120, 80),
                 $"{_flow.BabyName}의 백일 · {PresentationCopyMapper.EndingStatusLabel(vm.IsSuccess)}", statusStyle);
             GUI.Label(new Rect(x + 110, y + 130, panelWidth - 220, 55),
-                $"지켜 낸 조건  {vm.MetConditionCount} / {vm.RequiredConditionCount}",
+                $"지켜 낸 조건  {vm.MetConditionCount} / {vm.TotalConditionCount}",
                 Centered(_headline));
-            GUI.Label(new Rect(x + 60, y + 190, panelWidth - 120, 95), vm.Symbol, symbolStyle);
+            Texture2D endingPortrait = _familyRolled ? GeneticBabyPortrait() : null;
+            var endingArtRect = new Rect(x + panelWidth * .5f - 52f,
+                y + 185f, 104f, 104f);
+            if (endingPortrait != null)
+            {
+                GUI.DrawTexture(new Rect(endingArtRect.center.x - endingArtRect.width * .34f,
+                    endingArtRect.yMax - 10f, endingArtRect.width * .68f, 14f),
+                    _itemShadow, ScaleMode.StretchToFill, true);
+                GUI.DrawTexture(endingArtRect, endingPortrait, ScaleMode.ScaleToFit, true);
+            }
+            else
+            {
+                var symbolStyle = Centered(new GUIStyle(_title) { fontSize = _portrait ? 110 : 84 });
+                symbolStyle.normal.textColor = accent;
+                GUI.Label(new Rect(x + 60, y + 190, panelWidth - 120, 95), vm.Symbol, symbolStyle);
+            }
             GUI.Label(new Rect(x + 60, y + 290, panelWidth - 120, 90), vm.Title, Centered(_display));
             GUI.Label(new Rect(x + 110, y + 390, panelWidth - 220, 100), vm.Subtitle, Centered(_body));
             GUI.Label(new Rect(x + 110, y + 490, panelWidth - 220, 72),
