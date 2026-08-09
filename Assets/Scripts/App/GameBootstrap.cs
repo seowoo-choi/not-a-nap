@@ -46,6 +46,8 @@ namespace NotANap.App
         private Texture2D _geneticMonolidStraight;
         private Texture2D _geneticMonolidCurly;
         private Texture2D _geneticDoubleStraight;
+        private Texture2D _geneticDoubleCurly;
+        private Texture2D _bigMouthOverlay;
         private readonly Dictionary<V2ActionId, Texture2D[]> _interactionFrames =
             new Dictionary<V2ActionId, Texture2D[]>();
         private Texture2D[] _carrierBabyFrames;
@@ -153,6 +155,8 @@ namespace NotANap.App
             _geneticMonolidStraight = Resources.Load<Texture2D>("Art/Baby/Genetics/monolid_straight");
             _geneticMonolidCurly = Resources.Load<Texture2D>("Art/Baby/Genetics/monolid_curly");
             _geneticDoubleStraight = Resources.Load<Texture2D>("Art/Baby/Genetics/double_straight");
+            _geneticDoubleCurly = Resources.Load<Texture2D>("Art/Baby/awake_calm");
+            _bigMouthOverlay = Resources.Load<Texture2D>("Art/Baby/Genetics/big-mouth-overlay");
             _carrierBabyFrames = LoadFrameSet("carrier", 4);
             _interactionFrames[V2ActionId.Pat] = LoadFrameSet("pat", 4);
             _interactionFrames[V2ActionId.Hold] = LoadFrameSet("hold", 4);
@@ -424,7 +428,7 @@ namespace NotANap.App
                 GUI.DrawTexture(new Rect(babyRect.center.x - babySize * 0.28f,
                     babyRect.yMax - babySize * 0.12f, babySize * 0.56f, babySize * 0.09f),
                     _itemShadow, ScaleMode.StretchToFill, true);
-                GUI.DrawTexture(babyRect, introPortrait, ScaleMode.ScaleToFit, true);
+                DrawGeneticPortrait(babyRect, introPortrait);
             }
 
             // 화면 아래의 두 손으로 카메라가 아빠의 눈이라는 점을 먼저 전달한다.
@@ -630,7 +634,7 @@ namespace NotANap.App
             GUI.DrawTexture(new Rect(artRect.center.x - artSize * 0.3f,
                 artRect.yMax - 26f, artSize * 0.6f, 28f),
                 _itemShadow, ScaleMode.StretchToFill, true);
-            if (portrait != null) GUI.DrawTexture(artRect, portrait, ScaleMode.ScaleToFit, true);
+            if (portrait != null) DrawGeneticPortrait(artRect, portrait);
             string eyeSource = TraitSource(_babyDoubleEyelid, _dadDoubleEyelid, _momDoubleEyelid);
             string hairSource = TraitSource(_babyCurlyHair, _dadCurlyHair, _momCurlyHair);
             string mouthSource = TraitSource(_babyBigMouth, _dadBigMouth, _momBigMouth);
@@ -665,10 +669,37 @@ namespace NotANap.App
         private Texture2D GeneticBabyPortrait()
         {
             if (_babyDoubleEyelid && _babyCurlyHair)
-                return Resources.Load<Texture2D>("Art/Baby/awake_calm");
+                return _geneticDoubleCurly;
             if (_babyDoubleEyelid) return _geneticDoubleStraight;
             return _babyCurlyHair ? _geneticMonolidCurly : _geneticMonolidStraight;
         }
+
+        private void DrawGeneticPortrait(Rect rect, Texture2D portrait)
+        {
+            if (portrait == null) return;
+            GUI.DrawTexture(rect, portrait, ScaleMode.ScaleToFit, true);
+            if (!_babyBigMouth || _bigMouthOverlay == null || !IsGeneticPortrait(portrait)) return;
+
+            Vector2 mouth = ReferenceEquals(portrait, _geneticDoubleStraight)
+                ? new Vector2(.621f, .410f)
+                : ReferenceEquals(portrait, _geneticMonolidCurly)
+                    ? new Vector2(.621f, .441f)
+                    : ReferenceEquals(portrait, _geneticMonolidStraight)
+                        ? new Vector2(.598f, .445f)
+                        : new Vector2(.575f, .414f);
+            float mouthWidth = rect.width * .076f;
+            float mouthHeight = mouthWidth * .448f;
+            var mouthRect = new Rect(rect.x + rect.width * mouth.x - mouthWidth * .5f,
+                rect.y + rect.height * mouth.y - mouthHeight * .5f,
+                mouthWidth, mouthHeight);
+            GUI.DrawTexture(mouthRect, _bigMouthOverlay, ScaleMode.ScaleToFit, true);
+        }
+
+        private bool IsGeneticPortrait(Texture2D portrait)
+            => ReferenceEquals(portrait, _geneticMonolidStraight) ||
+               ReferenceEquals(portrait, _geneticMonolidCurly) ||
+               ReferenceEquals(portrait, _geneticDoubleStraight) ||
+               ReferenceEquals(portrait, _geneticDoubleCurly);
 
         private static string TraitSource(bool babyTrait, bool dadTrait, bool momTrait)
         {
@@ -2352,18 +2383,24 @@ namespace NotANap.App
             Color oldColor = GUI.color;
             if (current == previous)
             {
-                if (current != null) GUI.DrawTexture(animated, current, ScaleMode.ScaleToFit, true);
+                if (current != null)
+                {
+                    if (IsGeneticPortrait(current)) DrawGeneticPortrait(animated, current);
+                    else GUI.DrawTexture(animated, current, ScaleMode.ScaleToFit, true);
+                }
                 return;
             }
             if (previous != null && blend < 1f)
             {
                 GUI.color = new Color(oldColor.r, oldColor.g, oldColor.b, oldColor.a * (1f - blend));
-                GUI.DrawTexture(animated, previous, ScaleMode.ScaleToFit, true);
+                if (IsGeneticPortrait(previous)) DrawGeneticPortrait(animated, previous);
+                else GUI.DrawTexture(animated, previous, ScaleMode.ScaleToFit, true);
             }
             if (current != null)
             {
                 GUI.color = new Color(oldColor.r, oldColor.g, oldColor.b, oldColor.a * blend);
-                GUI.DrawTexture(animated, current, ScaleMode.ScaleToFit, true);
+                if (IsGeneticPortrait(current)) DrawGeneticPortrait(animated, current);
+                else GUI.DrawTexture(animated, current, ScaleMode.ScaleToFit, true);
             }
             GUI.color = oldColor;
         }
@@ -3000,7 +3037,7 @@ namespace NotANap.App
                 GUI.DrawTexture(new Rect(endingArtRect.center.x - endingArtRect.width * .34f,
                     endingArtRect.yMax - 10f, endingArtRect.width * .68f, 14f),
                     _itemShadow, ScaleMode.StretchToFill, true);
-                GUI.DrawTexture(endingArtRect, endingPortrait, ScaleMode.ScaleToFit, true);
+                DrawGeneticPortrait(endingArtRect, endingPortrait);
             }
             else
             {
