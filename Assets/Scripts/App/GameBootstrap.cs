@@ -114,6 +114,20 @@ namespace NotANap.App
 
         private enum ActionGroup { Diagnose, Care, Feed }
 
+        private readonly struct BodyActionLink
+        {
+            public readonly Rect Hotspot;
+            public readonly V2ActionId Action;
+            public readonly string Label;
+
+            public BodyActionLink(Rect hotspot, V2ActionId action, string label)
+            {
+                Hotspot = hotspot;
+                Action = action;
+                Label = label;
+            }
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
         {
@@ -1182,91 +1196,127 @@ namespace NotANap.App
             V2ActionId diaperAction = vm.RevealedCause == WakeCause.Diaper
                 ? V2ActionId.ChangeDiaper : V2ActionId.CheckDiaper;
 
-            Rect recommendedRect = back;
             V2ActionId recommendedAction = V2ActionId.Pat;
-            string recommendedLabel = "등을 천천히 토닥여요";
             if (!vm.CauseResolved)
             {
-                recommendedRect = mouth;
                 recommendedAction = mouthAction;
-                recommendedLabel = "입과 손의 신호를 만져 살펴봐요";
             }
             if (vm.RevealedCause == WakeCause.Diaper)
             {
-                recommendedRect = diaper;
                 recommendedAction = diaperAction;
-                recommendedLabel = "기저귀 부분을 만져 확인해요";
             }
             if (vm.FeedingReady)
             {
-                recommendedRect = mouth;
                 recommendedAction = V2ActionId.FeedPreparedBottle;
-                recommendedLabel = "입가를 눌러 준비한 젖병을 먹여요";
             }
-            if (Time.unscaledTime >= _directCueHiddenUntil)
-                DrawRecommendedTouchCue(vm, recommendedRect, recommendedAction,
-                    recommendedLabel, pulse, portrait);
-
-            DrawBodyHotspot(vm, back, V2ActionId.Pat, "등을 토닥", pulse, portrait);
             V2ActionId chestAction = vm.CarrierOn ? V2ActionId.ToggleCarrier : V2ActionId.Hold;
-            DrawBodyHotspot(vm, chest, chestAction,
-                vm.CarrierOn ? "아기띠 풀어주기" : "품에 안기", 1f - pulse, portrait);
-            DrawBodyHotspot(vm, mouth, mouthAction,
-                mouthAction == V2ActionId.FeedPreparedBottle ? "준비한 분유 수유" :
-                mouthAction == V2ActionId.Pacifier ? "쪽쪽이 건네기" : "입과 손 신호 보기",
-                pulse, portrait);
-            DrawBodyHotspot(vm, diaper, diaperAction,
-                diaperAction == V2ActionId.ChangeDiaper ? "기저귀 갈기" : "기저귀 살피기",
-                1f - pulse, portrait);
-            DrawBodyHotspot(vm, limbs, V2ActionId.CheckLimbRelaxation,
-                "팔다리 힘 살피기", pulse * .8f, portrait);
+
+            var links = new List<BodyActionLink>(6)
+            {
+                new BodyActionLink(mouth, mouthAction,
+                    mouthAction == V2ActionId.FeedPreparedBottle ? "입가 · 준비한 분유 수유" :
+                    mouthAction == V2ActionId.Pacifier ? "입가 · 쪽쪽이 건네기" :
+                    "입과 손 · 배고픔 신호 살피기"),
+                new BodyActionLink(back, V2ActionId.Pat, "등 · 같은 리듬으로 토닥이기"),
+                new BodyActionLink(chest, chestAction,
+                    vm.CarrierOn ? "가슴 · 아기띠 풀어주기" : "가슴 · 목을 받쳐 품에 안기"),
+                new BodyActionLink(diaper, diaperAction,
+                    diaperAction == V2ActionId.ChangeDiaper ? "기저귀 · 깨끗하게 갈기" :
+                    "기저귀 · 젖었는지 살피기"),
+                new BodyActionLink(limbs, V2ActionId.CheckLimbRelaxation,
+                    "팔다리 · 힘이 풀렸는지 살피기")
+            };
             if (IsSleeping(vm))
-                DrawBodyHotspot(vm, mattress, V2ActionId.Laydown,
-                    "침대로 천천히", pulse, portrait);
+                links.Add(new BodyActionLink(mattress, V2ActionId.Laydown,
+                    "침대 · 천천히 내려놓기"));
+
+            DrawLinkedBodyActions(vm, links, recommendedAction, pulse, portrait);
         }
 
-        private void DrawBodyHotspot(V2PlayViewModel vm, Rect rect, V2ActionId id,
-            string label, float pulse, bool portrait)
+        private void DrawLinkedBodyActions(V2PlayViewModel vm, List<BodyActionLink> links,
+            V2ActionId recommendedAction, float pulse, bool portrait)
         {
-            var action = DirectAction(vm, id);
-            if (action == null) return;
-            bool hovered = rect.Contains(Event.current.mousePosition);
-            var old = GUI.color;
-            float idleGlow = .12f + pulse * .2f;
-            GUI.color = new Color(1f, .72f, .3f, hovered ? .62f : idleGlow);
-            GUI.DrawTexture(rect, _itemGlow, ScaleMode.StretchToFill, true);
-            GUI.color = old;
-            // 모바일에는 hover가 없으므로 활성 부위와 기능을 항상 짧게 표시한다.
-            var idleCaption = new Rect(rect.center.x - (portrait ? 86f : 74f),
-                rect.yMax - (portrait ? 34f : 28f), portrait ? 172f : 148f,
-                portrait ? 34f : 28f);
-            DrawGlassPanel(idleCaption, hovered ? .84f : .58f);
-            GUI.Label(idleCaption, label, OverlayLabelStyle(portrait ? 16 : 13,
-                FontStyle.Bold, hovered ? Color.white : new Color(1f, .9f, .7f),
-                TextAnchor.MiddleCenter));
-            if (GUI.Button(rect, GUIContent.none, GUIStyle.none))
+            var active = new List<BodyActionLink>(links.Count);
+            for (int i = 0; i < links.Count; i++)
+                if (DirectAction(vm, links[i].Action) != null) active.Add(links[i]);
+            if (active.Count == 0) return;
+
+            Rect panel = portrait
+                ? new Rect(58f, 1128f, 964f, active.Count > 4 ? 210f : 148f)
+                : new Rect(1510f, 365f, 360f, 54f + active.Count * 48f);
+            DrawGlassPanel(panel, .7f);
+            GUI.Label(new Rect(panel.x + 18f, panel.y + 8f, panel.width - 36f, 32f),
+                "만져서 돌보기 · 문구와 아기 모두 클릭 가능",
+                OverlayLabelStyle(portrait ? 18 : 15, FontStyle.Bold,
+                    new Color(.94f, .88f, .76f), TextAnchor.MiddleLeft));
+
+            Vector2 mouse = Event.current.mousePosition;
+            for (int i = 0; i < active.Count; i++)
             {
+                BodyActionLink link = active[i];
+                Rect labelRect;
+                if (portrait)
+                {
+                    int column = i % 2;
+                    int row = i / 2;
+                    float gap = 12f;
+                    float width = (panel.width - 36f - gap) * .5f;
+                    labelRect = new Rect(panel.x + 18f + column * (width + gap),
+                        panel.y + 48f + row * 50f, width, 42f);
+                }
+                else
+                {
+                    labelRect = new Rect(panel.x + 14f, panel.y + 44f + i * 48f,
+                        panel.width - 28f, 40f);
+                }
+
+                bool bodyHovered = link.Hotspot.Contains(mouse);
+                bool labelHovered = labelRect.Contains(mouse);
+                bool recommended = link.Action == recommendedAction &&
+                    Time.unscaledTime >= _directCueHiddenUntil;
+                Color accent = bodyHovered
+                    ? new Color(.45f, .9f, .86f)
+                    : new Color(1f, .72f, .3f);
+
+                float glowAlpha = bodyHovered || labelHovered
+                    ? .5f
+                    : recommended ? .07f + pulse * .09f : .018f;
+                Color previousColor = GUI.color;
+                GUI.color = new Color(accent.r, accent.g, accent.b, glowAlpha);
+                GUI.DrawTexture(link.Hotspot, _itemGlow, ScaleMode.StretchToFill, true);
+                GUI.color = previousColor;
+
+                if (bodyHovered || labelHovered)
+                {
+                    DrawRectOutline(link.Hotspot, accent, portrait ? 4f : 3f);
+                    DrawCareSparkles(link.Hotspot.center, .42f, 2);
+                }
+
+                DrawGlassPanel(labelRect, bodyHovered || labelHovered ? .9f : .54f);
+                Fill(new Rect(labelRect.x, labelRect.y + 6f, bodyHovered ? 6f : 4f,
+                    labelRect.height - 12f), accent);
+                string prefix = recommended ? "추천 · " : "";
+                GUI.Label(new Rect(labelRect.x + 14f, labelRect.y,
+                        labelRect.width - 24f, labelRect.height), prefix + link.Label,
+                    OverlayLabelStyle(portrait ? 17 : 14, FontStyle.Bold,
+                        bodyHovered || labelHovered ? accent : new Color(.91f, .91f, .89f),
+                        TextAnchor.MiddleLeft));
+
+                bool clickedBody = GUI.Button(link.Hotspot, GUIContent.none, GUIStyle.none);
+                bool clickedLabel = GUI.Button(labelRect, GUIContent.none, GUIStyle.none);
+                if (!clickedBody && !clickedLabel) continue;
                 _directHintSeen = true;
-                PerformV2Action(id);
+                PerformV2Action(link.Action);
+                return;
             }
         }
 
-        private void DrawRecommendedTouchCue(V2PlayViewModel vm, Rect rect, V2ActionId id,
-            string label, float pulse, bool portrait)
+        private static void DrawRectOutline(Rect rect, Color color, float thickness)
         {
-            if (DirectAction(vm, id) == null) return;
-            float size = Mathf.Min(rect.width, rect.height) * (.46f + pulse * .08f);
-            var cue = new Rect(rect.center.x - size * .5f, rect.center.y - size * .5f, size, size);
-            var old = GUI.color;
-            GUI.color = new Color(1f, .74f, .34f, .32f + pulse * .34f);
-            GUI.DrawTexture(cue, _itemGlow, ScaleMode.StretchToFill, true);
-            GUI.color = old;
-            DrawCareSparkles(cue.center, .45f + pulse * .4f, 2);
-            var labelRect = new Rect(rect.center.x - (portrait ? 190f : 175f),
-                rect.yMax + 4f, portrait ? 380f : 350f, portrait ? 46f : 40f);
-            DrawGlassPanel(labelRect, 0.82f);
-            GUI.Label(labelRect, label, OverlayLabelStyle(portrait ? 21 : 17,
-                FontStyle.Bold, Color.white, TextAnchor.MiddleCenter));
+            Fill(new Rect(rect.x, rect.y, rect.width, thickness), color);
+            Fill(new Rect(rect.x, rect.yMax - thickness, rect.width, thickness), color);
+            Fill(new Rect(rect.x, rect.y, thickness, rect.height), color);
+            Fill(new Rect(rect.xMax - thickness, rect.y, thickness, rect.height), color);
         }
 
         private V2ActionButtonViewModel DirectAction(V2PlayViewModel vm, V2ActionId id)
