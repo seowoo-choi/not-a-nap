@@ -1333,12 +1333,7 @@ namespace NotANap.App
                     DrawKitchenPreparation(vm, portrait, babyVisible);
                     break;
                 case HomeLocation.Bathroom:
-                    DrawSceneActionHotspot(vm,
-                        portrait ? new Rect(610, 430, 190, 250) : new Rect(1040, 215, 190, 245),
-                        V2ActionId.CheckBodyTemperature, "탕온계로 아기 체온 살피기", portrait);
-                    DrawSceneActionHotspot(vm,
-                        portrait ? new Rect(245, 470, 200, 230) : new Rect(650, 245, 200, 220),
-                        V2ActionId.CheckEnvironment, "욕실 온도와 습기 살피기", portrait);
+                    DrawBathroomGuidance(vm, portrait);
                     break;
                 default:
                     DrawSceneActionHotspot(vm,
@@ -1371,6 +1366,76 @@ namespace NotANap.App
             }
             if (IsSleeping(vm)) DrawSleepSceneChoices(portrait);
             DrawRoomPickupAnimation(vm, portrait);
+        }
+
+        private void DrawBathroomGuidance(V2PlayViewModel vm, bool portrait)
+        {
+            bool babyTogether = vm.BabyLocation == HomeLocation.Bathroom;
+            Rect panel = portrait
+                ? new Rect(58f, 310f, 448f, 286f)
+                : new Rect(52f, 226f, 410f, 252f);
+            DrawGlassPanel(panel, .84f);
+            Fill(new Rect(panel.x, panel.y + 14f, 5f, panel.height - 28f),
+                new Color(.42f, .82f, .9f));
+            GUI.Label(new Rect(panel.x + 22f, panel.y + 12f, panel.width - 44f, 36f),
+                "욕실에서 할 일",
+                OverlayLabelStyle(portrait ? 24 : 19, FontStyle.Bold,
+                    new Color(.78f, .94f, 1f), TextAnchor.MiddleLeft));
+            GUI.Label(new Rect(panel.x + 22f, panel.y + 48f, panel.width - 44f, 40f),
+                !babyTogether ? "아기를 안고 와야 체온을 살필 수 있어요" :
+                !vm.BabyTemperatureChecked ? "탕온계로 체온을 확인해 주세요" :
+                !vm.TemperatureChecked || !vm.HumidityChecked
+                    ? "욕실의 온도와 습기도 확인해 주세요"
+                    : "확인이 끝났어요. 아기방으로 돌아가세요",
+                OverlayLabelStyle(portrait ? 18 : 15, FontStyle.Normal,
+                    new Color(.9f, .91f, .9f), TextAnchor.MiddleLeft));
+
+            float rowY = panel.y + 96f;
+            DrawBathroomTask(vm, new Rect(panel.x + 20f, rowY, panel.width - 40f, 48f),
+                V2ActionId.CheckBodyTemperature, "1  탕온계로 아기 체온 살피기",
+                vm.BabyTemperatureChecked, babyTogether, portrait);
+            DrawBathroomTask(vm, new Rect(panel.x + 20f, rowY + 58f, panel.width - 40f, 48f),
+                V2ActionId.CheckEnvironment, "2  욕실 온도·습도 숫자 확인하기",
+                vm.TemperatureChecked && vm.HumidityChecked, true, portrait);
+
+            var returnRect = new Rect(panel.x + 20f, rowY + 116f, panel.width - 40f, 48f);
+            bool readyToReturn = vm.BabyTemperatureChecked &&
+                vm.TemperatureChecked && vm.HumidityChecked;
+            DrawGlassPanel(returnRect, readyToReturn ? .92f : .46f, readyToReturn);
+            GUI.Label(returnRect, readyToReturn ? "3  확인 완료 · 아기방으로 돌아가기  →" :
+                    "3  확인을 마치면 아기방으로 돌아가요",
+                OverlayLabelStyle(portrait ? 17 : 14, FontStyle.Bold,
+                    readyToReturn ? new Color(.62f, .96f, .74f) : new Color(.65f, .68f, .7f),
+                    TextAnchor.MiddleCenter));
+            bool previousEnabled = GUI.enabled;
+            GUI.enabled = previousEnabled && readyToReturn && !_flow.InputLocked;
+            if (GUI.Button(returnRect, GUIContent.none, GUIStyle.none))
+                MoveToRoom(HomeLocation.Nursery);
+            GUI.enabled = previousEnabled;
+        }
+
+        private void DrawBathroomTask(V2PlayViewModel vm, Rect rect, V2ActionId actionId,
+            string label, bool completed, bool prerequisiteMet, bool portrait)
+        {
+            bool available = !completed && prerequisiteMet && DirectAction(vm, actionId) != null;
+            bool hovered = available && rect.Contains(Event.current.mousePosition);
+            DrawGlassPanel(rect, completed ? .7f : hovered ? .92f : .58f, hovered);
+            Color accent = completed ? new Color(.56f, .92f, .68f) :
+                available ? new Color(1f, .76f, .38f) : new Color(.58f, .61f, .64f);
+            Fill(new Rect(rect.x, rect.y + 6f, hovered ? 6f : 4f, rect.height - 12f), accent);
+            string state = completed ? "  ✓ 완료" : !prerequisiteMet ? "  · 아기 필요" : "";
+            GUI.Label(new Rect(rect.x + 14f, rect.y, rect.width - 24f, rect.height), label + state,
+                OverlayLabelStyle(portrait ? 17 : 14, FontStyle.Bold, accent,
+                    TextAnchor.MiddleLeft));
+            bool previousEnabled = GUI.enabled;
+            GUI.enabled = previousEnabled && available && !_flow.InputLocked;
+            if (GUI.Button(rect, GUIContent.none, GUIStyle.none))
+            {
+                _roomObjectAction = actionId;
+                _roomObjectAnimationStarted = Time.unscaledTime;
+                PerformV2Action(actionId);
+            }
+            GUI.enabled = previousEnabled;
         }
 
         private void DrawPacifierProp(V2PlayViewModel vm, Rect rect, bool portrait)

@@ -435,7 +435,9 @@ namespace NotANap.Presentation
                 return location == HomeLocation.Nursery && Night.Baby.Held &&
                     (Night.V2.SleepCycle.Stage == V2SleepStage.RemActiveSleep ||
                      Night.V2.SleepCycle.Stage == V2SleepStage.NremDeepSleep);
-            if (action == V2ActionId.CheckBodyTemperature) return Night.V2.CryIntensity >= 45;
+            // 욕실까지 이동해 탕온계를 챙긴 플레이어가 울음 수치 때문에 아무것도 못 하는
+            // 상황을 만들지 않는다. 위치·아기 동행·탕온계 조건은 위에서 이미 검증된다.
+            if (action == V2ActionId.CheckBodyTemperature) return true;
             if (action == V2ActionId.Hold) return !Night.Wearing.Carrier;
             return true;
         }
