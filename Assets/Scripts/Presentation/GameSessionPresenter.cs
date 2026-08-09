@@ -513,7 +513,8 @@ namespace NotANap.Presentation
                 Subtitle = PresentationCopyMapper.EndingSubtitle(ending.Id),
                 Symbol = PresentationCopyMapper.EndingSymbol(ending.Id),
                 MetConditionCount = victory.Count,
-                RequiredConditionCount = victory.RequiredCount
+                RequiredConditionCount = victory.RequiredCount,
+                TotalConditionCount = Enum.GetValues(typeof(VictoryCondition)).Length
             };
             foreach (var condition in ending.MetConditions)
                 viewModel.MetConditions.Add(PresentationCopyMapper.VictoryConditionLabel(condition));

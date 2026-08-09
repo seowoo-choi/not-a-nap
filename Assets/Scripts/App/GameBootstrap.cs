@@ -2987,14 +2987,27 @@ namespace NotANap.App
             Fill(new Rect(x, y, panelWidth, 8), accent);
             var statusStyle = Centered(_caption);
             statusStyle.normal.textColor = accent;
-            var symbolStyle = Centered(new GUIStyle(_title) { fontSize = _portrait ? 110 : 84 });
-            symbolStyle.normal.textColor = accent;
             GUI.Label(new Rect(x + 60, y + 55, panelWidth - 120, 80),
                 $"{_flow.BabyName}의 백일 · {PresentationCopyMapper.EndingStatusLabel(vm.IsSuccess)}", statusStyle);
             GUI.Label(new Rect(x + 110, y + 130, panelWidth - 220, 55),
-                $"지켜 낸 조건  {vm.MetConditionCount} / {vm.RequiredConditionCount}",
+                $"지켜 낸 조건  {vm.MetConditionCount} / {vm.TotalConditionCount}",
                 Centered(_headline));
-            GUI.Label(new Rect(x + 60, y + 190, panelWidth - 120, 95), vm.Symbol, symbolStyle);
+            Texture2D endingPortrait = _familyRolled ? GeneticBabyPortrait() : null;
+            var endingArtRect = new Rect(x + panelWidth * .5f - 52f,
+                y + 185f, 104f, 104f);
+            if (endingPortrait != null)
+            {
+                GUI.DrawTexture(new Rect(endingArtRect.center.x - endingArtRect.width * .34f,
+                    endingArtRect.yMax - 10f, endingArtRect.width * .68f, 14f),
+                    _itemShadow, ScaleMode.StretchToFill, true);
+                GUI.DrawTexture(endingArtRect, endingPortrait, ScaleMode.ScaleToFit, true);
+            }
+            else
+            {
+                var symbolStyle = Centered(new GUIStyle(_title) { fontSize = _portrait ? 110 : 84 });
+                symbolStyle.normal.textColor = accent;
+                GUI.Label(new Rect(x + 60, y + 190, panelWidth - 120, 95), vm.Symbol, symbolStyle);
+            }
             GUI.Label(new Rect(x + 60, y + 290, panelWidth - 120, 90), vm.Title, Centered(_display));
             GUI.Label(new Rect(x + 110, y + 390, panelWidth - 220, 100), vm.Subtitle, Centered(_body));
             GUI.Label(new Rect(x + 110, y + 490, panelWidth - 220, 72),

@@ -829,8 +829,8 @@
   const reflectionContracts = [
     ["NIGHT_TRANSITION_RHYTHM", "MemoryConsolidator 확정값만 표시 · 어젯밤 / 도움 / 부담 · 둘째 밤 1개, 백일째 밤 최대 2개 · 중립 폴백"],
     ["FINAL_NIGHT_ECHO_SOURCE", "사건 발생 후에만 원인 / 현재 변화 / 대응 단서를 각 한 문장으로 표시 · FinalNightResolver + FiredEventIds"],
-    ["ENDING_FAILURE_0_OF_2", "아쉬운 밤 → 지켜 낸 조건 0/2 → 아침이 이겼다 → 설명 → 충족/미충족 조건"],
-    ["ENDING_SUCCESS_2_OF_3", "지켜 낸 밤 → 지켜 낸 조건 2/2 → Core EndingId 제목 → 설명 → 충족/미충족 조건"],
+    ["ENDING_FAILURE_0_OF_3", "아쉬운 밤 → 지켜 낸 조건 0/3 → 아침이 이겼다 → 설명 → 충족/미충족 조건"],
+    ["ENDING_SUCCESS_2_OF_3", "지켜 낸 밤 → 지켜 낸 조건 2/3 → Core EndingId 제목 → 설명 → 충족/미충족 조건"],
     ["DIARY_FACT_BASED", "DiaryFacts의 실제 신호·반복 행동·거절 후 대응·수면·깸·체력·준비·맨손 눕히기만 서술"],
     ["DIARY_FALLBACK", "AI 필드 누락/길이/의료 단정/상태 변경/광고 거부 후 동일 DiaryFacts 기반 한국어 폴백"],
     ["CAREGIVER_EXHAUSTED_RECOVERY", "ParentStamina=0 → CatchBreath만 허용 · 15분 / 체력 +9 / 울음 +3"],
@@ -926,7 +926,7 @@
       ["가족의 준비 이해", "소독 젖병을 직접 준비하며 보이지 않던 가족의 시간을 알게 됐어요."]
     ], 2);
   await upsertReflectionQaFrame("ENDING_FAILURE_0_OF_2", "백일의 밤 · 아쉬운 밤",
-    "지켜 낸 조건 0 / 2", [
+    "지켜 낸 조건 0 / 3", [
       ["아침이 이겼다", "완벽하지 않아도 괜찮아요. 오늘의 신호는 다음 밤의 기억이 됩니다."],
       ["지켜 낸 조건", "없음"],
       ["다음에 이어갈 조건", "아기가 깊은 잠으로 아침 맞기\n보호자 체력 30 이상\n맨손 눕히기 성공"]

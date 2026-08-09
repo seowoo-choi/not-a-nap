@@ -294,6 +294,7 @@ namespace NotANap.Presentation
         public string Symbol;
         public int MetConditionCount;
         public int RequiredConditionCount;
+        public int TotalConditionCount;
         public readonly List<string> MetConditions = new List<string>();
         public readonly List<string> UnmetConditions = new List<string>();
         public string RetrySuggestion;
