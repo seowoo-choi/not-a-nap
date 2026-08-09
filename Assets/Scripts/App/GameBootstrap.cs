@@ -404,12 +404,13 @@ namespace NotANap.App
             var babyRect = _portrait
                 ? new Rect(160f, 360f, babySize, babySize)
                 : new Rect(650f, 170f, babySize, babySize);
-            if (_introBabyArt != null)
+            Texture2D introPortrait = _familyRolled ? GeneticBabyPortrait() : _introBabyArt;
+            if (introPortrait != null)
             {
                 GUI.DrawTexture(new Rect(babyRect.center.x - babySize * 0.28f,
                     babyRect.yMax - babySize * 0.12f, babySize * 0.56f, babySize * 0.09f),
                     _itemShadow, ScaleMode.StretchToFill, true);
-                GUI.DrawTexture(babyRect, _introBabyArt, ScaleMode.ScaleToFit, true);
+                GUI.DrawTexture(babyRect, introPortrait, ScaleMode.ScaleToFit, true);
             }
 
             // 화면 아래의 두 손으로 카메라가 아빠의 눈이라는 점을 먼저 전달한다.
