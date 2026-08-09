@@ -1,5 +1,5 @@
-/* NOT A NAP — Unity V12 three-night art interaction contract synchronizer.
- * MOBILE_QA_STORYBOARD_V6 is preserved. The latest editable CODE_SYNC board is updated.
+/* NOT A NAP — Unity V13 in-place comment-preserving contract synchronizer.
+ * MOBILE_QA_STORYBOARD_V6 keeps its node IDs and position so existing comments stay anchored.
  */
 
 (async () => {
@@ -29,18 +29,12 @@
     return;
   }
 
-  // 두 번째 실행부터는 보드를 계속 복제하지 않고 가장 최신 CODE_SYNC 보드를 갱신한다.
+  // 댓글은 복제된 노드로 이전되지 않는다. 원본 보드의 ID와 좌표를 유지해 제자리 갱신한다.
   const existingSyncBoards = allFrames
     .filter(n => n.name.indexOf("MOBILE_QA_STORYBOARD_V6_CODE_SYNC_") === 0)
     .sort((a, b) => b.name.localeCompare(a.name));
-  const board = existingSyncBoards[0] || source.clone();
-  const created = existingSyncBoards.length === 0;
-  if (created) {
-    const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    board.name = "MOBILE_QA_STORYBOARD_V6_CODE_SYNC_" + stamp;
-    board.x = source.x + source.width + 480;
-    board.y = source.y;
-  }
+  const board = source;
+  for (const staleBoard of existingSyncBoards) staleBoard.visible = false;
 
   async function loadTextFonts(node) {
     if (!node || node.type !== "TEXT") return;
@@ -205,7 +199,7 @@
     return candidates.sort((a, b) => a.width * a.height - b.width * b.height)[0] || null;
   }
 
-  const SYNC_VERSION = "V12 · 3밤 회귀 + 신규 돌봄 아트 · 2026-08-09";
+  const SYNC_VERSION = "V13 · 댓글 보존 인플레이스 + 3밤 아트 · 2026-08-09";
   const THEME = {
     ink: { r: 0.012, g: 0.025, b: 0.045 },
     glass: { r: 0.025, g: 0.055, b: 0.09 },
@@ -370,18 +364,19 @@
       n.name === "CODE_SYNC_UNITY_PRESENTATION_V8" ||
       n.name === "CODE_SYNC_UNITY_PRESENTATION_V9" ||
       n.name === "CODE_SYNC_UNITY_PRESENTATION_V11" ||
-      n.name === "CODE_SYNC_UNITY_PRESENTATION_V12");
+      n.name === "CODE_SYNC_UNITY_PRESENTATION_V12" ||
+      n.name === "CODE_SYNC_UNITY_PRESENTATION_V13");
     for (const stale of staleLayers) stale.remove();
 
     const sx = screen.width / 1080;
     const sy = screen.height / 1920;
     const overlay = figma.createFrame();
-    overlay.name = "CODE_SYNC_UNITY_PRESENTATION_V12";
+    overlay.name = "CODE_SYNC_UNITY_PRESENTATION_V13";
     overlay.resize(1080, 1920);
     overlay.x = 0;
     overlay.y = 0;
     // 기존 V6 화면 위에 투명 레이어를 얹으면 두 세대의 HUD와 문구가 겹친다.
-    // V12 프레젠테이션은 독립 화면이므로 불투명 바탕으로 이전 시각 레이어를 완전히 덮는다.
+    // V13 프레젠테이션은 독립 화면이므로 불투명 바탕으로 이전 시각 레이어를 완전히 덮는다.
     overlay.fills = [{ type: "SOLID", color: THEME.ink }];
     overlay.clipsContent = true;
     screen.appendChild(overlay);
@@ -463,11 +458,12 @@
       n.name === "CODE_SYNC_SETUP_PRESENTATION_V8" ||
       n.name === "CODE_SYNC_SETUP_PRESENTATION_V9" ||
       n.name === "CODE_SYNC_SETUP_PRESENTATION_V11" ||
-      n.name === "CODE_SYNC_SETUP_PRESENTATION_V12");
+      n.name === "CODE_SYNC_SETUP_PRESENTATION_V12" ||
+      n.name === "CODE_SYNC_SETUP_PRESENTATION_V13");
     for (const stale of staleLayers) stale.remove();
 
     const overlay = figma.createFrame();
-    overlay.name = "CODE_SYNC_SETUP_PRESENTATION_V12";
+    overlay.name = "CODE_SYNC_SETUP_PRESENTATION_V13";
     overlay.resize(1080, 1920);
     overlay.x = 0;
     overlay.y = 0;
@@ -540,7 +536,7 @@
 
   async function upsertMotionSpec() {
     let panel = board.findOne(n => n.type === "FRAME" &&
-      (n.name === "_ACTION_MOTION_SPEC_V12" || n.name === "_ACTION_MOTION_SPEC_V11" || n.name === "_ACTION_MOTION_SPEC_V9" || n.name === "_ACTION_MOTION_SPEC_V8"));
+      (n.name === "_ACTION_MOTION_SPEC_V13" || n.name === "_ACTION_MOTION_SPEC_V12" || n.name === "_ACTION_MOTION_SPEC_V11" || n.name === "_ACTION_MOTION_SPEC_V9" || n.name === "_ACTION_MOTION_SPEC_V8"));
     const summary = board.findOne(n => n.type === "FRAME" && n.name === "_REVIEW_ACTIONS_SUMMARY");
     if (!panel) {
       panel = figma.createFrame();
@@ -551,7 +547,7 @@
       panel.cornerRadius = 32;
       board.appendChild(panel);
     }
-    panel.name = "_ACTION_MOTION_SPEC_V12";
+    panel.name = "_ACTION_MOTION_SPEC_V13";
     for (const child of [...panel.children]) child.remove();
     panel.resize(2200, 2370);
     addSyncText(panel, "MOTION_SPEC_TITLE", "ACTION MOTION + HOME JOURNEY · Presentation 계약",
@@ -603,7 +599,7 @@
           12, 168, 156, 16, true, THEME.gold, "CENTER");
       }
     }
-    const travel = addSyncFrame(panel, "ROOM_TRAVEL_SEQUENCE_V12",
+    const travel = addSyncFrame(panel, "ROOM_TRAVEL_SEQUENCE_V13",
       56, 2068, 2048, 230, THEME.glass, 0.72, THEME.line, 0);
     addSyncText(travel, "TRAVEL_TITLE", "방 이동 · 아빠 토큰과 아기 하트가 생활 동선을 따라 이동",
       28, 18, 1992, 28, true, THEME.cream, "LEFT");
@@ -939,15 +935,14 @@
   const boardTitle = textNodes(board).find(n => n.name === "BOARD_TITLE" || n.characters.indexOf("스토리보드 V6") >= 0);
   if (boardTitle) {
     const baseTitle = boardTitle.characters
-      .replace(/\s*·\s*CODE SYNC(?:\s*·\s*V(?:8|9|10|11|12))?/g, "")
+      .replace(/\s*·\s*CODE SYNC(?:\s*·\s*V(?:8|9|10|11|12|13))?/g, "")
       .replace(/\s*·\s*Unity [0-9a-f]+/g, "");
-    await setText(boardTitle, baseTitle + " · CODE SYNC · V12");
+    await setText(boardTitle, baseTitle + " · CODE SYNC · V13");
     changes += 1;
   }
 
   figma.currentPage.selection = [board];
   figma.viewport.scrollAndZoomIntoView([board]);
-  figma.closePlugin("V12 3밤 회귀·신규 돌봄 아트 계약 동기화 완료 · " +
-    (created ? "싱크 보드 최초 생성" : "기존 최신 싱크 보드 갱신") +
-    " · " + changes + "개 항목 갱신");
+  figma.closePlugin("V13 댓글 보존 인플레이스 동기화 완료 · " +
+    "원본 보드 제자리 갱신 · 과거 복제본 숨김 · " + changes + "개 항목 갱신");
 })();
