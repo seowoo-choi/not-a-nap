@@ -1023,7 +1023,7 @@ namespace NotANap.App
             DrawProgress(new Rect(735, 145, 289, 5), 1f - vm.RemainingMinutes / 540f,
                 new Color(0.94f, 0.67f, 0.3f));
             if (vm.EchoSources.Count > 0)
-                DrawEchoSource(vm, new Rect(58, 1390, 964, 132), true);
+                DrawEchoSource(vm, new Rect(58, 1420, 964, 126), true);
             DrawPortraitStatusOrnaments(vm);
             DrawSceneFeedback(vm, new Rect(58, 1688, 964, 142), true);
         }
@@ -1058,7 +1058,7 @@ namespace NotANap.App
                     ? (portrait ? 540f : 460f)
                     : (portrait ? 720f : 600f);
                 float babyCenterX = heldOutsideNursery
-                    ? (portrait ? 810f : 1510f)
+                    ? (portrait ? 810f : 1650f)
                     : rect.center.x;
                 var babyRect = new Rect(
                     babyCenterX - babySize * 0.5f,
@@ -1241,9 +1241,11 @@ namespace NotANap.App
                 if (DirectAction(vm, links[i].Action) != null) active.Add(links[i]);
             if (active.Count == 0) return;
 
+            bool babyOnRight = !portrait && active[0].Hotspot.center.x > 1300f;
             Rect panel = portrait
                 ? new Rect(58f, 1128f, 964f, active.Count > 4 ? 210f : 148f)
-                : new Rect(1510f, 365f, 360f, 54f + active.Count * 48f);
+                : new Rect(babyOnRight ? 1040f : 1510f, 365f, 360f,
+                    54f + active.Count * 48f);
             DrawGlassPanel(panel, .7f);
             GUI.Label(new Rect(panel.x + 18f, panel.y + 8f, panel.width - 36f, 32f),
                 "만져서 돌보기 · 문구와 아기 모두 클릭 가능",
@@ -1657,104 +1659,41 @@ namespace NotANap.App
         private void DrawHomeJourneyMap(V2PlayViewModel vm, bool portrait)
         {
             Rect map = portrait
-                ? new Rect(816, 176, 232, 332)
-                : new Rect(1510, 116, 360, 224);
-            DrawGlassPanel(map, 0.66f);
-            Fill(new Rect(map.x + 14, map.y + 14, 4, map.height - 28),
-                new Color(0.95f, 0.69f, 0.33f, 0.8f));
-            GUI.Label(new Rect(map.x + 28, map.y + 8, map.width - 42, portrait ? 40 : 32),
-                "우리 집 새벽 동선",
-                OverlayLabelStyle(portrait ? 19 : 16, FontStyle.Bold,
-                    new Color(0.98f, 0.88f, 0.7f), TextAnchor.MiddleLeft));
+                ? new Rect(58f, 1350f, 964f, 58f)
+                : new Rect(1540f, 690f, 330f, 62f);
+            DrawGlassPanel(map, 0.7f);
+            GUI.Label(new Rect(map.x + 12f, map.y, portrait ? 104f : 64f, map.height),
+                "동선", OverlayLabelStyle(portrait ? 18 : 14, FontStyle.Bold,
+                    new Color(.96f, .78f, .5f), TextAnchor.MiddleCenter));
 
-            Vector2 nursery = portrait
-                ? new Vector2(map.center.x, map.y + 100)
-                : new Vector2(map.x + 82, map.y + 126);
-            Vector2 kitchen = portrait
-                ? new Vector2(map.x + 64, map.y + 252)
-                : new Vector2(map.x + 190, map.y + 82);
-            Vector2 bathroom = portrait
-                ? new Vector2(map.x + 172, map.y + 252)
-                : new Vector2(map.x + 282, map.y + 160);
-            DrawDottedRoute(nursery, kitchen);
-            DrawDottedRoute(nursery, bathroom);
-            DrawDottedRoute(kitchen, bathroom);
-
-            DrawMapRoomNode(vm, HomeLocation.Nursery, nursery, portrait);
-            DrawMapRoomNode(vm, HomeLocation.Kitchen, kitchen, portrait);
-            DrawMapRoomNode(vm, HomeLocation.Bathroom, bathroom, portrait);
-
-            bool moving = RoomTransitionActive();
-            if (!moving || !_roomTransitionBabyAccompanied)
-                DrawMapToken(MapPoint(vm.BabyLocation, nursery, kitchen, bathroom) +
-                    new Vector2(portrait ? 24f : 19f, portrait ? -27f : -22f),
-                    "♥", new Color(0.95f, 0.65f, 0.72f), portrait);
-            if (moving)
+            HomeLocation[] rooms =
+                { HomeLocation.Nursery, HomeLocation.Kitchen, HomeLocation.Bathroom };
+            float startX = map.x + (portrait ? 116f : 70f);
+            float gap = portrait ? 12f : 7f;
+            float roomWidth = (map.xMax - startX - 12f - gap * 2f) / 3f;
+            for (int i = 0; i < rooms.Length; i++)
             {
-                float eased = Mathf.SmoothStep(0f, 1f, RoomTransitionProgress());
-                Vector2 from = MapPoint(_roomTransitionFrom, nursery, kitchen, bathroom);
-                Vector2 to = MapPoint(_roomTransitionTo, nursery, kitchen, bathroom);
-                Vector2 caregiver = Vector2.Lerp(from, to, eased) +
-                    new Vector2(portrait ? -24f : -19f, portrait ? -27f : -22f);
-                DrawMapToken(caregiver, "아", new Color(0.96f, 0.69f, 0.3f), portrait);
-                if (_roomTransitionBabyAccompanied)
-                    DrawMapToken(caregiver + new Vector2(portrait ? 38f : 31f, 0f),
-                        "♥", new Color(0.95f, 0.65f, 0.72f), portrait);
+                HomeLocation room = rooms[i];
+                var roomRect = new Rect(startX + i * (roomWidth + gap), map.y + 8f,
+                    roomWidth, map.height - 16f);
+                bool current = vm.CaregiverLocation == room;
+                bool babyHere = vm.BabyLocation == room;
+                DrawGlassPanel(roomRect, current ? .92f : .5f, current);
+                if (current)
+                    Fill(new Rect(roomRect.x, roomRect.y, 4f, roomRect.height),
+                        new Color(.96f, .68f, .3f));
+                string occupants = current && babyHere ? " · 나와 아기" :
+                    current ? " · 나" : babyHere ? " · 아기" : "";
+                GUI.Label(roomRect, HomeLocationLabel(room) + occupants,
+                    OverlayLabelStyle(portrait ? 16 : 12, FontStyle.Bold,
+                        current ? Color.white : new Color(.78f, .81f, .83f),
+                        TextAnchor.MiddleCenter));
+                bool enabled = !current && !_flow.InputLocked && !RoomTransitionActive();
+                bool previousEnabled = GUI.enabled;
+                GUI.enabled = previousEnabled && enabled;
+                if (GUI.Button(roomRect, GUIContent.none, GUIStyle.none)) MoveToRoom(room);
+                GUI.enabled = previousEnabled;
             }
-            else
-            {
-                DrawMapToken(MapPoint(vm.CaregiverLocation, nursery, kitchen, bathroom) +
-                    new Vector2(portrait ? -24f : -19f, portrait ? -27f : -22f),
-                    "아", new Color(0.96f, 0.69f, 0.3f), portrait);
-            }
-        }
-
-        private void DrawMapRoomNode(V2PlayViewModel vm, HomeLocation location, Vector2 center, bool portrait)
-        {
-            float width = portrait ? 94f : 92f;
-            float height = portrait ? 58f : 54f;
-            var room = new Rect(center.x - width * 0.5f, center.y - height * 0.5f, width, height);
-            bool current = vm.CaregiverLocation == location;
-            DrawGlassPanel(room, current ? 0.9f : 0.64f, current);
-            GUI.Label(room, HomeLocationLabel(location),
-                OverlayLabelStyle(portrait ? 17 : 14, FontStyle.Bold,
-                    current ? Color.white : new Color(0.84f, 0.86f, 0.87f),
-                    TextAnchor.MiddleCenter));
-            var old = GUI.enabled;
-            GUI.enabled = old && !current && !_flow.InputLocked && !RoomTransitionActive();
-            if (GUI.Button(room, GUIContent.none, GUIStyle.none)) MoveToRoom(location);
-            GUI.enabled = old;
-        }
-
-        private static Vector2 MapPoint(HomeLocation location, Vector2 nursery,
-            Vector2 kitchen, Vector2 bathroom) => location switch
-        {
-            HomeLocation.Kitchen => kitchen,
-            HomeLocation.Bathroom => bathroom,
-            _ => nursery
-        };
-
-        private static void DrawDottedRoute(Vector2 from, Vector2 to)
-        {
-            for (int i = 1; i < 8; i++)
-            {
-                float t = i / 8f;
-                Vector2 point = Vector2.Lerp(from, to, t);
-                float pulse = 4f + Mathf.Sin((Time.unscaledTime + t) * 4f) * 1.2f;
-                Fill(new Rect(point.x - pulse * 0.5f, point.y - pulse * 0.5f, pulse, pulse),
-                    new Color(0.88f, 0.7f, 0.43f, 0.46f));
-            }
-        }
-
-        private void DrawMapToken(Vector2 center, string label, Color color, bool portrait)
-        {
-            float size = portrait ? 34f : 28f;
-            var token = new Rect(center.x - size * 0.5f, center.y - size * 0.5f, size, size);
-            GUI.DrawTexture(token, _itemGlow, ScaleMode.StretchToFill, true);
-            Fill(new Rect(token.x + 4f, token.y + 4f, token.width - 8f, token.height - 8f),
-                new Color(color.r, color.g, color.b, 0.96f));
-            GUI.Label(token, label, OverlayLabelStyle(portrait ? 17 : 13, FontStyle.Bold,
-                Color.white, TextAnchor.MiddleCenter));
         }
 
         private void DrawRoomTravelMoment(bool portrait)
