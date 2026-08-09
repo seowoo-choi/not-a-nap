@@ -40,7 +40,7 @@ namespace NotANap.Core
     public enum V2ActionBlockReason
     {
         None, BabyNotHeld, BabyNotAsleep, ItemUnavailable, CarrierAlreadyWorn,
-        WrongLocation, ToolRequired, CaregiverExhausted
+        WrongLocation, ToolRequired, CaregiverExhausted, ActionLimitReached
     }
 
     public static class CoreTraceIds

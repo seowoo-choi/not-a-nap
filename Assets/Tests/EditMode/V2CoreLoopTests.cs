@@ -250,7 +250,7 @@ namespace NotANap.Core.Tests
         }
 
         [Test]
-        public void CauseCanBeDiagnosedAgainAfterMismatch()
+        public void SafeObservationCanNarrowCauseWithoutInventingMismatch()
         {
             var config = GameBalanceConfig.Default();
             var run = RunState.Create(Temperament.Soft);
@@ -259,7 +259,8 @@ namespace NotANap.Core.Tests
             V2ActionResolver.Apply(run, night, V2ActionId.CheckHungerSignals, config, new SequenceRandomSource(0));
             V2ActionResolver.Apply(run, night, V2ActionId.CheckDiaper, config, new SequenceRandomSource(0));
             Assert.IsTrue(night.V2.Diagnosis.CheckedCauses.Contains(WakeCause.Diaper));
-            Assert.IsTrue(run.Traces.Contains(CoreTraceIds.CauseRecheckedAfterMismatch));
+            Assert.AreEqual(0, night.V2.Metrics.MisdiagnosisCount);
+            Assert.IsFalse(run.Traces.Contains(CoreTraceIds.CauseRecheckedAfterMismatch));
         }
 
         [Test]
@@ -352,6 +353,27 @@ namespace NotANap.Core.Tests
             var result = V2ActionResolver.Apply(RunState.Create(Temperament.Soft), night,
                 V2ActionId.FeedPreparedBottle, config, new SequenceRandomSource(0));
             CollectionAssert.DoesNotContain(result.MissingPreparationSteps, FeedingPreparationStep.SanitizeBottle);
+        }
+
+        [Test]
+        public void PreparedBottleIsConsumedAfterOneFeed()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            var feeding = night.V2.Feeding;
+            feeding.WaterReady = feeding.FormulaMeasured = feeding.BottleMixed = true;
+            feeding.BottleCooled = feeding.TemperatureChecked = true;
+            V2TimeResolver.TriggerWake(night, WakeCause.Hunger, config);
+
+            var result = V2ActionResolver.Apply(run, night, V2ActionId.FeedPreparedBottle,
+                config, new SequenceRandomSource(0));
+
+            Assert.IsTrue(result.Accepted);
+            Assert.IsFalse(feeding.IsReadyToFeed);
+            Assert.IsTrue(feeding.BottleSanitized);
+            Assert.IsFalse(feeding.WaterReady);
+            Assert.IsFalse(night.V2.HoldWhilePreparing);
         }
 
         [Test]
@@ -544,6 +566,82 @@ namespace NotANap.Core.Tests
 
             Assert.AreEqual(40, night.V2.Environment.HumidityPercent);
             Assert.IsTrue(night.V2.Diagnosis.CauseResolved);
+        }
+
+        [TestCase(WakeCause.Temperature, V2ActionId.AdjustTemperature)]
+        [TestCase(WakeCause.Humidity, V2ActionId.AdjustHumidity)]
+        public void EnvironmentWakeCanAlwaysBeResolvedAfterSafeObservation(
+            WakeCause cause, V2ActionId adjustment)
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            V2TimeResolver.TriggerWake(night, cause, config);
+
+            var check = V2ActionResolver.Apply(run, night, V2ActionId.CheckEnvironment,
+                config, new SequenceRandomSource(0));
+            var result = V2ActionResolver.Apply(run, night, adjustment,
+                config, new SequenceRandomSource(0));
+
+            Assert.IsTrue(check.Accepted);
+            Assert.AreEqual(0, night.V2.Metrics.MisdiagnosisCount);
+            Assert.IsTrue(result.Accepted);
+            Assert.IsTrue(night.V2.Diagnosis.CauseResolved);
+        }
+
+        [Test]
+        public void ObservationChecksDoNotPunishAReasonableWrongHypothesis()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            V2TimeResolver.TriggerWake(night, WakeCause.Temperature, config);
+
+            V2ActionResolver.Apply(run, night, V2ActionId.CheckDiaper,
+                config, new SequenceRandomSource(0));
+            V2ActionResolver.Apply(run, night, V2ActionId.CheckHungerSignals,
+                config, new SequenceRandomSource(0));
+            V2ActionResolver.Apply(run, night, V2ActionId.CheckEnvironment,
+                config, new SequenceRandomSource(0));
+
+            Assert.AreEqual(0, night.V2.Metrics.MisdiagnosisCount);
+        }
+
+        [Test]
+        public void CatchBreathDoesNotInventSelfSootheMemory()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+
+            V2ActionResolver.Apply(run, night, V2ActionId.CatchBreath,
+                config, new SequenceRandomSource(0));
+            V2ActionResolver.Apply(run, night, V2ActionId.CatchBreath,
+                config, new SequenceRandomSource(0));
+            V2TimeResolver.Advance(run, night, config.V2.NightDurationMinutes,
+                config, new SequenceRandomSource(0));
+
+            Assert.AreEqual(0, night.Stats.WatchOk);
+            Assert.AreEqual(0, night.V2.SelfResettleCount);
+        }
+
+        [Test]
+        public void CatchBreathCannotConsumeTheWholeNightAsARecoveryLoop()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+
+            for (int i = 0; i < 3; i++)
+                Assert.IsTrue(V2ActionResolver.Apply(run, night, V2ActionId.CatchBreath,
+                    config, new SequenceRandomSource(0)).Accepted);
+            int elapsed = night.V2.ElapsedMinutes;
+            var blocked = V2ActionResolver.Apply(run, night, V2ActionId.CatchBreath,
+                config, new SequenceRandomSource(0));
+
+            Assert.IsFalse(blocked.Accepted);
+            Assert.AreEqual(V2ActionBlockReason.ActionLimitReached, blocked.BlockReason);
+            Assert.AreEqual(elapsed, night.V2.ElapsedMinutes);
         }
 
         [Test]

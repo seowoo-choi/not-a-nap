@@ -84,7 +84,7 @@ namespace NotANap.Core
                     else ApplyMisdiagnosis(night, outcome, config);
                     break;
                 case V2ActionId.CheckHungerSignals:
-                    Diagnose(run, night, WakeCause.Hunger, outcome, config);
+                    Diagnose(run, night, WakeCause.Hunger, outcome, config, false);
                     outcome.HungerSignalStage = ObservationResolver.GetHungerStage(night.Baby.Hunger, config.V2);
                     ObservationResolver.AddHungerSignals(outcome.HungerSignalStage, outcome.ObservedSignals);
                     RememberVisibleSignals(night, outcome);
@@ -94,7 +94,7 @@ namespace NotANap.Core
                     night.V2.Environment.IsTemperatureChecked = true;
                     night.V2.Environment.IsHumidityChecked = true;
                     RegisterCheck(run, night, night.V2.Diagnosis.ActiveCause == WakeCause.Humidity
-                        ? WakeCause.Humidity : WakeCause.Temperature, outcome, config, true);
+                        ? WakeCause.Humidity : WakeCause.Temperature, outcome, config, false);
                     break;
                 case V2ActionId.CheckBodyTemperature:
                     Consume(outcome, config.V2.DiagnosisActionMinutes, -2);
@@ -139,7 +139,7 @@ namespace NotANap.Core
                     ApplyLaydown(run, night, outcome, config, rng);
                     break;
                 case V2ActionId.Pacifier:
-                    if (!night.HasItem(ItemId.Pacifier))
+                    if (!night.HasItem(ItemId.Pacifier) || night.PacifierLeft <= 0)
                         return RejectAndAudit(night, outcome, V2ActionBlockReason.ItemUnavailable);
                     ApplyPacifier(run, night, outcome, config);
                     break;
@@ -164,10 +164,22 @@ namespace NotANap.Core
                     outcome.MonitorRead = true;
                     break;
                 case V2ActionId.CatchBreath:
+                    if (night.V2.CatchBreathUses >= 3 && night.Parent.Stamina > 0)
+                        return RejectAndAudit(night, outcome, V2ActionBlockReason.ActionLimitReached);
+                    if (night.V2.CatchBreathUses >= 3)
+                    {
+                        // 탈진 교착만 막는 비상 호흡. 시간을 보내거나 밤의 주력 회복기로 쓸 수 없다.
+                        outcome.StaminaDelta = 5;
+                        ChangeComposure(night, outcome, 3);
+                        AddAmbientSignals(night, outcome, config);
+                        RememberVisibleSignals(night, outcome);
+                        break;
+                    }
                     Consume(outcome, config.V2.DefaultActionMinutes, 9);
                     night.V2.CryIntensity = CoreMath.Clamp(night.V2.CryIntensity + 3, 0, 100);
                     ChangeComposure(night, outcome, 15);
                     night.V2.GentleObservationCount++;
+                    night.V2.CatchBreathUses++;
                     AddAmbientSignals(night, outcome, config);
                     RememberVisibleSignals(night, outcome);
                     break;
@@ -411,6 +423,7 @@ namespace NotANap.Core
             else
             {
                 outcome.EventIds.Add(GameEventId.LaydownFailed);
+                night.AddEvent(GameEventId.LaydownFailed);
                 V2TimeResolver.TriggerWake(night, night.V2.SleepCycle.Stage == V2SleepStage.RemActiveSleep
                     ? WakeCause.MoroReflex : WakeCause.NaturalCycle, config);
             }
@@ -428,6 +441,7 @@ namespace NotANap.Core
             Consume(outcome, config.V2.DefaultActionMinutes, -1);
             double gain = night.V2.Profile.PacifierAffinity == PacifierAffinity.Loves
                 ? config.V2.PacifierLovesCalmGain : config.V2.PacifierNeutralCalmGain;
+            night.PacifierLeft--;
             night.Baby.Calm = CoreMath.Clamp(night.Baby.Calm + gain, 0, 100);
             AddTrace(run, night, outcome, CoreTraceIds.PacifierAccepted, ActionId.Pacifier);
         }
@@ -458,6 +472,12 @@ namespace NotANap.Core
             }
             else if (!night.V2.Diagnosis.CauseResolved)
                 ApplyMisdiagnosis(night, outcome, config);
+            feeding.WaterReady = false;
+            feeding.FormulaMeasured = false;
+            feeding.BottleMixed = false;
+            feeding.BottleCooled = false;
+            feeding.TemperatureChecked = false;
+            night.V2.HoldWhilePreparing = false;
         }
 
         private static void AddMissingSteps(FeedingPreparationState state, IList<FeedingPreparationStep> output)
@@ -529,7 +549,9 @@ namespace NotANap.Core
                 night.V2.ExhaustionWarned = true;
                 outcome.EventIds.Add(GameEventId.ParentExhausted);
             }
-            foreach (var id in outcome.EventIds) night.AddEvent(id);
+            foreach (var id in outcome.EventIds)
+                if (!night.Events.Exists(e => e.Id == id && e.Turn == night.ConsumedTurns))
+                    night.AddEvent(id);
             if (outcome.ConsumedTime)
             {
                 V2TimeResolver.Advance(run, night, outcome.TimeDeltaMinutes, config, rng);

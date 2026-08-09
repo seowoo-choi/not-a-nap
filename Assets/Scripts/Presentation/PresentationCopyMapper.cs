@@ -16,6 +16,15 @@ namespace NotANap.Presentation
             _ => id.ToString()
         };
 
+        public static string NightGradeLabel(NightGrade grade) => grade switch
+        {
+            NightGrade.S => "통잠에 가까운 밤 (S)",
+            NightGrade.A => "통잠을 이어 간 밤 (A)",
+            NightGrade.B => "긴 숨을 만든 밤 (B)",
+            NightGrade.C => "조각잠을 함께 건넌 밤 (C)",
+            _ => "깨어 있어도 배운 밤 (D)"
+        };
+
         public static string NightRoleTitle(NightId id) => id switch
         {
             NightId.FirstNight => "신호를 배우는 밤",

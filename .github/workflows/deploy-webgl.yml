@@ -45,7 +45,7 @@ jobs:
           unityVersion: auto
           targetPlatform: WebGL
           buildMethod: NotANap.Editor.WebBuildCommand.Build
-          customParameters: -outputPath Builds/WebGL -uncompressedWebGL
+          customParameters: -outputPath Builds/WebGL
 
       # game-ci builds inside Docker, so its output can be owned by root.
       - name: Fix build output permissions

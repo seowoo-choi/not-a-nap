@@ -42,6 +42,7 @@ namespace NotANap.App
         private Texture2D _feedingBottleArt;
         private Texture2D _coolingBasinArt;
         private Texture2D _introBabyArt;
+        private Texture2D _lyingSleepArt;
         private Texture2D _geneticMonolidStraight;
         private Texture2D _geneticMonolidCurly;
         private Texture2D _geneticDoubleStraight;
@@ -130,6 +131,7 @@ namespace NotANap.App
             _feedingBottleArt = Resources.Load<Texture2D>("Art/Kitchen/feeding-bottle");
             _coolingBasinArt = Resources.Load<Texture2D>("Art/Kitchen/cooling-basin");
             _introBabyArt = Resources.Load<Texture2D>("Art/Baby/cry_hard");
+            _lyingSleepArt = Resources.Load<Texture2D>("Art/Baby/Interaction/lying_sleep");
             _geneticMonolidStraight = Resources.Load<Texture2D>("Art/Baby/Genetics/monolid_straight");
             _geneticMonolidCurly = Resources.Load<Texture2D>("Art/Baby/Genetics/monolid_curly");
             _geneticDoubleStraight = Resources.Load<Texture2D>("Art/Baby/Genetics/double_straight");
@@ -139,6 +141,10 @@ namespace NotANap.App
             _interactionFrames[V2ActionId.ToggleCarrier] = _carrierBabyFrames;
             _interactionFrames[V2ActionId.FeedPreparedBottle] = LoadFrameSet("feed", 4);
             _interactionFrames[V2ActionId.Pacifier] = LoadFrameSet("pacifier", 4);
+            _interactionFrames[V2ActionId.CheckDiaper] = LoadSingleFrame("diaper_check");
+            _interactionFrames[V2ActionId.ChangeDiaper] = LoadSingleFrame("diaper_change");
+            _interactionFrames[V2ActionId.CheckLimbRelaxation] = LoadSingleFrame("limb_check");
+            _interactionFrames[V2ActionId.CheckBodyTemperature] = LoadSingleFrame("temperature_check");
             LoadItemArt(ItemId.Carrier, "carrier");
             LoadItemArt(ItemId.Pacifier, "pacifier");
             LoadItemArt(ItemId.Noise, "noise");
@@ -155,6 +161,9 @@ namespace NotANap.App
                 frames[i] = Resources.Load<Texture2D>($"Art/Baby/Interaction/{name}_{i}");
             return frames;
         }
+
+        private static Texture2D[] LoadSingleFrame(string name)
+            => new[] { Resources.Load<Texture2D>($"Art/Baby/Interaction/{name}") };
 
         private void EnsureStyles()
         {
@@ -492,7 +501,7 @@ namespace NotANap.App
                     ref _momDoubleEyelid, ref _momCurlyHair);
                 DrawBabyGachaResult(new Rect(240f, 650f, 600f, 650f));
                 if (DrawPrimaryButton(new Rect(110f, 1370f, 860f, 115f),
-                    _familyRolled ? "다시 뽑기  ↻" : "가족 특징 섞어 아기 뽑기"))
+                    _familyRolled ? "다시 뽑기" : "가족 특징 섞어 아기 뽑기"))
                     RollFamilyBaby();
                 if (DrawPrimaryButton(new Rect(110f, 1520f, 860f, 115f),
                     "이 아기로 시작하기  →", _familyRolled))
@@ -509,7 +518,7 @@ namespace NotANap.App
                     ref _momDoubleEyelid, ref _momCurlyHair);
                 DrawBabyGachaResult(new Rect(1120f, 165f, 610f, 650f));
                 if (DrawPrimaryButton(new Rect(160f, 720f, 420f, 82f),
-                    _familyRolled ? "다시 뽑기  ↻" : "아기 뽑기"))
+                    _familyRolled ? "다시 뽑기" : "아기 뽑기"))
                     RollFamilyBaby();
                 if (DrawPrimaryButton(new Rect(610f, 720f, 470f, 82f),
                     "이 아기로 시작하기  →", _familyRolled))
@@ -636,11 +645,11 @@ namespace NotANap.App
                 DrawCarePairSetup(vm, false);
             else
             {
-                GUI.Label(new Rect(92, 126, 1500, 42), $"{vm.NightRoleTitle} · {vm.NightRoleSummary}", _headline);
+                GUI.Label(new Rect(92, 126, 1500, 82), $"{vm.NightRoleTitle} · {vm.NightRoleSummary}", _headline);
                 for (int i = 0; i < vm.RhythmCards.Count && i < 2; i++)
                 {
                     var rhythm = vm.RhythmCards[i];
-                    GUI.Label(new Rect(92, 176 + i * 62, 1700, 58),
+                    GUI.Label(new Rect(92, 220 + i * 62, 1700, 58),
                         $"{rhythm.PreviousChoice} · 도움: {rhythm.Help} · 부담: {rhythm.Burden}", _caption);
                 }
             }
@@ -650,7 +659,7 @@ namespace NotANap.App
             for (int i = 0; i < vm.Cards.Count; i++)
             {
                 var card = vm.Cards[i];
-                var rect = new Rect(88 + i * (displayWidth + gap), 330, displayWidth, 390);
+                var rect = new Rect(88 + i * (displayWidth + gap), 350, displayWidth, 390);
                 DrawCollectibleItem(rect, card, false);
             }
 
@@ -665,6 +674,7 @@ namespace NotANap.App
             {
                 _audio?.PlayUi();
                 _flow.ConfirmV2Setup();
+                _lastMove = null;
             }
         }
 
@@ -814,7 +824,7 @@ namespace NotANap.App
                     ? new Color(.31f, .72f, .48f, .96f)
                     : new Color(.12f, .17f, .23f, .92f));
                 GUI.Label(badgeRect, active ? "작동 중" : "보유",
-                    OverlayLabelStyle(11, FontStyle.Bold, Color.white,
+                    OverlayLabelStyle(17, FontStyle.Bold, Color.white,
                         TextAnchor.MiddleCenter));
             }
         }
@@ -942,6 +952,9 @@ namespace NotANap.App
             GUI.Label(new Rect(48, 26, 250, 76), vm.Clock, OverlayLabelStyle(46, FontStyle.Bold,
                 new Color(0.98f, 0.91f, 0.76f)));
             Fill(new Rect(48, 96, 170, 3), new Color(0.96f, 0.67f, 0.28f, 0.84f));
+            GUI.Label(new Rect(650, 28, 620, 58), vm.NightRoleTitle,
+                OverlayLabelStyle(24, FontStyle.Bold, new Color(.94f, .88f, .76f),
+                    TextAnchor.MiddleCenter));
             GUI.Label(new Rect(1448, 27, 420, 68), $"새벽까지 {FormatDuration(vm.RemainingMinutes)}",
                 OverlayLabelStyle(24, FontStyle.Bold, new Color(0.94f, 0.9f, 0.82f),
                     TextAnchor.MiddleRight));
@@ -958,6 +971,9 @@ namespace NotANap.App
             GUI.Label(new Rect(610, 72, 414, 72), $"새벽까지 {FormatDuration(vm.RemainingMinutes)}",
                 OverlayLabelStyle(29, FontStyle.Bold, new Color(0.94f, 0.9f, 0.82f),
                     TextAnchor.MiddleRight));
+            GUI.Label(new Rect(300, 76, 360, 58), vm.NightRoleTitle,
+                OverlayLabelStyle(23, FontStyle.Bold, new Color(.94f, .88f, .76f),
+                    TextAnchor.MiddleCenter));
             DrawProgress(new Rect(735, 145, 289, 5), 1f - vm.RemainingMinutes / 540f,
                 new Color(0.94f, 0.67f, 0.3f));
             if (vm.EchoSources.Count > 0)
@@ -987,13 +1003,15 @@ namespace NotANap.App
             DrawRoomFocusBackdrop(vm.CaregiverLocation, backdropRect);
             Fill(backdropRect, RoomFocusTint(vm.CaregiverLocation));
 
-            bool babyVisible = vm.BabyLocation == vm.CaregiverLocation;
+            bool babyVisible = vm.BabyLocation == vm.CaregiverLocation && !RoomTransitionActive();
             if (babyVisible)
             {
                 float babySize = portrait ? 720f : 600f;
                 var babyRect = new Rect(
                     rect.center.x - babySize * 0.5f,
-                    portrait ? 270f : 86f,
+                    !vm.BabyHeld && IsSleeping(vm)
+                        ? (portrait ? 390f : 150f)
+                        : (portrait ? 270f : 86f),
                     babySize, babySize);
                 bool compositeAction = HasCompositeAction();
                 if (!compositeAction) babyRect = AnimatedBabyActionRect(babyRect);
@@ -1049,6 +1067,8 @@ namespace NotANap.App
                     vm.CryIntensity > 14 ? 1 : 0;
                 frame = _carrierBabyFrames[index];
             }
+            else if (!vm.BabyHeld && IsSleeping(vm))
+                frame = _lyingSleepArt;
 
             if (frame == null) return false;
             GUI.DrawTexture(babyRect, frame, ScaleMode.ScaleToFit, true);
@@ -1076,6 +1096,10 @@ namespace NotANap.App
                 "꿀꺽 · 꿀꺽 · 아기 속도에 맞춰요",
             V2ActionId.Pacifier => progress < .45f ? "쪽쪽이를 입가에 살며시" :
                 "편안하게 쪽쪽 · 숨을 살펴봐요",
+            V2ActionId.CheckDiaper => "두 다리를 함께 받치고 기저귀를 살펴봐요",
+            V2ActionId.ChangeDiaper => "깨끗한 기저귀를 포근히 채워요",
+            V2ActionId.CheckLimbRelaxation => "팔다리의 힘이 풀렸는지 가볍게 받쳐봐요",
+            V2ActionId.CheckBodyTemperature => "목을 받치고 이마에 손을 가만히 대봐요",
             _ => null
         };
 
@@ -1152,7 +1176,7 @@ namespace NotANap.App
             if (action == null) return;
             bool hovered = rect.Contains(Event.current.mousePosition);
             var old = GUI.color;
-            GUI.color = new Color(1f, .72f, .3f, hovered ? .56f : .025f);
+            GUI.color = new Color(1f, .72f, .3f, hovered ? .56f : .09f);
             GUI.DrawTexture(rect, _itemGlow, ScaleMode.StretchToFill, true);
             GUI.color = old;
             if (hovered)
@@ -1201,14 +1225,20 @@ namespace NotANap.App
                     DrawKitchenPreparation(vm, portrait, babyVisible);
                     break;
                 case HomeLocation.Bathroom:
-                    DrawRoomObject(vm, V2ActionId.CheckBodyTemperature,
+                    DrawSceneActionHotspot(vm,
                         portrait ? new Rect(610, 430, 190, 250) : new Rect(1040, 215, 190, 245),
-                        "탕온계로 아기 체온 살피기", ItemId.Monitor, portrait);
-                    DrawRoomObject(vm, V2ActionId.CheckEnvironment,
+                        V2ActionId.CheckBodyTemperature, "탕온계로 아기 체온 살피기", portrait);
+                    DrawSceneActionHotspot(vm,
                         portrait ? new Rect(245, 470, 200, 230) : new Rect(650, 245, 200, 220),
-                        "욕실 온도와 습기 살피기", ItemId.Noise, portrait);
+                        V2ActionId.CheckEnvironment, "욕실 온도와 습기 살피기", portrait);
                     break;
                 default:
+                    DrawSceneActionHotspot(vm,
+                        portrait ? new Rect(250, 330, 190, 260) : new Rect(560, 170, 190, 250),
+                        V2ActionId.AdjustTemperature, "창문을 조절해 방 온도 맞추기", portrait);
+                    DrawSceneActionHotspot(vm,
+                        portrait ? new Rect(620, 650, 170, 190) : new Rect(1110, 350, 170, 180),
+                        V2ActionId.AdjustHumidity, "가습기를 조절해 습도 맞추기", portrait);
                     DrawRoomObject(vm, V2ActionId.ToggleNoise,
                         portrait ? new Rect(70, 500, 170, 210) : new Rect(340, 265, 170, 200),
                         vm.NoiseOn ? "백색소음 끄기" : "백색소음기", ItemId.Noise, portrait);
@@ -1221,7 +1251,7 @@ namespace NotANap.App
                             portrait ? new Rect(870, 560, 120, 150) : new Rect(1320, 305, 130, 150),
                             "아기띠", ItemId.Carrier, portrait);
                     DrawRoomObject(vm, V2ActionId.CheckMonitor,
-                        portrait ? new Rect(70, 300, 145, 170) : new Rect(350, 100, 145, 155),
+                        portrait ? new Rect(70, 300, 145, 170) : new Rect(350, 230, 145, 155),
                         "베이비 모니터 살피기", ItemId.Monitor, portrait);
                     break;
             }
@@ -1256,9 +1286,9 @@ namespace NotANap.App
             Rect rest = portrait ? new Rect(110, 1230, 190, 150) : new Rect(520, 785, 180, 135);
             Rect environment = portrait ? new Rect(445, 1230, 190, 150) : new Rect(850, 785, 180, 135);
             Rect feed = portrait ? new Rect(780, 1230, 190, 150) : new Rect(1180, 785, 180, 135);
-            DrawSleepProp(rest, "같이 눈 붙이기", "◡", SleepIntervalChoice.RestTogether, portrait);
-            DrawSleepProp(environment, "방 상태 둘러보기", "◌", SleepIntervalChoice.CheckEnvironment, portrait);
-            DrawSleepProp(feed, "다음 수유 챙기기", "♢", SleepIntervalChoice.PrepareNextFeed, portrait);
+            DrawSleepProp(rest, "같이 눈 붙이기", "잠", SleepIntervalChoice.RestTogether, portrait);
+            DrawSleepProp(environment, "방 상태 둘러보기", "방", SleepIntervalChoice.CheckEnvironment, portrait);
+            DrawSleepProp(feed, "다음 수유 챙기기", "병", SleepIntervalChoice.PrepareNextFeed, portrait);
         }
 
         private void DrawSleepProp(Rect rect, string label, string symbol,
@@ -1279,6 +1309,7 @@ namespace NotANap.App
                 _flow.ChooseV2SleepInterval(choice))
             {
                 _lastResult = null;
+                _lastMove = null;
                 _audio.PlayUi();
                 TriggerImpact(new Color(.36f, .62f, .78f, .22f), 1.5f, .22f);
             }
@@ -1610,6 +1641,8 @@ namespace NotANap.App
             string destination = HomeLocationLabel(_roomTransitionTo);
             string copy = _roomTransitionBabyAccompanied
                 ? $"목을 받치고 {destination}으로 살금살금"
+                : _roomTransitionTo == HomeLocation.Nursery
+                    ? "우는 아기에게 다시 돌아가요"
                 : $"{destination}에 필요한 물건을 가지러 가요";
             GUI.Label(card, copy, OverlayLabelStyle(portrait ? 23 : 19, FontStyle.Bold,
                 new Color(1f, 0.87f, 0.68f), TextAnchor.MiddleCenter));
@@ -1672,7 +1705,7 @@ namespace NotANap.App
                     rect.Contains(Event.current.mousePosition) ? .5f : .12f + pulse * .22f);
                 GUI.DrawTexture(rect, _itemGlow, ScaleMode.StretchToFill, true);
                 GUI.color = old;
-                GUI.Label(new Rect(rect.x, rect.yMax + 2, rect.width, portrait ? 38 : 30),
+                GUI.Label(new Rect(rect.x, rect.y - (portrait ? 38 : 30), rect.width, portrait ? 38 : 30),
                     "내 숨을 한 번 고르기",
                     OverlayLabelStyle(portrait ? 18 : 14, FontStyle.Bold,
                         new Color(.72f, .9f, 1f), TextAnchor.MiddleCenter));
@@ -2158,7 +2191,7 @@ namespace NotANap.App
         private void DrawActionMotionLabel(Rect babyRect, string label, bool portrait)
         {
             var rect = new Rect(babyRect.center.x - (portrait ? 215f : 245f),
-                babyRect.yMax + (portrait ? 10f : 8f),
+                babyRect.yMax - (portrait ? 72f : 70f),
                 portrait ? 430f : 490f, portrait ? 54f : 58f);
             GUI.Label(rect, label, OverlayLabelStyle(portrait ? 24 : 23, FontStyle.Bold,
                 new Color(1f, 0.87f, 0.64f), TextAnchor.MiddleCenter));
@@ -2494,6 +2527,11 @@ namespace NotANap.App
                 _decisionDeadline = Time.unscaledTime + vm.DecisionSecondsRemaining;
                 _timeoutSent = false;
             }
+            if (_flow.InputLocked)
+            {
+                _decisionDeadline = Time.unscaledTime + vm.DecisionSecondsRemaining;
+                return Mathf.Max(0, vm.DecisionSecondsRemaining);
+            }
             int remaining = Mathf.Max(0, Mathf.CeilToInt(_decisionDeadline - Time.unscaledTime));
             if (remaining == 0 && !_timeoutSent && !_flow.InputLocked)
             {
@@ -2611,13 +2649,13 @@ namespace NotANap.App
             GUI.Label(new Rect(110, 76, 900, 58), $"{vm.NightLabel}  ·  밤의 기록", _display);
             Panel(new Rect(110, 200, 560, 680));
             GUI.Label(new Rect(155, 245, 470, 34), "밤이 남긴 것", _caption);
-            GUI.Label(new Rect(155, 292, 470, 92), vm.CaregiverGrowth, _headline);
-            GUI.Label(new Rect(155, 410, 470, 76), vm.Encouragement, _body);
-            Fill(new Rect(155, 518, 420, 2), new Color(.84f, .62f, .31f, .5f));
-            GUI.Label(new Rect(155, 548, 470, 34), $"밤의 기록 · {vm.Grade}", _caption);
-            GUI.Label(new Rect(155, 594, 470, 46), $"최장 연속 수면  {FormatDuration(vm.LongestSleepStretchMinutes)}", _headline);
-            GUI.Label(new Rect(155, 654, 470, 40), $"총 수면 {FormatDuration(vm.TotalSleepMinutes)} · 깨어남 {vm.WakeCount}회", _body);
-            GUI.Label(new Rect(155, 704, 470, 40), $"남은 체력 {vm.ParentStaminaAtDawn:0}", _body);
+            GUI.Label(new Rect(155, 292, 470, 126), vm.CaregiverGrowth, _headline);
+            GUI.Label(new Rect(155, 440, 470, 92), vm.Encouragement, _body);
+            Fill(new Rect(155, 552, 420, 2), new Color(.84f, .62f, .31f, .5f));
+            GUI.Label(new Rect(155, 574, 470, 34), $"밤의 기록 · {PresentationCopyMapper.NightGradeLabel(vm.Grade)}", _caption);
+            GUI.Label(new Rect(155, 620, 470, 46), $"최장 연속 수면  {FormatDuration(vm.LongestSleepStretchMinutes)}", _headline);
+            GUI.Label(new Rect(155, 680, 470, 40), $"총 수면 {FormatDuration(vm.TotalSleepMinutes)} · 깨어남 {vm.WakeCount}회", _body);
+            GUI.Label(new Rect(155, 730, 470, 40), $"남은 체력 {vm.ParentStaminaAtDawn:0}", _body);
 
             Panel(new Rect(720, 200, 1090, 680));
             GUI.Label(new Rect(770, 245, 980, 36), "아기가 먼저 건넨 말", _caption);
@@ -2634,6 +2672,7 @@ namespace NotANap.App
             {
                 if (vm.HasNextNight) _flow.AdvanceFromV2Diary();
                 else _flow.AdvanceToEnding();
+                _lastMove = null;
                 _lastResult = null;
                 _actionGroup = ActionGroup.Diagnose;
                 _timedEncounterSequence = -1;
@@ -2732,6 +2771,7 @@ namespace NotANap.App
             {
                 _audio?.PlayUi();
                 _flow.ConfirmV2Setup();
+                _lastMove = null;
             }
         }
 
@@ -2741,13 +2781,13 @@ namespace NotANap.App
             GUI.Label(new Rect(60, 70, 960, 80), $"{vm.NightLabel} · 밤의 기록", _display);
             Panel(new Rect(60, 210, 960, 620));
             GUI.Label(new Rect(110, 260, 860, 48), "밤이 남긴 것", _caption);
-            GUI.Label(new Rect(110, 320, 860, 115), vm.CaregiverGrowth, _headline);
-            GUI.Label(new Rect(110, 450, 860, 92), vm.Encouragement, _body);
+            GUI.Label(new Rect(110, 320, 860, 128), vm.CaregiverGrowth, _headline);
+            GUI.Label(new Rect(110, 470, 860, 82), vm.Encouragement, _body);
             Fill(new Rect(110, 566, 760, 2), new Color(.84f, .62f, .31f, .5f));
-            GUI.Label(new Rect(110, 592, 860, 42), $"밤의 기록 · {vm.Grade}", _caption);
+            GUI.Label(new Rect(110, 592, 860, 42), $"밤의 기록 · {PresentationCopyMapper.NightGradeLabel(vm.Grade)}", _caption);
             GUI.Label(new Rect(110, 646, 860, 56), $"최장 연속 수면  {FormatDuration(vm.LongestSleepStretchMinutes)}", _headline);
             GUI.Label(new Rect(110, 718, 860, 72), $"총 수면 {FormatDuration(vm.TotalSleepMinutes)} · 깨어남 {vm.WakeCount}회 · 남은 체력 {vm.ParentStaminaAtDawn:0}", _body);
-            Panel(new Rect(60, 880, 960, 700));
+            Panel(new Rect(60, 880, 960, 820));
             GUI.Label(new Rect(110, 930, 860, 42), "아기가 먼저 건넨 말", _caption);
             GUI.Label(new Rect(110, 982, 860, 102), vm.BabyResponseReflection, _headline);
             GUI.Label(new Rect(110, 1098, 860, 42), "내가 건넨 답", _caption);
@@ -2762,6 +2802,7 @@ namespace NotANap.App
             {
                 if (vm.HasNextNight) _flow.AdvanceFromV2Diary();
                 else _flow.AdvanceToEnding();
+                _lastMove = null;
                 _lastResult = null;
                 _actionGroup = ActionGroup.Diagnose;
                 _timedEncounterSequence = -1;
@@ -2819,12 +2860,15 @@ namespace NotANap.App
                 "지켜 낸 조건 · " +
                 (vm.MetConditions.Count > 0 ? string.Join(" · ", vm.MetConditions) : "없음"),
                 Centered(_caption));
-            GUI.Label(new Rect(x + 110, y + 558, panelWidth - 220, 88),
+            float unmetY = _portrait ? y + 558 : y + 530;
+            float retryY = _portrait ? y + 645 : y + 580;
+            float buttonY = _portrait ? y + panelHeight - 135 : y + panelHeight - 88;
+            GUI.Label(new Rect(x + 110, unmetY, panelWidth - 220, _portrait ? 88 : 52),
                 "다음에 이어갈 조건 · " +
                 (vm.UnmetConditions.Count > 0 ? string.Join(" · ", vm.UnmetConditions) : "세 가지 신호를 모두 지켰어요"),
                 Centered(_caption));
-            GUI.Label(new Rect(x + 110, y + 645, panelWidth - 220, 60), vm.RetrySuggestion, Centered(_caption));
-            if (GUI.Button(new Rect(x + panelWidth * 0.2f, y + panelHeight - 135, panelWidth * 0.6f, 82),
+            GUI.Label(new Rect(x + 110, retryY, panelWidth - 220, 48), vm.RetrySuggestion, Centered(_caption));
+            if (GUI.Button(new Rect(x + panelWidth * 0.2f, buttonY, panelWidth * 0.6f, _portrait ? 82 : 64),
                 "처음부터 다시 보기", _button))
             {
                 _flow = new GameFlowController(new SystemRandomSource(Environment.TickCount));
@@ -2864,16 +2908,16 @@ namespace NotANap.App
                 return "욕실에서 탕온계를 먼저 챙겨주세요.";
             if (outcome.BlockReason == V2ActionBlockReason.CaregiverExhausted)
                 return "보호자 체력이 바닥났어요. 먼저 숨을 고르고 다시 돌봐주세요.";
+            if (outcome.BlockReason == V2ActionBlockReason.ActionLimitReached)
+                return "숨을 고르는 시간도 충분히 가졌어요. 이제 확인한 신호에 맞는 돌봄으로 돌아가세요.";
             if (outcome.ActivityLocation == "주방")
-                return $"주방에 다녀오는 동안 {outcome.TimeDeltaMinutes}분이 흘렀다.";
+                return $"주방에서 준비하는 동안 {outcome.TimeDeltaMinutes}분이 흘렀다.";
             if (outcome.HeadSupported)
                 return "목과 머리를 받치자 몸이 품 안으로 기대온다.";
             if (outcome.Action == V2ActionId.CatchBreath)
                 return outcome.ObservedSignals.Count > 0
                     ? $"숨을 고르자 보이지 않던 신호가 들어온다. {PresentationCopyMapper.ObservationSignal(outcome.ObservedSignals[0])}"
                     : "숨을 길게 내쉬고 아기의 다음 움직임을 기다린다.";
-            if (outcome.ObservedSignals.Count > 0)
-                return PresentationCopyMapper.ObservationSignal(outcome.ObservedSignals[0]);
             if (outcome.DiaperCheckResult == DiaperCheckResult.Wet)
                 return "기저귀가 젖어 있어요. 기저귀를 갈아주세요.";
             if (outcome.DiaperCheckResult == DiaperCheckResult.Clean)
@@ -2888,8 +2932,10 @@ namespace NotANap.App
                     default: return "지금은 배고픔 신호가 보이지 않아요.";
                 }
             }
+            if (outcome.ObservedSignals.Count > 0)
+                return PresentationCopyMapper.ObservationSignal(outcome.ObservedSignals[0]);
             if (outcome.Action == V2ActionId.CheckEnvironment)
-                return $"온도 {vm.TemperatureCelsius:0.#}°C · 습도 {vm.HumidityPercent:0.#}%";
+                return $"온도 {vm.TemperatureCelsius:0.#}°C (권장 20~22) · 습도 {vm.HumidityPercent:0.#}% (권장 40~60)";
             if (outcome.Action == V2ActionId.CheckBodyTemperature)
                 return $"아기 체온 {vm.BabyTemperatureCelsius:0.0}°C";
             if (outcome.Action == V2ActionId.AdjustTemperature)

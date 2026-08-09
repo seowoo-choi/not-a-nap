@@ -201,7 +201,7 @@ namespace NotANap.Core
                 night.V2.Metrics.ParentStaminaAtDawn = night.Parent.Stamina;
                 night.Stats.StaminaLeft = night.Parent.Stamina;
                 night.Stats.Wakes = night.V2.Metrics.WakeCount;
-                night.Stats.WatchOk = night.V2.GentleObservationCount;
+                night.Stats.WatchOk = night.V2.SelfResettleCount;
                 bool sleepingAtDawn = night.V2.SleepCycle.Stage == V2SleepStage.NremDeepSleep ||
                                       night.V2.SleepCycle.Stage == V2SleepStage.RemActiveSleep;
                 night.Result = sleepingAtDawn
@@ -227,6 +227,8 @@ namespace NotANap.Core
                             v2.SleepCycle.Stage == V2SleepStage.NremDeepSleep;
             if (sleeping)
             {
+                night.Baby.Sleep = CoreMath.Clamp(night.Baby.Sleep +
+                    minutes * config.V2.SleepMinuteGain, 0, 100);
                 if (night.Baby.Held)
                     night.Stats.HeldSleepTurns += Math.Max(1, (int)Math.Ceiling(minutes / 15d));
                 v2.Metrics.RecordSleep(minutes);
@@ -286,6 +288,7 @@ namespace NotANap.Core
             if (night.V2.Diagnosis.ActiveCause != WakeCause.NaturalCycle ||
                 rng.NextDouble() >= CoreMath.Clamp01(run.Memory.SelfSoothe)) return false;
             night.V2.Diagnosis.CauseResolved = true;
+            night.V2.SelfResettleCount++;
             BeginSleep(night, V2SleepStage.RemActiveSleep);
             TraceRecorder.FromAction(run.Traces, CoreTraceIds.SelfResettled, ActionId.Watch,
                 night.NightId, night.V2.ElapsedMinutes, .5);

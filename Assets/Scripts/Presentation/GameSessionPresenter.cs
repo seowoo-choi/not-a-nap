@@ -83,7 +83,7 @@ namespace NotANap.Presentation
             if (items.Any(item => !V2NightFactory.IsSelectableItem(item)))
                 throw new ArgumentException("LEGACY 아이템은 V2 신규 선택 목록에 포함할 수 없다.", nameof(items));
             Night = NightFactory.CreateV2Night(Run, items,
-                profile ?? new BabyProfile { Temperament = Run.Temperament },
+                profile ?? DefaultProfileFor(Run.Temperament),
                 _config, modifier, capabilities);
             _eventCursor = 0;
             PendingOverlay = DrainOverlay();
@@ -410,9 +410,12 @@ namespace NotANap.Presentation
                 return location == HomeLocation.Bathroom && withBaby &&
                     Night.V2.BathThermometerRetrieved;
             if (action == V2ActionId.CheckMonitor) return Night.HasItem(ItemId.Monitor);
-            if (action == V2ActionId.CatchBreath || action == V2ActionId.Hesitate) return true;
+            if (action == V2ActionId.CatchBreath)
+                return Night.Parent.Stamina <= 0 || Night.V2.CatchBreathUses < 3;
+            if (action == V2ActionId.Hesitate) return true;
             if (!withBaby) return false;
-            if (action == V2ActionId.Pacifier) return Night.HasItem(ItemId.Pacifier);
+            if (action == V2ActionId.Pacifier)
+                return Night.HasItem(ItemId.Pacifier) && Night.PacifierLeft > 0;
             if (action == V2ActionId.ToggleCarrier)
                 return Night.HasItem(ItemId.Carrier) &&
                     !(Night.CarrierDisabledTurns > 0 && !Night.Wearing.Carrier);
@@ -462,7 +465,7 @@ namespace NotANap.Presentation
                 Encouragement = m.ParentStaminaAtDawn >= 30
                     ? "아기와 보호자 모두를 돌보는 지속 가능한 밤에 가까워지고 있다."
                     : "힘든 밤을 버틴 것도 돌봄이다. 다음에는 보호자의 숨 고르기도 먼저 챙기자.",
-                CaregiverGrowth = BuildCaregiverGrowth(Run.CaregiverStyle, Night.V2),
+                CaregiverGrowth = BuildCaregiverGrowth(Run.CaregiverStyle, Night),
                 MotherInsight = BuildFamilyUnderstanding(facts),
                 FamilyUnderstanding = BuildFamilyUnderstanding(facts),
                 HabitReflection = BuildHabitReflection(facts),
@@ -506,7 +509,7 @@ namespace NotANap.Presentation
                 if (!ending.MetConditions.Contains(condition))
                     viewModel.UnmetConditions.Add(PresentationCopyMapper.VictoryConditionLabel(condition));
             viewModel.RetrySuggestion =
-                $"다음에는 {PresentationCopyMapper.CaregiverStyleName(NextStyle(Run.CaregiverStyle))} 보호자와 " +
+                $"다음에는 {PresentationCopyMapper.CaregiverStyleName(NextStyle(Run.CaregiverStyle))}와 " +
                 $"{NextTemperament(Run.Temperament).Name} 아기의 밤을 선택해볼 수 있어요.";
             return viewModel;
         }
@@ -623,11 +626,33 @@ namespace NotANap.Presentation
                 ? PresentationCopyMapper.ObservationSignal(v2.VisibleSignals[0])
                 : "아기의 호흡과 몸의 긴장";
 
-        private static string BuildCaregiverGrowth(CaregiverStyle style, V2NightState v2)
-            => $"{PresentationCopyMapper.CaregiverStyleName(style)}로 시작한 나는 " +
-               (v2.GentleObservationCount > 0
-                   ? "행동하기 전에 기다리고 관찰하는 순간을 만들었다."
-                   : "다음 밤에는 행동 하나 사이에 아기의 답을 기다려보기로 했다.");
+        private static string BuildCaregiverGrowth(CaregiverStyle style, NightState night)
+        {
+            var v2 = night.V2;
+            string opening = $"{PresentationCopyMapper.CaregiverStyleName(style)}로 시작한 나는 ";
+            if (night.NightId == NightId.FirstNight)
+                return opening + (v2.VisibleSignals.Count > 0
+                    ? $"울음보다 먼저 오는 신호 {v2.VisibleSignals.Count}가지를 눈에 담았다."
+                    : "바로 답을 정하기보다 아기의 다음 움직임을 기다려보기로 했다.");
+            if (night.NightId == NightId.SecondNight)
+                return opening + (v2.Feeding.SanitationIncident
+                    ? "준비되지 않은 젖병 앞에서 서두름 대신 순서를 다시 세웠다."
+                    : $"깨어남 {v2.Metrics.WakeCount}번을 지나며 전날의 리듬을 조금 다르게 조율했다.");
+            return opening + (night.FiredEventIds.Count > 0
+                ? $"지난 선택이 돌아온 순간 {night.FiredEventIds.Count}번에도 다른 돌봄으로 다시 연결했다."
+                : "백일 동안 쌓인 리듬을 아기와 보호자 모두가 버틸 수 있게 이어 보았다.");
+        }
+
+        private static BabyProfile DefaultProfileFor(Temperament temperament)
+            => new BabyProfile
+            {
+                Temperament = temperament,
+                PacifierAffinity = temperament == Temperament.Sensitive
+                    ? PacifierAffinity.Rejects
+                    : temperament == Temperament.Soft
+                        ? PacifierAffinity.Loves
+                        : PacifierAffinity.Neutral
+            };
 
         private static string CompanionMessageFor(NightId night) => night switch
         {

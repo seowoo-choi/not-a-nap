@@ -132,6 +132,8 @@ namespace NotANap.Core
         public bool HeadSupported;
         public double CaregiverComposure = 50;
         public int GentleObservationCount;
+        public int SelfResettleCount;
+        public int CatchBreathUses;
         public readonly List<ObservationSignalId> VisibleSignals = new List<ObservationSignalId>();
         public HomeLocation CaregiverLocation = HomeLocation.Nursery;
         public bool BathThermometerRetrieved;
