@@ -47,7 +47,9 @@ namespace NotANap.App
         private Texture2D _geneticMonolidCurly;
         private Texture2D _geneticDoubleStraight;
         private Texture2D _geneticDoubleCurly;
-        private Texture2D _bigMouthOverlay;
+        private Material _mouthWarpMaterial;
+        private readonly Dictionary<string, MouthWarpProfile> _mouthWarpProfiles =
+            new Dictionary<string, MouthWarpProfile>();
         private readonly Dictionary<V2ActionId, Texture2D[]> _interactionFrames =
             new Dictionary<V2ActionId, Texture2D[]>();
         private Texture2D[] _carrierBabyFrames;
@@ -156,7 +158,9 @@ namespace NotANap.App
             _geneticMonolidCurly = Resources.Load<Texture2D>("Art/Baby/Genetics/monolid_curly");
             _geneticDoubleStraight = Resources.Load<Texture2D>("Art/Baby/Genetics/double_straight");
             _geneticDoubleCurly = Resources.Load<Texture2D>("Art/Baby/awake_calm");
-            _bigMouthOverlay = Resources.Load<Texture2D>("Art/Baby/Genetics/big-mouth-overlay");
+            BuildMouthWarpProfiles();
+            Shader mouthWarpShader = Resources.Load<Shader>("Shaders/BabyMouthWarp");
+            if (mouthWarpShader != null) _mouthWarpMaterial = new Material(mouthWarpShader);
             _carrierBabyFrames = LoadFrameSet("carrier", 4);
             _interactionFrames[V2ActionId.Pat] = LoadFrameSet("pat", 4);
             _interactionFrames[V2ActionId.Hold] = LoadFrameSet("hold", 4);
@@ -174,6 +178,11 @@ namespace NotANap.App
             _ambientRandom = new System.Random(Environment.TickCount ^ GetInstanceID());
             _nextAmbientMotionAt = Time.unscaledTime + RandomRange(0.4f, 1.4f);
             _nextBabbleAt = Time.unscaledTime + RandomRange(1.8f, 4.5f);
+        }
+
+        private void OnDestroy()
+        {
+            if (_mouthWarpMaterial != null) Destroy(_mouthWarpMaterial);
         }
 
         private static Texture2D[] LoadFrameSet(string name, int count)
@@ -677,22 +686,110 @@ namespace NotANap.App
         private void DrawGeneticPortrait(Rect rect, Texture2D portrait)
         {
             if (portrait == null) return;
-            GUI.DrawTexture(rect, portrait, ScaleMode.ScaleToFit, true);
-            if (!_babyBigMouth || _bigMouthOverlay == null || !IsGeneticPortrait(portrait)) return;
+            DrawBabyTexture(rect, portrait);
+        }
 
-            Vector2 mouth = ReferenceEquals(portrait, _geneticDoubleStraight)
-                ? new Vector2(.621f, .410f)
-                : ReferenceEquals(portrait, _geneticMonolidCurly)
-                    ? new Vector2(.621f, .441f)
-                    : ReferenceEquals(portrait, _geneticMonolidStraight)
-                        ? new Vector2(.598f, .445f)
-                        : new Vector2(.575f, .414f);
-            float mouthWidth = rect.width * .076f;
-            float mouthHeight = mouthWidth * .448f;
-            var mouthRect = new Rect(rect.x + rect.width * mouth.x - mouthWidth * .5f,
-                rect.y + rect.height * mouth.y - mouthHeight * .5f,
-                mouthWidth, mouthHeight);
-            GUI.DrawTexture(mouthRect, _bigMouthOverlay, ScaleMode.ScaleToFit, true);
+        private readonly struct MouthWarpProfile
+        {
+            public readonly Vector2 CenterFromTop;
+            public readonly Vector2 Radius;
+            public readonly float Angle;
+
+            public MouthWarpProfile(float x, float y, float radiusX = .064f,
+                float radiusY = .044f, float angle = 0f)
+            {
+                CenterFromTop = new Vector2(x, y);
+                Radius = new Vector2(radiusX, radiusY);
+                Angle = angle;
+            }
+        }
+
+        private void BuildMouthWarpProfiles()
+        {
+            // 유전 초상
+            AddMouthProfile("double_straight", .621f, .410f);
+            AddMouthProfile("monolid_curly", .621f, .441f);
+            AddMouthProfile("monolid_straight", .598f, .445f);
+            AddMouthProfile("awake_calm", .575f, .414f);
+
+            // 상태 표정. 열린 울음은 세로 형태를 보존하고 가로 폭만 넓힌다.
+            AddMouthProfile("fuss_soft", .503f, .438f, .058f, .035f);
+            AddMouthProfile("cry_hard", .500f, .432f, .082f, .070f);
+            AddMouthProfile("hunger_late", .506f, .405f, .080f, .068f);
+            AddMouthProfile("drowsy", .512f, .480f, .054f, .035f);
+            AddMouthProfile("rem_active", .501f, .473f, .052f, .034f);
+            AddMouthProfile("nrem_deep", .493f, .472f, .050f, .032f);
+            AddMouthProfile("relaxed", .514f, .431f, .054f, .035f);
+            AddMouthProfile("moro_startle", .500f, .409f, .062f, .055f);
+            AddMouthProfile("pacifier_reject", .550f, .413f, .050f, .032f);
+            // hunger_early/pacifier_accept는 손·쪽쪽이가 입을 가리므로 변형하지 않는다.
+
+            AddFrameProfiles("awake", .506f, .462f, .055f, .036f);
+            AddFrameProfiles("fuss", .506f, .455f, .056f, .036f);
+            AddFrameProfiles("sleep", .505f, .455f, .052f, .033f);
+            AddFrameProfiles("pat", .527f, .415f, .052f, .033f);
+            AddFrameProfiles("hold", .612f, .309f, .046f, .030f);
+            AddFrameProfiles("carrier", .553f, .404f, .050f, .032f);
+            AddFrameProfiles("feed", .553f, .385f, .047f, .030f);
+            AddMouthProfile("pacifier_0", .648f, .400f, .047f, .030f);
+            // pacifier_1~3은 쪽쪽이가 입 전체를 덮어 원본을 유지한다.
+
+            AddMouthProfile("diaper_check", .443f, .385f, .042f, .028f, -18f);
+            AddMouthProfile("diaper_change", .519f, .307f, .041f, .027f);
+            AddMouthProfile("limb_check", .503f, .363f, .040f, .027f, 10f);
+            AddMouthProfile("temperature_check", .523f, .323f, .039f, .026f);
+            AddMouthProfile("lying_sleep", .359f, .518f, .038f, .025f, 23f);
+        }
+
+        private void AddFrameProfiles(string prefix, float x, float y, float radiusX, float radiusY)
+        {
+            for (int i = 0; i < 4; i++)
+                AddMouthProfile($"{prefix}_{i}", x, y, radiusX, radiusY);
+        }
+
+        private void AddMouthProfile(string textureName, float x, float y,
+            float radiusX = .064f, float radiusY = .044f, float angle = 0f)
+        {
+            _mouthWarpProfiles[textureName] = new MouthWarpProfile(x, y, radiusX, radiusY, angle);
+        }
+
+        private void DrawBabyTexture(Rect rect, Texture2D texture)
+        {
+            if (texture == null) return;
+            if (!_babyBigMouth || _mouthWarpMaterial == null ||
+                !_mouthWarpProfiles.TryGetValue(texture.name, out var profile) ||
+                Event.current.type != EventType.Repaint)
+            {
+                GUI.DrawTexture(rect, texture, ScaleMode.ScaleToFit, true);
+                return;
+            }
+
+            float textureAspect = (float)texture.width / texture.height;
+            float rectAspect = rect.width / rect.height;
+            Rect fitted = rect;
+            if (textureAspect > rectAspect)
+            {
+                fitted.height = rect.width / textureAspect;
+                fitted.y += (rect.height - fitted.height) * .5f;
+            }
+            else
+            {
+                fitted.width = rect.height * textureAspect;
+                fitted.x += (rect.width - fitted.width) * .5f;
+            }
+
+            Vector3 topLeft = GUI.matrix.MultiplyPoint3x4(new Vector3(fitted.x, fitted.y));
+            Vector3 bottomRight = GUI.matrix.MultiplyPoint3x4(new Vector3(fitted.xMax, fitted.yMax));
+            var screenRect = new Rect(topLeft.x, topLeft.y,
+                bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
+            _mouthWarpMaterial.SetVector("_MouthCenter",
+                new Vector4(profile.CenterFromTop.x, 1f - profile.CenterFromTop.y, 0f, 0f));
+            _mouthWarpMaterial.SetVector("_MouthRadius",
+                new Vector4(profile.Radius.x, profile.Radius.y, 0f, 0f));
+            _mouthWarpMaterial.SetFloat("_MouthAngle", profile.Angle * Mathf.Deg2Rad);
+            _mouthWarpMaterial.SetFloat("_MouthStrength", .28f);
+            _mouthWarpMaterial.SetColor("_Color", GUI.color);
+            Graphics.DrawTexture(screenRect, texture, _mouthWarpMaterial);
         }
 
         private bool IsGeneticPortrait(Texture2D portrait)
@@ -1159,7 +1256,7 @@ namespace NotANap.App
                 frame = _lyingSleepArt;
 
             if (frame == null) return false;
-            GUI.DrawTexture(babyRect, frame, ScaleMode.ScaleToFit, true);
+            DrawBabyTexture(babyRect, frame);
             if (!string.IsNullOrEmpty(caption))
             {
                 var captionRect = new Rect(babyRect.center.x - (portrait ? 250f : 220f),
@@ -2386,7 +2483,7 @@ namespace NotANap.App
                 if (current != null)
                 {
                     if (IsGeneticPortrait(current)) DrawGeneticPortrait(animated, current);
-                    else GUI.DrawTexture(animated, current, ScaleMode.ScaleToFit, true);
+                    else DrawBabyTexture(animated, current);
                 }
                 return;
             }
@@ -2394,13 +2491,13 @@ namespace NotANap.App
             {
                 GUI.color = new Color(oldColor.r, oldColor.g, oldColor.b, oldColor.a * (1f - blend));
                 if (IsGeneticPortrait(previous)) DrawGeneticPortrait(animated, previous);
-                else GUI.DrawTexture(animated, previous, ScaleMode.ScaleToFit, true);
+                else DrawBabyTexture(animated, previous);
             }
             if (current != null)
             {
                 GUI.color = new Color(oldColor.r, oldColor.g, oldColor.b, oldColor.a * blend);
                 if (IsGeneticPortrait(current)) DrawGeneticPortrait(animated, current);
-                else GUI.DrawTexture(animated, current, ScaleMode.ScaleToFit, true);
+                else DrawBabyTexture(animated, current);
             }
             GUI.color = oldColor;
         }
