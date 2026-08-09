@@ -42,6 +42,21 @@ namespace NotANap.Presentation.Tests
         }
 
         [Test]
+        public void UnselectedNoiseItemDoesNotExposeClickableNoiseAction()
+        {
+            var flow = new GameFlowController(new SystemRandomSource(41));
+            flow.StartGame();
+            flow.ToggleItem(ItemId.Monitor);
+            flow.ToggleItem(ItemId.Carrier);
+            flow.ToggleItem(ItemId.Pacifier);
+            flow.ConfirmV2Setup();
+
+            var play = flow.BuildV2Play();
+            Assert.IsFalse(play.Actions.Any(a => a.Action == V2ActionId.ToggleNoise && a.Enabled));
+            Assert.IsTrue(play.Actions.Any(a => a.Action == V2ActionId.CheckMonitor && a.Enabled));
+        }
+
+        [Test]
         public void FeedingPreparationStateIsExposedForDiegeticKitchenObjects()
         {
             var flow = StartV2();
@@ -123,8 +138,10 @@ namespace NotANap.Presentation.Tests
 
             Assert.IsFalse(result.Ignored);
             Assert.IsTrue(result.Outcome.Accepted);
-            Assert.AreEqual(HungerSignalStage.Late, result.Outcome.HungerSignalStage);
-            CollectionAssert.Contains(result.Outcome.ObservedSignals, ObservationSignalId.HungerCry);
+            Assert.AreEqual(HungerSignalStage.Early, result.Outcome.HungerSignalStage);
+            Assert.IsFalse(result.Outcome.HungerSignalsMatchCause);
+            CollectionAssert.Contains(result.Outcome.ObservedSignals, ObservationSignalId.LipSmacking);
+            CollectionAssert.DoesNotContain(result.Outcome.ObservedSignals, ObservationSignalId.HungerCry);
             Assert.AreEqual(10, flow.BuildV2Play().ElapsedMinutes);
             Assert.AreEqual("21:10", flow.BuildV2Play().Clock);
         }
@@ -158,6 +175,22 @@ namespace NotANap.Presentation.Tests
             Assert.AreEqual("백색소음기 켜기/끄기", PresentationCopyMapper.V2ActionLabel(V2ActionId.ToggleNoise));
             Assert.AreEqual("베이비 모니터 확인", PresentationCopyMapper.V2ActionLabel(V2ActionId.CheckMonitor));
             Assert.AreEqual("숨 고르고 신호 기다리기", PresentationCopyMapper.V2ActionLabel(V2ActionId.CatchBreath));
+            Assert.AreEqual("할머니에게 도움 청하기", PresentationCopyMapper.V2ActionLabel(V2ActionId.Grandma));
+        }
+
+        [Test]
+        public void GrandmaActionIsExposedBeforeFinalNightAndSetsReachableEndingState()
+        {
+            var flow = StartV2();
+            Assert.IsTrue(flow.BuildV2Play().Actions.Any(a =>
+                a.Action == V2ActionId.Grandma && a.Enabled));
+
+            var result = flow.ActV2(V2ActionId.Grandma);
+
+            Assert.IsTrue(result.Outcome.Accepted);
+            Assert.IsTrue(flow.Session.Run.GrandmaUsed);
+            Assert.IsFalse(flow.BuildV2Play().Actions.Any(a =>
+                a.Action == V2ActionId.Grandma && a.Enabled));
         }
 
         [Test]

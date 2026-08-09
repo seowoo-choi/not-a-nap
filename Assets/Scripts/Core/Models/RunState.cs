@@ -10,6 +10,8 @@ namespace NotANap.Core
         public NightId CurrentNightId = NightId.FirstNight;
         public Temperament Temperament = Temperament.Soft;
         public CaregiverStyle CaregiverStyle = CaregiverStyle.Observant;
+        /// <summary>표시와 서술에만 사용하는 아기 이름. 판정에는 관여하지 않는다.</summary>
+        public string BabyName = "아기";
         public MemoryState Memory = new MemoryState();
         public TraceState Traces = new TraceState();
         /// <summary>누적 습관 설명 (기억 분석 카드·엔딩 습관 목록용).</summary>

@@ -86,6 +86,13 @@ namespace NotANap.Core
                 case V2ActionId.CheckHungerSignals:
                     Diagnose(run, night, WakeCause.Hunger, outcome, config, false);
                     outcome.HungerSignalStage = ObservationResolver.GetHungerStage(night.Baby.Hunger, config.V2);
+                    outcome.HungerSignalsMatchCause =
+                        night.V2.Diagnosis.ActiveCause == WakeCause.Hunger;
+                    // 배가 조금 고파지는 생리 상태와 '이번에 깬 이유'를 같은 정답처럼 말하지 않는다.
+                    // 다른 불편으로 깬 밤에는 강한 루팅/배고픔 울음까지 확정적으로 노출하지 않는다.
+                    if (!outcome.HungerSignalsMatchCause &&
+                        outcome.HungerSignalStage > HungerSignalStage.Early)
+                        outcome.HungerSignalStage = HungerSignalStage.Early;
                     ObservationResolver.AddHungerSignals(outcome.HungerSignalStage, outcome.ObservedSignals);
                     RememberVisibleSignals(night, outcome);
                     break;
@@ -124,6 +131,7 @@ namespace NotANap.Core
                         config.V2.HesitationCryIncrease * night.V2.Modifier.CryEscalationMultiplier, 0, 100);
                     break;
                 case V2ActionId.CheckLimbRelaxation:
+                    Consume(outcome, config.V2.DiagnosisActionMinutes, -2);
                     outcome.HungerSignalStage = HungerSignalStage.None;
                     ObservationResolver.AddSleepSignals(night.V2.SleepCycle, outcome.ObservedSignals);
                     RememberVisibleSignals(night, outcome);
@@ -182,6 +190,23 @@ namespace NotANap.Core
                     night.V2.CatchBreathUses++;
                     AddAmbientSignals(night, outcome, config);
                     RememberVisibleSignals(night, outcome);
+                    break;
+                case V2ActionId.Grandma:
+                    if (run.IsFinalNight || run.GrandmaUsed)
+                        return RejectAndAudit(night, outcome, V2ActionBlockReason.ActionLimitReached);
+                    Consume(outcome, config.V2.DefaultActionMinutes, 35);
+                    run.GrandmaUsed = true;
+                    night.Stats.Grandma = true;
+                    night.Baby.Calm = 95;
+                    night.Baby.Sleep = System.Math.Max(night.Baby.Sleep, 60);
+                    night.Baby.Crying = false;
+                    night.Baby.Held = true;
+                    night.V2.HeadSupported = true;
+                    outcome.HeadSupported = true;
+                    ResolveCause(night, outcome);
+                    V2TimeResolver.BeginSleep(night, V2SleepStage.RemActiveSleep);
+                    if (night.V2.NextWake == null || night.V2.NextWake.Triggered)
+                        WakeScheduler.Schedule(night, config, rng);
                     break;
                 case V2ActionId.Hold:
                     if (night.Wearing.Carrier)
@@ -279,6 +304,9 @@ namespace NotANap.Core
             if (action == V2ActionId.AdjustTemperature ||
                 action == V2ActionId.AdjustHumidity || action == V2ActionId.ToggleNoise ||
                 action == V2ActionId.Laydown)
+                return location == HomeLocation.Nursery
+                    ? V2ActionBlockReason.None : V2ActionBlockReason.WrongLocation;
+            if (action == V2ActionId.Grandma)
                 return location == HomeLocation.Nursery
                     ? V2ActionBlockReason.None : V2ActionBlockReason.WrongLocation;
             if (action == V2ActionId.CheckBodyTemperature && !night.V2.BathThermometerRetrieved)
@@ -381,6 +409,7 @@ namespace NotANap.Core
 
         private static void ApplyMisdiagnosis(NightState night, V2ActionOutcome outcome, GameBalanceConfig config)
         {
+            outcome.WasMisdiagnosis = true;
             night.V2.Diagnosis.MisdiagnosisCount++;
             night.V2.Metrics.MisdiagnosisCount++;
             outcome.StaminaDelta -= config.V2.MisdiagnosisStaminaPenalty;
