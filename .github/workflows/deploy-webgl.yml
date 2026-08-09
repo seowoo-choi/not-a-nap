@@ -56,23 +56,37 @@ jobs:
         run: |
           test -f Builds/WebGL/index.html
           # A stale index mixed with another build used to request missing
-          # loader/data/wasm files. Verify the complete generated set before upload.
-          for file in \
-            Build/WebGL.loader.js \
-            Build/WebGL.framework.js \
-            Build/WebGL.data \
-            Build/WebGL.wasm
-          do
-            test -f "Builds/WebGL/$file" || {
-              echo "Missing WebGL artifact referenced by the generated build: $file"
+          # loader/data/wasm files. Verify the complete generated set before
+          # upload. The filenames are read from the index instead of hardcoded
+          # because compression settings change them (Brotli + decompression
+          # fallback appends .unityweb, plain Brotli appends .br).
+          # `|| true` keeps a no-match grep (exit 1) from tripping errexit/pipefail
+          # before the explicit checks below can report what is actually wrong.
+          build_files=$(
+            { grep -oE 'buildUrl \+ "/[^"]+"' Builds/WebGL/index.html || true; } |
+              sed -E 's|.*"/(.*)"|\1|' | sort -u
+          )
+          build_file_count=$(printf '%s\n' "$build_files" | grep -c . || true)
+          if [ "$build_file_count" -lt 4 ]; then
+            echo "Expected at least 4 Build/ references in index.html, found $build_file_count"
+            printf '  %s\n' "$build_files"
+            exit 1
+          fi
+          while IFS= read -r file; do
+            test -f "Builds/WebGL/Build/$file" || {
+              echo "Missing WebGL artifact referenced by the generated build: Build/$file"
               exit 1
             }
-          done
+          done <<< "$build_files"
           # Unity reuses stable WebGL filenames between deployments. Without a
           # version query, a browser can combine an older data/wasm response
           # with the latest index and leave the canvas blank after navigation.
-          perl -0pi -e 's/(\.(?:loader\.js|framework\.js|data|wasm))"/$1?v=$ENV{GITHUB_SHA}"/g' Builds/WebGL/index.html
-          grep -F "?v=${GITHUB_SHA}" Builds/WebGL/index.html
+          perl -0pi -e 's/(buildUrl \+ "\/[^"]+)"/$1?v=$ENV{GITHUB_SHA}"/g' Builds/WebGL/index.html
+          versioned=$(grep -o -F "?v=${GITHUB_SHA}" Builds/WebGL/index.html | wc -l)
+          if [ "$versioned" -lt "$build_file_count" ]; then
+            echo "Cache-busting query missing: versioned $versioned of $build_file_count Build/ references"
+            exit 1
+          fi
           touch Builds/WebGL/.nojekyll
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
