@@ -15,24 +15,24 @@ namespace NotANap.Core
         }
 
         public static readonly ItemDef Carrier = new ItemDef(ItemId.Carrier, "아기띠", "🎒",
-            "착용하면 계속 안은 상태가 됩니다. 진정 효과가 크고 잠들기 쉬워집니다.",
-            "매 시간 체력 소모. 반복 사용 시 아기가 습관으로 학습합니다.");
+            "품에 안긴 상태를 유지해 더 빨리 진정시킵니다.",
+            "시간마다 체력 소모 · 반복하면 아기띠 수면 습관이 생깁니다.");
 
         public static readonly ItemDef Pacifier = new ItemDef(ItemId.Pacifier, "쪽쪽이", "🍭",
-            "즉시 진정 (밤당 3회, 시간 소모 없음).",
-            "선잠 중 빠지면 아기가 깰 수 있습니다.");
+            "즉시 진정 · 밤당 3회 · 시간 소모 없음",
+            "선잠에 빠지면 다시 깰 수 있습니다.");
 
         public static readonly ItemDef Noise = new ItemDef(ItemId.Noise, "백색소음기", "🔊",
-            "켜두면 매 시간 진정 + 소음 이벤트를 막아줍니다.",
-            "매일 반복하면 익숙해져 효과가 줄어듭니다.");
+            "켜 둔 동안 아기를 달래고 소음 돌발 상황을 막습니다.",
+            "반복할수록 익숙해져 진정 효과가 줄어듭니다.");
 
         public static readonly ItemDef Bouncer = new ItemDef(ItemId.Bouncer, "바운서", "🪑",
-            "내려놓은 아기를 체력 소모 없이 달래줍니다.",
-            "자극에 민감한 아기에게는 역효과.");
+            "침대의 아기를 체력 소모 없이 달랩니다.",
+            "자극에 민감한 아기에게는 울음이 커집니다.");
 
         public static readonly ItemDef Monitor = new ItemDef(ItemId.Monitor, "베이비 모니터", "📟",
-            "아기의 상태 수치를 정확히 보여줍니다.",
-            "진정 효과는 없습니다. 정보가 곧 무기.");
+            "진정·수면·허기를 정확한 수치로 보여줍니다.",
+            "직접 달래지는 않지만 판단 실수를 줄여 줍니다.");
 
         public static readonly ItemDef[] All = { Carrier, Pacifier, Noise, Bouncer, Monitor };
 

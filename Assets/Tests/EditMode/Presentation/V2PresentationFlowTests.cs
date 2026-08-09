@@ -167,6 +167,8 @@ namespace NotANap.Presentation.Tests
             Assert.AreEqual("쪽쪽이 건네기", PresentationCopyMapper.V2ActionLabel(V2ActionId.Pacifier));
             Assert.AreEqual("조심히 눕히기", PresentationCopyMapper.V2ActionLabel(V2ActionId.Laydown));
             Assert.AreEqual("기저귀 갈기", PresentationCopyMapper.V2ActionLabel(V2ActionId.ChangeDiaper));
+            Assert.AreEqual("싸서 버리기", PresentationCopyMapper.V2ActionLabel(V2ActionId.DisposeDiaper));
+            Assert.AreEqual("손 씻기", PresentationCopyMapper.V2ActionLabel(V2ActionId.WashHands));
             Assert.AreEqual("온도·습도", PresentationCopyMapper.V2ActionLabel(V2ActionId.CheckEnvironment));
             Assert.AreEqual("아기 체온 확인", PresentationCopyMapper.V2ActionLabel(V2ActionId.CheckBodyTemperature));
             Assert.AreEqual("분유 준비", PresentationCopyMapper.V2ActionLabel(V2ActionId.PrepareWater));
@@ -224,8 +226,9 @@ namespace NotANap.Presentation.Tests
             StringAssert.Contains("신호", diary.LearnedSignal);
             StringAssert.Contains("보호자", diary.CaregiverGrowth);
             StringAssert.Contains("엄마", diary.MotherInsight);
-            StringAssert.Contains("함께", diary.CompanionMessage);
-            StringAssert.Contains("정답보다", diary.ShareCardText);
+            StringAssert.Contains("완료", diary.CompanionMessage);
+            StringAssert.Contains("최장 수면", diary.ShareCardText);
+            StringAssert.DoesNotContain("정답보다", diary.ShareCardText);
             StringAssert.Contains("아기", diary.BabyResponseReflection);
             StringAssert.Contains("백색소음", diary.HabitNotes.Single());
             Assert.IsNotEmpty(diary.HabitEffects.Single());
@@ -252,9 +255,11 @@ namespace NotANap.Presentation.Tests
             Assert.AreEqual(ScreenState.Ending, flow.Screen);
             Assert.AreEqual(EndingId.MorningWon, flow.BuildEnding().Id);
             Assert.IsFalse(flow.BuildEnding().IsSuccess);
+            Assert.AreEqual("아침은 왔지만, 두 가지 조건을 함께 지키지는 못했다.",
+                flow.BuildEnding().Subtitle);
             Assert.AreEqual(2, flow.BuildEnding().RequiredConditionCount);
             Assert.AreEqual(3, flow.BuildEnding().TotalConditionCount);
-            Assert.AreEqual("아쉬운 밤",
+            Assert.AreEqual("다시 도전",
                 PresentationCopyMapper.EndingStatusLabel(flow.BuildEnding().IsSuccess));
         }
 

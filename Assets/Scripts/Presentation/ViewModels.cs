@@ -220,6 +220,12 @@ namespace NotANap.Presentation
         public HomeLocation BabyLocation;
         public bool BabyAccompaniesCaregiver;
         public bool BathThermometerRetrieved;
+        public bool DiaperCheckedThisEncounter;
+        public bool DiaperWetConfirmed;
+        public bool DiaperStoolConfirmed;
+        public bool DiaperChangedPendingDisposal;
+        public bool DiaperRecommendationVisible;
+        public bool HandsNeedWashing;
         public string CurrentSignal;
         public string CaregiverReflection;
         public string NightRoleTitle;
@@ -241,6 +247,7 @@ namespace NotANap.Presentation
     {
         public V2ActionId Action;
         public string Label;
+        public string CostLabel;
         public bool Enabled;
     }
 

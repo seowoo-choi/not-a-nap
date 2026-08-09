@@ -24,8 +24,8 @@ namespace NotANap.Core
                 notes.Add(new MemoryNote
                 {
                     Positive = false,
-                    Text = "아기띠에서 잠드는 습관이 형성되었습니다.",
-                    Sub = "아기띠 진정 효과 ↑ / 침대에 눕히기 성공률 ↓"
+                    Text = "습관 획득 · 아기띠에서 잠들기",
+                    Sub = "아기띠 진정 ↑ · 맨손 눕히기 난이도 ↑"
                 });
             }
             if (s.HeldSleepTurns >= config.HeldSleepHabitThreshold || s.Grandma)
@@ -36,9 +36,9 @@ namespace NotANap.Core
                 {
                     Positive = false,
                     Text = s.Grandma
-                        ? "할머니 품의 기억이 남았습니다. 안겨 자는 것에 더 익숙해졌습니다."
-                        : "안겨서 자는 것에 익숙해졌습니다.",
-                    Sub = "품에서는 빨리 잠듦 / 혼자 두면 쉽게 깸"
+                        ? "습관 획득 · 할머니 품에서 잠들기"
+                        : "습관 획득 · 품에서 잠들기",
+                    Sub = "안기 진정 ↑ · 혼자 두면 쉽게 깸"
                 });
             }
             if (s.NoiseTurns >= config.NoiseHabitThreshold)
@@ -48,8 +48,8 @@ namespace NotANap.Core
                 notes.Add(new MemoryNote
                 {
                     Positive = false,
-                    Text = "백색소음에 익숙해졌습니다.",
-                    Sub = "백색소음기 효과 감소"
+                    Text = "습관 획득 · 백색소음",
+                    Sub = "백색소음기 진정 효과 ↓"
                 });
             }
             if (s.WatchOk >= config.WatchHabitThreshold)
@@ -59,8 +59,8 @@ namespace NotANap.Core
                 notes.Add(new MemoryNote
                 {
                     Positive = true,
-                    Text = "스스로 진정하는 힘이 자랐습니다.",
-                    Sub = "혼자서 잠들 확률 ↑ — 의존 습관을 되돌리는 열쇠"
+                    Text = "습관 획득 · 스스로 진정하기",
+                    Sub = "혼자 잠들 확률 ↑ · 다른 수면 습관 완화"
                 });
             }
             if (notes.Count == 0)
@@ -68,8 +68,8 @@ namespace NotANap.Core
                 notes.Add(new MemoryNote
                 {
                     Positive = true,
-                    Text = "뚜렷한 새 습관 없이 밤을 넘겼습니다.",
-                    Sub = "아기는 아직 당신을 관찰하는 중"
+                    Text = "새로 생긴 습관 없음",
+                    Sub = "다음 밤에도 자유롭게 방법을 바꿀 수 있습니다"
                 });
             }
 

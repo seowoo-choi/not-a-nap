@@ -363,12 +363,20 @@ namespace NotANap.Presentation
                 BabyLocation = Night.Baby.Held ? v2.CaregiverLocation : HomeLocation.Nursery,
                 BabyAccompaniesCaregiver = Night.Baby.Held,
                 BathThermometerRetrieved = v2.BathThermometerRetrieved,
+                DiaperCheckedThisEncounter = v2.Diagnosis.CheckedCauses.Contains(WakeCause.Diaper),
+                DiaperWetConfirmed = v2.Diagnosis.DiaperWetConfirmed,
+                DiaperStoolConfirmed = v2.Diagnosis.DiaperStoolConfirmed,
+                DiaperChangedPendingDisposal = v2.Diagnosis.DiaperChangedPendingDisposal,
+                DiaperRecommendationVisible = !v2.Diagnosis.CauseResolved &&
+                    v2.ElapsedMinutes >= v2.Diagnosis.DiaperRecommendationSuppressedUntilMinute &&
+                    !v2.Diagnosis.CheckedCauses.Contains(WakeCause.Diaper),
+                HandsNeedWashing = v2.HandsNeedWashing,
                 CurrentSignal = v2.VisibleSignals.Count > 0
                     ? PresentationCopyMapper.ObservationSignal(v2.VisibleSignals[0])
                     : DefaultSignal(v2, Night.Baby.Hunger),
                 CaregiverReflection = v2.CaregiverComposure >= 65
-                    ? "숨을 고르니 아기의 작은 변화가 조금 더 잘 보여요."
-                    : "서두르지 않아도 괜찮아요. 먼저 한 번 숨을 고르세요.",
+                    ? "숨을 고르자 놓쳤던 신호가 보인다."
+                    : "집중력이 흐려진다. 잠깐 숨을 고르자.",
                 NightRoleTitle = PresentationCopyMapper.NightRoleTitle(Night.NightId),
                 NightRuleChange = PresentationCopyMapper.NightRoleSummary(Night.NightId),
                 Grade = Night.Over ? NightEvaluationResolver.Evaluate(Night, _config).Grade : null
@@ -391,6 +399,7 @@ namespace NotANap.Presentation
                     Label = action == V2ActionId.ToggleCarrier
                         ? (Night.Wearing.Carrier ? "아기띠 벗기" : "아기띠 착용")
                         : PresentationCopyMapper.V2ActionLabel(action),
+                    CostLabel = V2ActionCostLabel(action),
                     Enabled = !Night.Over && IsV2ActionAvailable(action)
                 });
             }
@@ -407,7 +416,19 @@ namespace NotANap.Presentation
                 action == V2ActionId.MeasureFormula || action == V2ActionId.MixFormula ||
                 action == V2ActionId.CoolBottle || action == V2ActionId.CheckBottleTemperature)
                 return location == HomeLocation.Kitchen;
-            if (action == V2ActionId.FeedPreparedBottle) return withBaby;
+            if (action == V2ActionId.FeedPreparedBottle) return withBaby && !Night.V2.HandsNeedWashing;
+            if (action == V2ActionId.CheckDiaper)
+                return withBaby && !Night.V2.Diagnosis.DiaperWetConfirmed &&
+                    !Night.V2.Diagnosis.DiaperChangedPendingDisposal &&
+                    !Night.V2.Diagnosis.CheckedCauses.Contains(WakeCause.Diaper) &&
+                    Night.V2.ElapsedMinutes >= Night.V2.Diagnosis.DiaperRecommendationSuppressedUntilMinute;
+            if (action == V2ActionId.ChangeDiaper)
+                return withBaby && Night.V2.Diagnosis.DiaperWetConfirmed &&
+                    !Night.V2.Diagnosis.DiaperChangedPendingDisposal;
+            if (action == V2ActionId.DisposeDiaper)
+                return withBaby && Night.V2.Diagnosis.DiaperChangedPendingDisposal;
+            if (action == V2ActionId.WashHands)
+                return location == HomeLocation.Bathroom && Night.V2.HandsNeedWashing;
             if (action == V2ActionId.CheckEnvironment)
                 return location == HomeLocation.Nursery || location == HomeLocation.Bathroom;
             if (action == V2ActionId.AdjustTemperature ||
@@ -442,6 +463,23 @@ namespace NotANap.Presentation
             return true;
         }
 
+        private string V2ActionCostLabel(V2ActionId action)
+        {
+            if (action == V2ActionId.CheckDiaper)
+                return $"{_config.V2.DiaperCheckMinutes}분 · 체력 -{_config.V2.DiaperCheckStaminaCost:0}";
+            if (action == V2ActionId.ChangeDiaper)
+                return Night.V2.Diagnosis.DiaperStoolConfirmed
+                    ? $"{_config.V2.DiaperStoolChangeMinutes}분 · 체력 -{_config.V2.DiaperStoolChangeStaminaCost:0}"
+                    : $"{_config.V2.DiaperChangeMinutes}분 · 체력 -{_config.V2.DiaperChangeStaminaCost:0}";
+            if (action == V2ActionId.DisposeDiaper)
+                return Night.V2.Diagnosis.DiaperStoolConfirmed
+                    ? $"{_config.V2.DiaperStoolDisposeMinutes}분 · 체력 -{_config.V2.DiaperStoolDisposeStaminaCost:0}"
+                    : $"{_config.V2.DiaperDisposeMinutes}분 · 체력 -{_config.V2.DiaperDisposeStaminaCost:0}";
+            if (action == V2ActionId.WashHands)
+                return $"{_config.V2.WashHandsMinutes}분 · 체력 -{_config.V2.WashHandsStaminaCost:0}";
+            return null;
+        }
+
         public V2DiaryViewModel BuildV2Diary()
         {
             if (Night?.V2 == null || !Night.Over)
@@ -469,14 +507,14 @@ namespace NotANap.Presentation
                 Facts = facts,
                 HasNextNight = Run.CurrentNightId != NightId.HundredthNight,
                 LearnedSignal = facts.FirstNoticedSignal.HasValue
-                    ? $"처음 제대로 알아차린 신호는 ‘{PresentationCopyMapper.ObservationSignal(facts.FirstNoticedSignal.Value)}’였다."
-                    : "오늘은 서두르기보다 아기의 작은 신호를 다시 살펴보는 법을 배웠다.",
+                    ? $"오늘 처음 알아챈 신호 · {PresentationCopyMapper.ObservationSignal(facts.FirstNoticedSignal.Value)}"
+                    : "오늘의 신호 · 울음 전에 몸이 먼저 말한다.",
                 NextNightNote = m.MisdiagnosisCount > 0
-                    ? "다음 밤에는 바로 달래기 전에 기저귀·배고픔·환경을 차례로 확인하자."
-                    : "다음 밤에도 관찰한 신호에 맞는 반응을 하나씩 이어가자.",
+                    ? "다음 밤 목표 · 기저귀, 배고픔, 방 상태를 먼저 확인하기"
+                    : "다음 밤 목표 · 첫 신호를 놓치지 않기",
                 Encouragement = m.ParentStaminaAtDawn >= 30
-                    ? "아기와 보호자 모두를 돌보는 지속 가능한 밤에 가까워지고 있다."
-                    : "힘든 밤을 버틴 것도 돌봄이다. 다음에는 보호자의 숨 고르기도 먼저 챙기자.",
+                    ? "아기도 재우고 체력도 남겼다. 이 방식은 다음 밤에도 쓸 수 있다."
+                    : "아침까지 왔지만 체력을 너무 썼다. 다음 밤에는 숨 고르기를 챙기자.",
                 CaregiverGrowth = BuildCaregiverGrowth(Run.CaregiverStyle, Night),
                 MotherInsight = BuildFamilyUnderstanding(facts),
                 FamilyUnderstanding = BuildFamilyUnderstanding(facts),
@@ -486,7 +524,7 @@ namespace NotANap.Presentation
                 BabyResponseReflection = BuildBabyResponseReflection(facts),
                 CompanionMessage = CompanionMessageFor(Night.NightId),
                 ShareCardText = $"오늘 알아차린 신호 · {PrimaryLearnedSignal(Night.V2)}\n" +
-                    "정답보다 서로의 리듬을 알아가는 밤"
+                    $"최장 수면 {m.LongestSleepStretchMinutes}분 · 깨어남 {m.WakeCount}회"
             };
             foreach (var note in _v2MemoryNotes)
             {
@@ -510,7 +548,7 @@ namespace NotANap.Presentation
                 Id = ending.Id,
                 IsSuccess = ending.IsSuccess,
                 Title = PresentationCopyMapper.EndingTitle(ending.Id),
-                Subtitle = PresentationCopyMapper.EndingSubtitle(ending.Id),
+                Subtitle = PresentationCopyMapper.EndingSubtitle(ending.Id, ending.IsSuccess),
                 Symbol = PresentationCopyMapper.EndingSymbol(ending.Id),
                 MetConditionCount = victory.Count,
                 RequiredConditionCount = victory.RequiredCount,
@@ -522,8 +560,8 @@ namespace NotANap.Presentation
                 if (!ending.MetConditions.Contains(condition))
                     viewModel.UnmetConditions.Add(PresentationCopyMapper.VictoryConditionLabel(condition));
             viewModel.RetrySuggestion =
-                $"다음에는 {PresentationCopyMapper.CaregiverStyleName(NextStyle(Run.CaregiverStyle))}와 " +
-                $"{NextTemperament(Run.Temperament).Name} 아기의 밤을 선택해볼 수 있어요.";
+                $"다음 도전 · {PresentationCopyMapper.CaregiverStyleName(NextStyle(Run.CaregiverStyle))} / " +
+                $"{NextTemperament(Run.Temperament).Name} 아기";
             return viewModel;
         }
 
@@ -535,7 +573,7 @@ namespace NotANap.Presentation
         private static string BuildHabitReflection(DiaryFacts facts)
         {
             if (facts.Rhythms.Count == 0 || facts.Rhythms[0].Id == RhythmId.Neutral)
-                return "아직 굳어진 리듬은 없다. 오늘 알아차린 신호가 다음 밤의 출발점이 된다.";
+                return "아직 굳어진 습관은 없다. 오늘 반복한 행동이 다음 밤의 규칙이 된다.";
             var card = PresentationCopyMapper.RhythmCard(facts.Rhythms[0]);
             return $"{card.Help} {card.Burden}";
         }
@@ -543,45 +581,44 @@ namespace NotANap.Presentation
         private static string BuildFamilyUnderstanding(DiaryFacts facts)
         {
             if (facts.FeedingPreparationIncident)
-                return "평소 준비돼 있던 소독 젖병이 없자, 엄마를 비롯해 함께 밤을 지켜 온 보호자의 준비가 어떤 시간을 아껴줬는지 몸으로 알게 됐다.";
+                return "소독 젖병이 비자 엄마의 밤 준비가 보였다.";
             if (facts.LongestPreparationStep.HasValue)
-                return $"{PresentationCopyMapper.FeedingStepLabel(facts.LongestPreparationStep.Value)}를 직접 마치며, 엄마와 다른 보호자의 보이지 않던 준비도 돌봄의 일부였음을 알게 됐다.";
-            return "아기의 신호를 기다리고 내 숨도 돌보며, 엄마를 비롯해 함께 밤을 지켜 온 보호자의 시간을 조금 더 구체적으로 이해했다.";
+                return $"{PresentationCopyMapper.FeedingStepLabel(facts.LongestPreparationStep.Value)}를 하며 엄마의 준비를 이해했다.";
+            return "아기를 기다리며 엄마가 채운 밤의 시간이 보였다.";
         }
 
         private static string BuildActionLearning(DiaryFacts facts)
         {
             if (facts.RejectedAction.HasValue && facts.FollowupAction.HasValue)
-                return $"{PresentationCopyMapper.V2ActionLabel(facts.RejectedAction.Value)}이 이어지지 않자 " +
-                    $"{PresentationCopyMapper.V2ActionLabel(facts.FollowupAction.Value)}으로 바꿔 아기의 답을 다시 살폈다.";
+                return $"{PresentationCopyMapper.V2ActionLabel(facts.RejectedAction.Value)} 대신 " +
+                    $"{PresentationCopyMapper.V2ActionLabel(facts.FollowupAction.Value)}을 택했다.";
             if (facts.MostRepeatedAction.HasValue)
-                return $"가장 자주 건넨 돌봄은 {PresentationCopyMapper.V2ActionLabel(facts.MostRepeatedAction.Value)}였다. " +
-                    "반복할수록 같은 행동에도 아기의 작은 반응이 다르게 보였다.";
+                return $"가장 많이 한 행동 · {PresentationCopyMapper.V2ActionLabel(facts.MostRepeatedAction.Value)}";
             if (facts.SleepIntervalChoice == SleepIntervalChoice.PrepareNextFeed)
                 return "아기가 잠든 사이 다음 수유를 준비해, 깨어난 뒤의 서두름을 줄였다.";
-            return "행동을 서두르기보다 관찰한 신호에 맞춰 한 가지씩 바꿔 보았다.";
+            return "신호를 보고 행동을 바꿨다. 울음이 커지기 전에 움직였다.";
         }
 
         private static string BuildCaregiverFactReflection(DiaryFacts facts)
         {
             if (facts.UsedCatchBreath)
-                return $"깨어남이 {facts.WakeCount}번 이어진 밤에도 숨을 고르고 다시 돌아왔다. 새벽의 남은 체력은 {facts.ParentStamina:0}이었다.";
+                return $"{facts.WakeCount}번 깨어나도 숨을 골랐다. 남은 체력 {facts.ParentStamina:0}.";
             if (facts.BareHandsLaydownAttempts > 0)
                 return facts.BareHandsLaydownSucceeded
                     ? "도구 없이 품에서 침대로 옮기는 시도를 끝내 이어 냈다."
-                    : "맨손으로 내려놓아 본 시도는 실패가 아니라 더 깊은 잠 신호를 배우는 계기가 됐다.";
+                    : "실패 뒤 더 깊은 잠 신호를 기다렸다.";
             if (facts.LongestMovementDestination.HasValue)
-                return $"{PresentationCopyMapper.HomeLocationLabel(facts.LongestMovementDestination.Value)}으로 직접 움직이며 준비와 돌봄 사이의 시간을 체감했다.";
-            return $"아기가 {facts.WakeCount}번 깨어난 뒤에도 보호자의 체력 {facts.ParentStamina:0}을 남기며 밤을 건넜다.";
+                return $"{PresentationCopyMapper.HomeLocationLabel(facts.LongestMovementDestination.Value)}까지 움직여 직접 준비했다.";
+            return $"{facts.WakeCount}번 깨어난 뒤에도 체력 {facts.ParentStamina:0}을 남겼다.";
         }
 
         private static string BuildBabyResponseReflection(DiaryFacts facts)
         {
             if (facts.RejectedAction.HasValue && facts.FollowupAction.HasValue)
-                return $"아기는 {PresentationCopyMapper.V2ActionLabel(facts.RejectedAction.Value)}에는 편안해지지 않았지만, " +
-                    $"{PresentationCopyMapper.V2ActionLabel(facts.FollowupAction.Value)}을 건네자 다른 반응을 보여줬다.";
+                return $"{PresentationCopyMapper.V2ActionLabel(facts.RejectedAction.Value)}에는 보채고, " +
+                    $"{PresentationCopyMapper.V2ActionLabel(facts.FollowupAction.Value)}에는 숨을 골랐다.";
             if (facts.FirstNoticedSignal.HasValue)
-                return $"아기는 ‘{PresentationCopyMapper.ObservationLabel(facts.FirstNoticedSignal.Value)}’라는 움직임으로 먼저 말을 걸었다.";
+                return $"첫 신호는 ‘{PresentationCopyMapper.ObservationLabel(facts.FirstNoticedSignal.Value)}’였다.";
             if (facts.BareHandsLaydownAttempts > 0)
                 return facts.BareHandsLaydownSucceeded
                     ? "품에서 침대로 옮겨진 뒤에도 아기의 숨은 고르게 이어졌다."
@@ -642,18 +679,17 @@ namespace NotANap.Presentation
         private static string BuildCaregiverGrowth(CaregiverStyle style, NightState night)
         {
             var v2 = night.V2;
-            string opening = $"{PresentationCopyMapper.CaregiverStyleName(style)}로 시작한 나는 ";
             if (night.NightId == NightId.FirstNight)
-                return opening + (v2.VisibleSignals.Count > 0
-                    ? $"울음보다 먼저 오는 신호 {v2.VisibleSignals.Count}가지를 눈에 담았다."
-                    : "바로 답을 정하기보다 아기의 다음 움직임을 기다려보기로 했다.");
+                return v2.VisibleSignals.Count > 0
+                    ? $"보호자는 울기 전 신호 {v2.VisibleSignals.Count}가지를 먼저 봤다."
+                    : "보호자는 답을 서두르지 않고 다음 움직임을 기다렸다.";
             if (night.NightId == NightId.SecondNight)
-                return opening + (v2.Feeding.SanitationIncident
-                    ? "준비되지 않은 젖병 앞에서 서두름 대신 순서를 다시 세웠다."
-                    : $"깨어남 {v2.Metrics.WakeCount}번을 지나며 전날의 리듬을 조금 다르게 조율했다.");
-            return opening + (night.FiredEventIds.Count > 0
-                ? $"지난 선택이 돌아온 순간 {night.FiredEventIds.Count}번에도 다른 돌봄으로 다시 연결했다."
-                : "백일 동안 쌓인 리듬을 아기와 보호자 모두가 버틸 수 있게 이어 보았다.");
+                return v2.Feeding.SanitationIncident
+                    ? "보호자는 서두르지 않고 수유 순서를 다시 세웠다."
+                    : $"보호자는 깨어남 {v2.Metrics.WakeCount}번에도 다른 방법을 시험했다.";
+            return night.FiredEventIds.Count > 0
+                ? $"보호자는 돌아온 습관 {night.FiredEventIds.Count}번을 새 돌봄으로 바꿨다."
+                : "보호자는 백일의 습관을 가족이 버틸 리듬으로 바꿨다.";
         }
 
         private static BabyProfile DefaultProfileFor(Temperament temperament)
@@ -669,9 +705,9 @@ namespace NotANap.Presentation
 
         private static string CompanionMessageFor(NightId night) => night switch
         {
-            NightId.FirstNight => "함께 이 밤을 건너는 보호자의 문장 · “완벽하지 않아도, 알아차리려는 마음은 전해져요.”",
-            NightId.SecondNight => "함께 이 밤을 건너는 보호자의 문장 · “울음은 실패가 아니라 아직 해석 중인 말이래요.”",
-            _ => "당신과 같은 밤을 건너는 보호자들이 있어요. 서로 다른 리듬도 모두 돌봄의 기록입니다."
+            NightId.FirstNight => "첫째 밤 완료 · 이제 아기의 첫 신호를 안다.",
+            NightId.SecondNight => "둘째 밤 완료 · 반복한 행동이 습관이 됐다.",
+            _ => "백일의 밤 완료 · 우리 가족의 밤을 끝까지 지켰다."
         };
 
         private void BuildActions(PlayViewModel vm)

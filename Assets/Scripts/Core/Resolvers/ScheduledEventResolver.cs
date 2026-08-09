@@ -15,7 +15,7 @@ namespace NotANap.Core
             if (night.NightId == NightId.FirstNight && night.Hour == 0
                 && night.FiredEventIds.Add("first-night-diaper"))
             {
-                night.AddLog("💩 심상치 않은 냄새… 기저귀 사태 발생.", LogClass.Warn);
+                night.AddLog("기저귀가 젖었다. 갈아 주기 전까지 계속 보챈다.", LogClass.Warn);
                 b.Calm = CoreMath.Clamp(b.Calm - 20, 0, 100);
                 if (b.Sleep >= 50 && rng.NextDouble() < 0.8 - noiseGuard * 0.3)
                     TurnResolver.WakeBaby(run, night, "기저귀 불쾌감", rng);
@@ -25,11 +25,11 @@ namespace NotANap.Core
             if (night.NightId == NightId.SecondNight && night.Hour == 23
                 && night.FiredEventIds.Add("second-night-doorbell"))
             {
-                night.AddLog("🔔 초인종이 울렸다! 이 시간에 대체 누구야.", LogClass.Warn);
+                night.AddLog("딩동— 초인종이 울렸다. 하필 지금.", LogClass.Warn);
                 if (b.Sleep >= 50 && rng.NextDouble() < t.Sens + 0.25 - noiseGuard)
                     TurnResolver.WakeBaby(run, night, "초인종 소리", rng);
                 else if (b.Sleep >= 50)
-                    night.AddLog("휴… 아기가 뒤척였지만 다시 잠들었다.", LogClass.Good);
+                    night.AddLog("아기가 뒤척이다 다시 잠들었다.", LogClass.Good);
             }
         }
     }

@@ -49,6 +49,10 @@ namespace NotANap.Core
         public int MisdiagnosisCount;
         public int CheckAttempts;
         public int EncounterSequence;
+        public bool DiaperWetConfirmed;
+        public bool DiaperStoolConfirmed;
+        public bool DiaperChangedPendingDisposal;
+        public int DiaperRecommendationSuppressedUntilMinute;
 
         public void Begin(WakeCause cause, int decisionSeconds)
         {
@@ -60,6 +64,9 @@ namespace NotANap.Core
             RemainingDecisionSeconds = decisionSeconds;
             MisdiagnosisCount = 0;
             CheckAttempts = 0;
+            DiaperWetConfirmed = false;
+            DiaperStoolConfirmed = false;
+            DiaperChangedPendingDisposal = false;
         }
     }
 
@@ -137,8 +144,11 @@ namespace NotANap.Core
         public readonly List<ObservationSignalId> VisibleSignals = new List<ObservationSignalId>();
         public HomeLocation CaregiverLocation = HomeLocation.Nursery;
         public bool BathThermometerRetrieved;
+        public bool HandsNeedWashing;
         public bool ExhaustionWarned;
         public int BareHandsLaydownAttempts;
+        public int DiaperWakeCount;
+        public int NextDiaperEligibleMinute = 60;
         public readonly List<ActionAuditEntry> ActionAudit = new List<ActionAuditEntry>();
         public readonly HashSet<ProductCapability> ProductCapabilities = new HashSet<ProductCapability>();
     }

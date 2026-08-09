@@ -132,7 +132,7 @@ namespace NotANap.Core
                     else if (b.Crying)
                     {
                         b.Calm = CoreMath.Clamp(b.Calm - 9, 0, 100);
-                        Log("우는 아기를 지켜보는 건 고문이다… 울음이 더 커진다.", LogClass.Warn);
+                        Log("기다리는 사이 울음이 더 커진다.", LogClass.Warn);
                     }
                     else
                     {

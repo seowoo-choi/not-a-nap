@@ -122,10 +122,9 @@ namespace NotANap.Core
 
     public static class WakeScheduler
     {
-        private static readonly WakeCause[] Causes =
+        private static readonly WakeCause[] NonDiaperCauses =
         {
-            WakeCause.Hunger, WakeCause.Diaper,
-            WakeCause.Temperature, WakeCause.Humidity
+            WakeCause.Hunger, WakeCause.Temperature, WakeCause.Humidity
         };
 
         public static ScheduledWake Schedule(NightState night, GameBalanceConfig config, IRandomSource rng)
@@ -135,10 +134,17 @@ namespace NotANap.Core
             int max = config.V2.WakeDelayMaxMinutes;
             int rawDelay = min + rng.NextInt(max - min + 1);
             int delay = Math.Max(1, (int)Math.Round(rawDelay / night.V2.Modifier.WakeFrequencyMultiplier));
-            var cause = Causes[rng.NextInt(Causes.Length)];
+            int atMinute = night.V2.ElapsedMinutes + delay;
+            bool diaperEligible = night.V2.DiaperWakeCount < config.V2.MaxDiaperWakesPerNight &&
+                                  atMinute >= night.V2.NextDiaperEligibleMinute;
+            int causeCount = NonDiaperCauses.Length + (diaperEligible ? 1 : 0);
+            int causeIndex = rng.NextInt(causeCount);
+            var cause = diaperEligible && causeIndex == NonDiaperCauses.Length
+                ? WakeCause.Diaper
+                : NonDiaperCauses[causeIndex];
             var scheduled = new ScheduledWake
             {
-                AtElapsedMinute = night.V2.ElapsedMinutes + delay,
+                AtElapsedMinute = atMinute,
                 Cause = cause
             };
             night.V2.NextWake = scheduled;
@@ -270,7 +276,13 @@ namespace NotANap.Core
             night.Baby.Crying = true;
             night.V2.CryIntensity = Math.Max(night.V2.CryIntensity, 20);
             night.V2.Diagnosis.Begin(cause, config.V2.DecisionSeconds);
-            if (cause == WakeCause.Hunger)
+            if (cause == WakeCause.Diaper)
+            {
+                night.V2.DiaperWakeCount++;
+                night.V2.NextDiaperEligibleMinute = night.V2.ElapsedMinutes +
+                    config.V2.DiaperWakeSpacingMinutes;
+            }
+            else if (cause == WakeCause.Hunger)
                 night.Baby.Hunger = Math.Max(night.Baby.Hunger, config.V2.HungerLateThreshold);
             else if (cause == WakeCause.Temperature)
                 night.V2.Environment.TemperatureCelsius =

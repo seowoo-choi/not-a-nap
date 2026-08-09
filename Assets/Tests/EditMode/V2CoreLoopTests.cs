@@ -109,15 +109,15 @@ namespace NotANap.Core.Tests
 
             var first = Night(run, config);
             Assert.AreEqual(RoomSeason.Summer, first.V2.Environment.Season);
-            Assert.AreEqual(23, first.V2.Environment.TemperatureCelsius);
+            Assert.AreEqual(25, first.V2.Environment.TemperatureCelsius);
 
             run.CurrentNightId = NightId.SecondNight;
             var second = Night(run, config);
             Assert.AreEqual(RoomSeason.Winter, second.V2.Environment.Season);
-            Assert.AreEqual(26, second.V2.Environment.TemperatureCelsius);
+            Assert.AreEqual(17, second.V2.Environment.TemperatureCelsius);
 
             V2TimeResolver.TriggerWake(second, WakeCause.Temperature, config);
-            Assert.AreEqual(26, second.V2.Environment.TemperatureCelsius,
+            Assert.AreEqual(17, second.V2.Environment.TemperatureCelsius,
                 "온도 원인 각성에서도 실제 계절 시나리오 수치를 유지해야 한다.");
         }
 
@@ -206,7 +206,7 @@ namespace NotANap.Core.Tests
         }
 
         [Test]
-        public void DiaperFirstCheckThenChangeResolvesCause()
+        public void DiaperCareUsesCheckChangeDisposeSequenceAndExactCosts()
         {
             var config = GameBalanceConfig.Default();
             var run = RunState.Create(Temperament.Soft);
@@ -215,10 +215,71 @@ namespace NotANap.Core.Tests
             var checkedDiaper = V2ActionResolver.Apply(run, night, V2ActionId.CheckDiaper,
                 config, new SequenceRandomSource(0));
             Assert.AreEqual(DiaperCheckResult.Wet, checkedDiaper.DiaperCheckResult);
+            Assert.AreEqual(1, checkedDiaper.TimeDeltaMinutes);
+            Assert.AreEqual(-1, checkedDiaper.StaminaDelta);
             var changed = V2ActionResolver.Apply(run, night, V2ActionId.ChangeDiaper, config, new SequenceRandomSource(0));
-            Assert.IsTrue(changed.CauseResolved);
+            Assert.AreEqual(7, changed.TimeDeltaMinutes);
+            Assert.AreEqual(-2, changed.StaminaDelta);
+            Assert.IsFalse(changed.CauseResolved);
+            Assert.IsTrue(night.V2.Diagnosis.DiaperChangedPendingDisposal);
+            var disposed = V2ActionResolver.Apply(run, night, V2ActionId.DisposeDiaper,
+                config, new SequenceRandomSource(0));
+            Assert.AreEqual(2, disposed.TimeDeltaMinutes);
+            Assert.AreEqual(-1, disposed.StaminaDelta);
+            Assert.IsTrue(disposed.CauseResolved);
+            Assert.AreEqual(10, checkedDiaper.TimeDeltaMinutes + changed.TimeDeltaMinutes + disposed.TimeDeltaMinutes);
+            Assert.AreEqual(-4, checkedDiaper.StaminaDelta + changed.StaminaDelta + disposed.StaminaDelta);
+            Assert.IsFalse(night.V2.Diagnosis.DiaperWetConfirmed);
             Assert.AreEqual(1, night.V2.Metrics.CorrectFirstChecks);
             Assert.IsTrue(run.Traces.Contains(CoreTraceIds.DiaperCheckedFirst));
+        }
+
+        [Test]
+        public void StoolDiaperCostsTwentyMinutesAndRequiresHandwashingBeforeFeeding()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            V2TimeResolver.TriggerWake(night, WakeCause.Diaper, config);
+            double cryBefore = night.V2.CryIntensity;
+
+            var checkedDiaper = V2ActionResolver.Apply(run, night, V2ActionId.CheckDiaper,
+                config, new SequenceRandomSource(.99));
+            var changed = V2ActionResolver.Apply(run, night, V2ActionId.ChangeDiaper,
+                config, new SequenceRandomSource(0));
+            var disposed = V2ActionResolver.Apply(run, night, V2ActionId.DisposeDiaper,
+                config, new SequenceRandomSource(0));
+
+            Assert.AreEqual(DiaperCheckResult.Stool, checkedDiaper.DiaperCheckResult);
+            Assert.Greater(night.V2.CryIntensity, cryBefore - 25);
+            Assert.AreEqual(13, changed.TimeDeltaMinutes);
+            Assert.AreEqual(-4, changed.StaminaDelta);
+            Assert.AreEqual(4, disposed.TimeDeltaMinutes);
+            Assert.AreEqual(-2, disposed.StaminaDelta);
+            Assert.IsTrue(night.V2.HandsNeedWashing);
+
+            night.V2.Feeding.BottleSanitized = true;
+            night.V2.Feeding.WaterReady = true;
+            night.V2.Feeding.FormulaMeasured = true;
+            night.V2.Feeding.BottleMixed = true;
+            night.V2.Feeding.BottleCooled = true;
+            night.V2.Feeding.TemperatureChecked = true;
+            var blockedFeed = V2ActionResolver.Apply(run, night, V2ActionId.FeedPreparedBottle,
+                config, new SequenceRandomSource(0));
+            Assert.IsFalse(blockedFeed.Accepted);
+            Assert.AreEqual(V2ActionBlockReason.HandsDirty, blockedFeed.BlockReason);
+
+            night.V2.CaregiverLocation = HomeLocation.Bathroom;
+            var washed = V2ActionResolver.Apply(run, night, V2ActionId.WashHands,
+                config, new SequenceRandomSource(0));
+            Assert.IsTrue(washed.Accepted);
+            Assert.IsFalse(night.V2.HandsNeedWashing);
+            Assert.AreEqual(2, washed.TimeDeltaMinutes);
+            Assert.AreEqual(-1, washed.StaminaDelta);
+            Assert.AreEqual(20, checkedDiaper.TimeDeltaMinutes + changed.TimeDeltaMinutes +
+                disposed.TimeDeltaMinutes + washed.TimeDeltaMinutes);
+            Assert.AreEqual(-8, checkedDiaper.StaminaDelta + changed.StaminaDelta +
+                disposed.StaminaDelta + washed.StaminaDelta);
         }
 
         [Test]
@@ -233,8 +294,26 @@ namespace NotANap.Core.Tests
                 config, new SequenceRandomSource(0));
 
             Assert.AreEqual(DiaperCheckResult.Clean, result.DiaperCheckResult);
+            Assert.AreEqual(1, result.TimeDeltaMinutes);
+            Assert.AreEqual(-1, result.StaminaDelta);
+            Assert.AreEqual(config.V2.DiaperCleanRecommendationCooldownMinutes - 1,
+                night.V2.Diagnosis.DiaperRecommendationSuppressedUntilMinute - night.V2.ElapsedMinutes);
             Assert.AreEqual(0, night.V2.Metrics.MisdiagnosisCount);
             Assert.IsFalse(night.V2.Diagnosis.CauseResolved);
+        }
+
+        [Test]
+        public void DiaperWakeSchedulingStopsAfterThreeOccurrences()
+        {
+            var config = GameBalanceConfig.Default();
+            var night = Night();
+            night.V2.DiaperWakeCount = config.V2.MaxDiaperWakesPerNight;
+            night.V2.ElapsedMinutes = 300;
+            night.V2.NextDiaperEligibleMinute = 0;
+
+            for (int seed = 0; seed < 50; seed++)
+                Assert.AreNotEqual(WakeCause.Diaper,
+                    WakeScheduler.Schedule(night, config, new SystemRandomSource(seed)).Cause);
         }
 
         [Test]

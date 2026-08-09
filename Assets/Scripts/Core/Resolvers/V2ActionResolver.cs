@@ -72,16 +72,58 @@ namespace NotANap.Core
             {
                 case V2ActionId.CheckDiaper:
                     // 기저귀 우선 확인은 젖지 않았어도 안전한 배제 검사이므로 오판이 아니다.
-                    Diagnose(run, night, WakeCause.Diaper, outcome, config, false);
-                    outcome.DiaperCheckResult = night.V2.Diagnosis.ActiveCause == WakeCause.Diaper
-                        ? DiaperCheckResult.Wet : DiaperCheckResult.Clean;
+                    Consume(outcome, config.V2.DiaperCheckMinutes, -config.V2.DiaperCheckStaminaCost);
+                    RegisterCheck(run, night, WakeCause.Diaper, outcome, config, false);
+                    if (night.V2.Diagnosis.ActiveCause == WakeCause.Diaper)
+                    {
+                        bool stool = rng.NextDouble() >= 1d - config.V2.DiaperStoolChance;
+                        outcome.DiaperCheckResult = stool
+                            ? DiaperCheckResult.Stool : DiaperCheckResult.Wet;
+                        night.V2.Diagnosis.DiaperWetConfirmed = true;
+                        night.V2.Diagnosis.DiaperStoolConfirmed = stool;
+                        if (stool)
+                            night.V2.CryIntensity = CoreMath.Clamp(night.V2.CryIntensity +
+                                config.V2.DiaperStoolCryIncrease *
+                                night.V2.Modifier.CryEscalationMultiplier, 0, 100);
+                    }
+                    else
+                    {
+                        outcome.DiaperCheckResult = DiaperCheckResult.Clean;
+                        night.V2.Diagnosis.DiaperRecommendationSuppressedUntilMinute =
+                            night.V2.ElapsedMinutes + config.V2.DiaperCleanRecommendationCooldownMinutes;
+                    }
                     break;
                 case V2ActionId.ChangeDiaper:
-                    Consume(outcome, config.V2.DiagnosisActionMinutes, -4);
-                    if (night.V2.Diagnosis.ActiveCause == WakeCause.Diaper &&
-                        night.V2.Diagnosis.CheckedCauses.Contains(WakeCause.Diaper))
-                        ResolveCause(night, outcome);
-                    else ApplyMisdiagnosis(night, outcome, config);
+                    if (!night.V2.Diagnosis.DiaperWetConfirmed ||
+                        night.V2.Diagnosis.DiaperChangedPendingDisposal)
+                        return RejectAndAudit(night, outcome, V2ActionBlockReason.ToolRequired);
+                    Consume(outcome,
+                        night.V2.Diagnosis.DiaperStoolConfirmed
+                            ? config.V2.DiaperStoolChangeMinutes : config.V2.DiaperChangeMinutes,
+                        -(night.V2.Diagnosis.DiaperStoolConfirmed
+                            ? config.V2.DiaperStoolChangeStaminaCost : config.V2.DiaperChangeStaminaCost));
+                    night.V2.Diagnosis.DiaperChangedPendingDisposal = true;
+                    break;
+                case V2ActionId.DisposeDiaper:
+                    if (!night.V2.Diagnosis.DiaperChangedPendingDisposal)
+                        return RejectAndAudit(night, outcome, V2ActionBlockReason.ToolRequired);
+                    bool stoolDiaper = night.V2.Diagnosis.DiaperStoolConfirmed;
+                    outcome.DiaperCheckResult = stoolDiaper
+                        ? DiaperCheckResult.Stool : DiaperCheckResult.Wet;
+                    Consume(outcome,
+                        stoolDiaper ? config.V2.DiaperStoolDisposeMinutes : config.V2.DiaperDisposeMinutes,
+                        -(stoolDiaper ? config.V2.DiaperStoolDisposeStaminaCost : config.V2.DiaperDisposeStaminaCost));
+                    night.V2.Diagnosis.DiaperChangedPendingDisposal = false;
+                    night.V2.HandsNeedWashing = stoolDiaper;
+                    ResolveCause(night, outcome);
+                    night.V2.Diagnosis.DiaperWetConfirmed = false;
+                    night.V2.Diagnosis.DiaperStoolConfirmed = false;
+                    break;
+                case V2ActionId.WashHands:
+                    if (!night.V2.HandsNeedWashing)
+                        return RejectAndAudit(night, outcome, V2ActionBlockReason.ToolRequired);
+                    Consume(outcome, config.V2.WashHandsMinutes, -config.V2.WashHandsStaminaCost);
+                    night.V2.HandsNeedWashing = false;
                     break;
                 case V2ActionId.CheckHungerSignals:
                     Diagnose(run, night, WakeCause.Hunger, outcome, config, false);
@@ -280,6 +322,8 @@ namespace NotANap.Core
                     night.Baby.Held = true;
                     break;
                 case V2ActionId.FeedPreparedBottle:
+                    if (night.V2.HandsNeedWashing)
+                        return RejectAndAudit(night, outcome, V2ActionBlockReason.HandsDirty);
                     ApplyPreparedFeed(run, night, outcome, config);
                     break;
             }
@@ -297,6 +341,9 @@ namespace NotANap.Core
                 action == V2ActionId.MeasureFormula || action == V2ActionId.MixFormula ||
                 action == V2ActionId.CoolBottle || action == V2ActionId.CheckBottleTemperature)
                 return location == HomeLocation.Kitchen
+                    ? V2ActionBlockReason.None : V2ActionBlockReason.WrongLocation;
+            if (action == V2ActionId.WashHands)
+                return location == HomeLocation.Bathroom
                     ? V2ActionBlockReason.None : V2ActionBlockReason.WrongLocation;
             if (action == V2ActionId.CheckEnvironment)
                 return location == HomeLocation.Nursery || location == HomeLocation.Bathroom
@@ -423,6 +470,8 @@ namespace NotANap.Core
             outcome.CauseResolved = true;
             night.Baby.Crying = false;
             night.V2.CryIntensity = Math.Max(0, night.V2.CryIntensity - 25);
+            // 관찰 당시의 문구가 원인 해소 뒤에도 남아 현재 상태와 충돌하지 않게 한다.
+            night.V2.VisibleSignals.Clear();
         }
 
         private static void ApplyLaydown(RunState run, NightState night, V2ActionOutcome outcome,

@@ -5,7 +5,7 @@ namespace NotANap.Core
     public enum V2SleepStage { Awake, Drowsy, RemActiveSleep, NremDeepSleep }
     public enum WakeCause { Unknown, Diaper, Hunger, Temperature, Humidity, MoroReflex, PainOrCondition, NaturalCycle }
     public enum HungerSignalStage { None, Early, Active, Late }
-    public enum DiaperCheckResult { None, Clean, Wet }
+    public enum DiaperCheckResult { None, Clean, Wet, Stool }
     public enum PacifierAffinity { Loves, Neutral, Rejects }
     public enum NightModifierId { None, Vaccination, WonderWeeks, Teething, SleepRegression }
     public enum NightGrade { S, A, B, C, D }
@@ -30,7 +30,7 @@ namespace NotANap.Core
     public enum V2ActionId
     {
         Hold, Pat, Laydown, Pacifier, CheckLimbRelaxation,
-        CheckDiaper, ChangeDiaper, CheckHungerSignals, CheckEnvironment, CheckBodyTemperature,
+        CheckDiaper, ChangeDiaper, DisposeDiaper, WashHands, CheckHungerSignals, CheckEnvironment, CheckBodyTemperature,
         AdjustTemperature, AdjustHumidity, Hesitate,
         SterilizeBottle, PrepareWater, MeasureFormula, MixFormula, CoolBottle,
         CheckBottleTemperature, FeedPreparedBottle, HoldWhilePreparing,
@@ -40,7 +40,7 @@ namespace NotANap.Core
     public enum V2ActionBlockReason
     {
         None, BabyNotHeld, BabyNotAsleep, ItemUnavailable, CarrierAlreadyWorn,
-        WrongLocation, ToolRequired, CaregiverExhausted, ActionLimitReached
+        WrongLocation, ToolRequired, CaregiverExhausted, ActionLimitReached, HandsDirty
     }
 
     public static class CoreTraceIds

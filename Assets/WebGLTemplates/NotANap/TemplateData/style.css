@@ -38,14 +38,12 @@ body {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: min(72vw, 360px);
-  padding: 24px;
+  width: min(68vw, 320px);
+  padding: 0;
   transform: translate(-50%, -50%);
-  border: 1px solid rgba(173, 198, 220, 0.22);
-  border-radius: 18px;
-  background: rgba(5, 17, 31, 0.9);
+  border: 0;
+  background: transparent;
   text-align: center;
-  backdrop-filter: blur(12px);
   pointer-events: none;
 }
 
@@ -58,12 +56,12 @@ body {
 
 #loading-copy {
   margin-top: 10px;
-  color: #a9b7c5;
-  font-size: 14px;
+  color: #d8c6aa;
+  font-size: 16px;
 }
 
 #unity-progress-bar-empty {
-  height: 8px;
+  height: 4px;
   margin-top: 22px;
   overflow: hidden;
   border-radius: 999px;

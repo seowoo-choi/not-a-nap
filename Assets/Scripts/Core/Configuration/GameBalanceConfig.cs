@@ -56,6 +56,25 @@ namespace NotANap.Core
         public int NightDurationMinutes = 540;
         public int DefaultActionMinutes = 15;
         public int DiagnosisActionMinutes = 10;
+        public int DiaperCheckMinutes = 1;
+        public double DiaperCheckStaminaCost = 1;
+        // 소변 처리 전체(확인+갈기+버리기): 10분, 체력 -4.
+        public int DiaperChangeMinutes = 7;
+        public double DiaperChangeStaminaCost = 2;
+        public int DiaperDisposeMinutes = 2;
+        public double DiaperDisposeStaminaCost = 1;
+        // 대변 처리 전체(확인+갈기+버리기+손 씻기): 20분, 체력 -8.
+        public int DiaperStoolChangeMinutes = 13;
+        public double DiaperStoolChangeStaminaCost = 4;
+        public int DiaperStoolDisposeMinutes = 4;
+        public double DiaperStoolDisposeStaminaCost = 2;
+        public int WashHandsMinutes = 2;
+        public double WashHandsStaminaCost = 1;
+        public double DiaperStoolChance = .25;
+        public double DiaperStoolCryIncrease = 8;
+        public int DiaperCleanRecommendationCooldownMinutes = 75;
+        public int DiaperWakeSpacingMinutes = 90;
+        public int MaxDiaperWakesPerNight = 3;
         public int PreparationActionMinutes = 15;
         public int DecisionSeconds = 20;
         public double MisdiagnosisStaminaPenalty = 6;
@@ -66,8 +85,10 @@ namespace NotANap.Core
         public int WakeDelayMaxMinutes = 120;
         public double RecommendedTemperatureMin = 20;
         public double RecommendedTemperatureMax = 22;
-        public double SummerScenarioTemperature = 23;
-        public double WinterScenarioTemperature = 26;
+        // 환경 원인일 때는 권장 범위와 최소 3°C 차이를 두어 실제로
+        // 불편한 수치라는 점이 관찰만으로 읽히게 한다.
+        public double SummerScenarioTemperature = 25;
+        public double WinterScenarioTemperature = 17;
         public double RecommendedHumidityMin = 40;
         public double RecommendedHumidityMax = 60;
         public double TemperatureAdjustment;
