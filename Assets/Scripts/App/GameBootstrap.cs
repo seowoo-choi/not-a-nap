@@ -586,17 +586,66 @@ namespace NotANap.App
                     DrawIntroBodyProbe(babyRect, IntroCribRatio,
                         "침대 · 천천히 내려놓기", IntroLaydownDone);
                     return;
+                case IntroFindKitchen:
+                    DrawIntroRoomProbe(0, "아기방", "지금 있는 방", false);
+                    DrawIntroRoomProbe(1, "주방", "분유를 준비하는 곳", true);
+                    DrawIntroRoomProbe(2, "욕실", "손을 씻는 곳", false);
+                    return;
             }
 
             var nextRect = _portrait
                 ? new Rect(90f, 1420f, 900f, 128f)
                 : new Rect(110f, 700f, 720f, 92f);
             string next = _introBeat == IntroCauseMissed ? "다시 살펴보기" :
-                _introBeat == IntroLaydownFailed ? "다시 해보기" : "오늘 밤 준비하기  →";
+                _introBeat == IntroLaydownFailed ? "다시 해보기" :
+                _introBeat == IntroCauseFound ? "분유 준비하러 가기  →" :
+                "오늘 밤 준비하기  →";
             if (!DrawPrimaryButton(nextRect, next)) return;
             if (_introBeat == IntroCauseMissed) _introBeat = IntroAskCause;
             else if (_introBeat == IntroLaydownFailed) _introBeat = IntroFellAsleep;
+            // 원인을 찾은 뒤 곧장 인트로를 끝내면 달래기·얕은 잠·눕히기 단계가
+            // 한 번도 재생되지 않는다. "눕히면 무조건 깬다"는 오해가 여기서 시작된다.
+            else if (_introBeat == IntroCauseFound) _introBeat = IntroFindKitchen;
             else _flow.CompleteIntro();
+        }
+
+        /// <summary>인트로용 방 이동 칩. 본편의 방 이동 스트립과 같은 문법으로 가르친다.</summary>
+        private void DrawIntroRoomProbe(int index, string label, string detail, bool target)
+        {
+            Rect strip = _portrait
+                ? new Rect(90f, 1250f, 900f, 132f)
+                : new Rect(110f, 655f, 720f, 104f);
+            float gap = _portrait ? 14f : 12f;
+            float width = (strip.width - gap * 2f) / 3f;
+            var chip = new Rect(strip.x + index * (width + gap), strip.y, width, strip.height);
+
+            bool hovered = target && chip.Contains(Event.current.mousePosition);
+            float pulse = (Mathf.Sin(Time.unscaledTime * 3.1f + index) + 1f) * .5f;
+            if (target)
+            {
+                Color previous = GUI.color;
+                GUI.color = new Color(1f, .74f, .34f, hovered ? .5f : .22f + pulse * .16f);
+                GUI.DrawTexture(chip, _itemGlow, ScaleMode.StretchToFill, true);
+                GUI.color = previous;
+            }
+            DrawGlassPanel(chip, target ? (hovered ? .9f : .72f) : .34f, target);
+            GUI.Label(new Rect(chip.x, chip.y + (_portrait ? 22f : 16f), chip.width,
+                    _portrait ? 48f : 38f), label,
+                OverlayLabelStyle(_portrait ? 36 : 26, FontStyle.Bold,
+                    target ? new Color(1f, .88f, .68f) : new Color(.55f, .57f, .6f),
+                    TextAnchor.MiddleCenter));
+            GUI.Label(new Rect(chip.x, chip.y + (_portrait ? 74f : 56f), chip.width,
+                    _portrait ? 44f : 34f), detail,
+                OverlayLabelStyle(_portrait ? 26 : 18, FontStyle.Normal,
+                    target ? new Color(.92f, .86f, .74f) : new Color(.45f, .47f, .5f),
+                    TextAnchor.MiddleCenter));
+
+            if (!target) return;
+            if (GUI.Button(chip, GUIContent.none, GUIStyle.none))
+            {
+                _audio.PlayUi();
+                _introBeat = IntroSoothe;
+            }
         }
 
         // 인트로 단계. 관찰 → 돌봄 → 얕은 잠 → 깊은 잠 확인 → 눕히기까지
@@ -609,6 +658,7 @@ namespace NotANap.App
         private const int IntroLaydownFailed = 5;
         private const int IntroDeepSleep = 6;
         private const int IntroLaydownDone = 7;
+        private const int IntroFindKitchen = 8;
 
         private static readonly Vector4 IntroMouthRatio = new Vector4(.38f, .17f, .24f, .2f);
         private static readonly Vector4 IntroBackRatio = new Vector4(.58f, .3f, .25f, .34f);
@@ -619,6 +669,7 @@ namespace NotANap.App
         private string IntroStepLabel() => _introBeat switch
         {
             IntroAskCause or IntroCauseFound or IntroCauseMissed => "21:00 · 신호 읽기",
+            IntroFindKitchen => "21:05 · 방을 옮겨서",
             IntroSoothe => "21:10 · 달래기",
             IntroFellAsleep or IntroLaydownFailed => "21:25 · 잠들었다",
             IntroDeepSleep => "21:55 · 깊은 잠",
@@ -630,6 +681,7 @@ namespace NotANap.App
             IntroAskCause => "아기는 왜 보채는 걸까?",
             IntroCauseFound => "맞았다. 배가 고팠다.",
             IntroCauseMissed => "울음이 한 단계 커졌다.",
+            IntroFindKitchen => "분유는 아기방에 없다.",
             IntroSoothe => "먹였다. 이제 재울 차례다.",
             IntroFellAsleep => "잠들었다. 하지만 아직 얕은 잠이다.",
             IntroLaydownFailed => "등이 닿자 눈이 번쩍.",
@@ -646,7 +698,11 @@ namespace NotANap.App
                 "울기 전에 신호를 알아차리자 몸의 힘이 조금 풀렸다.\n" +
                 "이렇게 아기 몸을 눌러 확인하면 된다.",
             IntroCauseMissed =>
-                "오늘 밤은 배고픔이었다. 다음에는 입과 손을 먼저 보자.",
+                "오늘 밤은 배고픔이었다. 원인을 못 찾은 채 달래면\n" +
+                "아기는 절반만 진정하고, 결국 잠들지 못한다.",
+            IntroFindKitchen =>
+                "돌봄은 방마다 할 수 있는 일이 다르다. 분유는 주방에서 준비하고\n" +
+                "아기에게 돌아와 먹인다. 아래에서 주방을 눌러 보자.",
             IntroSoothe =>
                 "안거나 토닥이면 진정도가 오른다.\n" +
                 "등을 눌러 같은 리듬으로 토닥여 보자.",
