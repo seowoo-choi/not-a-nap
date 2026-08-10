@@ -60,9 +60,14 @@ namespace NotANap.App
         private Texture2D _introBabyArt;
         private Texture2D _lyingSleepArt;
         private Texture2D _geneticDoubleCurly;
+        private Texture2D _geneticDoubleStraight;
+        private Texture2D _geneticMonolidCurly;
+        private Texture2D _geneticMonolidStraight;
         private Material _mouthWarpMaterial;
         private readonly Dictionary<string, MouthWarpProfile> _mouthWarpProfiles =
             new Dictionary<string, MouthWarpProfile>();
+        private readonly Dictionary<string, Texture2D> _babyVariantTextures =
+            new Dictionary<string, Texture2D>();
         private readonly Dictionary<V2ActionId, Texture2D[]> _interactionFrames =
             new Dictionary<V2ActionId, Texture2D[]>();
         private Texture2D[] _carrierBabyFrames;
@@ -86,12 +91,24 @@ namespace NotANap.App
         private ItemId? _setupFocus;
         private bool _titleDropAttempted;
         private int _introBeat;
+        private bool _dadMonolid;
+        private bool _momMonolid = true;
+        private bool _dadStraightHair;
+        private bool _momStraightHair = true;
         private bool _dadBigMouth;
         private bool _momBigMouth = true;
+        private bool _dadBigNose;
+        private bool _momBigNose = true;
         private bool _dadHighVoice;
         private bool _momHighVoice = true;
+        private bool _dadDeepSkin;
+        private bool _momDeepSkin = true;
+        private bool _babyMonolid;
+        private bool _babyStraightHair;
         private bool _babyBigMouth;
+        private bool _babyBigNose;
         private bool _babyHighVoice;
+        private bool _babyDeepSkin;
         private int _babyVoiceVariant;
         private int _familyRollCount;
         private bool _familyRolled;
@@ -132,6 +149,30 @@ namespace NotANap.App
         private static readonly string[] FussBabble = { "으응…", "에에…", "아으…" };
         private static readonly string[] CryBabble = { "으아앙!", "에앵!", "아앙…" };
 
+        private static readonly HashSet<string> BabyStateTextureNames = new HashSet<string>
+        {
+            "awake_calm", "fuss_soft", "cry_hard", "hunger_early", "hunger_late",
+            "drowsy", "rem_active", "nrem_deep", "relaxed", "moro_startle",
+            "pacifier_accept", "pacifier_reject"
+        };
+
+        private static readonly HashSet<string> BabyAnimatedTextureNames = new HashSet<string>
+        {
+            "awake_0", "awake_1", "awake_2", "awake_3",
+            "fuss_0", "fuss_1", "fuss_2", "fuss_3",
+            "sleep_0", "sleep_1", "sleep_2", "sleep_3"
+        };
+
+        private static readonly HashSet<string> BabyInteractionTextureNames = new HashSet<string>
+        {
+            "pat_0", "pat_1", "pat_2", "pat_3",
+            "hold_0", "hold_1", "hold_2", "hold_3",
+            "feed_0", "feed_1", "feed_2", "feed_3",
+            "carrier_0", "carrier_1", "carrier_2", "carrier_3",
+            "pacifier_0", "pacifier_1", "pacifier_2", "pacifier_3",
+            "diaper_check", "diaper_change", "limb_check", "temperature_check", "lying_sleep"
+        };
+
         private enum ActionGroup { Diagnose, Care, Feed }
         private enum ContinuousCareMode { None, Pat, Diaper }
 
@@ -140,14 +181,19 @@ namespace NotANap.App
             public readonly Rect Hotspot;
             public readonly V2ActionId Action;
             public readonly string Label;
+            public readonly string Prompt;
 
-            public BodyActionLink(Rect hotspot, V2ActionId action, string label)
+            public BodyActionLink(Rect hotspot, V2ActionId action, string label, string prompt)
             {
                 Hotspot = hotspot;
                 Action = action;
                 Label = label;
+                Prompt = prompt;
             }
         }
+
+        private const float RecommendedGlowBaseAlpha = .30f;
+        private const float RecommendedGlowPulseAlpha = .12f;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
@@ -173,6 +219,9 @@ namespace NotANap.App
             _introBabyArt = Resources.Load<Texture2D>("Art/Baby/cry_hard");
             _lyingSleepArt = Resources.Load<Texture2D>("Art/Baby/Interaction/lying_sleep");
             _geneticDoubleCurly = Resources.Load<Texture2D>("Art/Baby/awake_calm");
+            _geneticDoubleStraight = Resources.Load<Texture2D>("Art/Baby/Genetics/double_straight");
+            _geneticMonolidCurly = Resources.Load<Texture2D>("Art/Baby/Genetics/monolid_curly");
+            _geneticMonolidStraight = Resources.Load<Texture2D>("Art/Baby/Genetics/monolid_straight");
             BuildMouthWarpProfiles();
             Shader mouthWarpShader = Resources.Load<Shader>("Shaders/BabyMouthWarp");
             if (mouthWarpShader != null) _mouthWarpMaterial = new Material(mouthWarpShader);
@@ -378,21 +427,21 @@ namespace NotANap.App
                 case ScreenState.Diary: DrawDiary(); break;
                 case ScreenState.Ending: DrawEnding(); break;
             }
-            DrawGameFeelOverlay(referenceWidth, referenceHeight, impactProgress);
+            DrawGameFeelOverlay(impactProgress);
             GUI.matrix = oldMatrix;
         }
 
-        private void DrawGameFeelOverlay(float width, float height, float impactProgress)
+        private void DrawGameFeelOverlay(float impactProgress)
         {
             if (impactProgress < 1f && _impactColor.a > 0f)
             {
                 var color = _impactColor;
                 color.a *= (1f - impactProgress) * 0.38f;
-                Fill(new Rect(0, 0, width, height), color);
+                FillViewport(color);
             }
             float transition = Mathf.Clamp01((Time.unscaledTime - _screenTransitionStarted) / 0.48f);
             if (transition < 1f)
-                Fill(new Rect(0, 0, width, height), new Color(0.005f, 0.012f, 0.024f,
+                FillViewport(new Color(0.005f, 0.012f, 0.024f,
                     Mathf.SmoothStep(0.72f, 0f, transition)));
         }
 
@@ -411,18 +460,24 @@ namespace NotANap.App
 
         private void DrawBackdrop()
         {
-            GUI.color = Color.white;
-            float width = _portrait ? PortraitWidth : LandscapeWidth;
-            float height = _portrait ? PortraitHeight : LandscapeHeight;
-            if (_room != null) GUI.DrawTexture(new Rect(0, 0, width, height), _room, ScaleMode.ScaleAndCrop);
-            else Fill(new Rect(0, 0, width, height), new Color(0.025f, 0.055f, 0.1f));
-            Fill(new Rect(0, 0, width, height), new Color(0.01f, 0.025f, 0.05f, 0.25f));
+            // OnGUI 시작 시 실제 화면 전체에 이미 배경을 그렸다. 기준 캔버스에
+            // 배경을 다시 그리면 9:16보다 넓은 세로 화면에서 중앙만 어두워져
+            // 좌우에 밝은 하드 엣지 밴드가 생긴다.
+            FillViewport(new Color(0.01f, 0.025f, 0.05f, 0.25f));
+        }
+
+        private static void FillViewport(Color color)
+        {
+            Matrix4x4 previousMatrix = GUI.matrix;
+            GUI.matrix = Matrix4x4.identity;
+            Fill(new Rect(0f, 0f, Screen.width, Screen.height), color);
+            GUI.matrix = previousMatrix;
         }
 
         private void DrawTitle()
         {
             if (_portrait) { DrawPortraitTitle(); return; }
-            Fill(new Rect(0, 0, LandscapeWidth, LandscapeHeight), new Color(0.01f, 0.02f, 0.035f, 0.24f));
+            FillViewport(new Color(0.01f, 0.02f, 0.035f, 0.24f));
             if (!_titleDropAttempted)
             {
                 GUI.Label(new Rect(110, 90, 420, 78), "02:47", _display);
@@ -463,9 +518,7 @@ namespace NotANap.App
 
         private void DrawIntro()
         {
-            float width = _portrait ? PortraitWidth : LandscapeWidth;
-            float height = _portrait ? PortraitHeight : LandscapeHeight;
-            Fill(new Rect(0, 0, width, height), new Color(0.01f, 0.015f, 0.025f, 0.48f));
+            FillViewport(new Color(0.01f, 0.015f, 0.025f, 0.48f));
 
             float babySize = _portrait ? 650f : 620f;
             var babyRect = _portrait
@@ -497,10 +550,12 @@ namespace NotANap.App
                 OverlayLabelStyle(_portrait ? 50 : 40, FontStyle.Bold,
                     Color.white, TextAnchor.UpperLeft));
             string body = _introBeat == 0
-                ? "아직 울지는 않는다. 입을 오물거리고 손을 입으로 가져간다."
+                ? "아직 울지는 않는다. 입을 오물거리고 손을 입으로 가져간다.\n" +
+                  "궁금한 곳을 직접 눌러 확인해 보자."
                 : _introBeat == 1
-                    ? "울기 전에 신호를 알아차리자 몸의 힘이 조금 풀렸다."
-                    : "첫 신호는 배고픔이었다. 다음에는 입과 손을 먼저 보자.";
+                    ? "울기 전에 신호를 알아차리자 몸의 힘이 조금 풀렸다.\n" +
+                      "이렇게 아기 몸을 눌러 확인하면 된다."
+                    : "오늘 밤은 배고픔이었다. 다음에는 입과 손을 먼저 보자.";
             GUI.Label(new Rect(copyPanel.x + 38f, copyPanel.y + 220f,
                 copyPanel.width - 76f, 130f), body,
                 OverlayLabelStyle(_portrait ? 40 : 27, FontStyle.Normal,
@@ -508,18 +563,14 @@ namespace NotANap.App
 
             if (_introBeat == 0)
             {
-                if (_portrait)
-                {
-                    DrawIntroCauseButton(new Rect(90f, 1260f, 900f, 122f), "배가 고픈가?", 1);
-                    DrawIntroCauseButton(new Rect(90f, 1408f, 900f, 122f), "기저귀가 불편한가?", 2);
-                    DrawIntroCauseButton(new Rect(90f, 1556f, 900f, 122f), "졸린가?", 3);
-                }
-                else
-                {
-                    DrawIntroCauseButton(new Rect(110f, 675f, 500f, 92f), "배가 고픈가?", 1);
-                    DrawIntroCauseButton(new Rect(630f, 675f, 500f, 92f), "기저귀가 불편한가?", 2);
-                    DrawIntroCauseButton(new Rect(1150f, 675f, 500f, 92f), "졸린가?", 3);
-                }
+                // 인트로는 본편과 같은 문법으로 가르친다. 3지선다 버튼 대신
+                // 실제 플레이에서 쓰는 신체 부위 히트존을 그대로 눌러보게 한다.
+                DrawIntroBodyProbe(babyRect, new Vector4(.38f, .17f, .24f, .2f),
+                    "입과 손 · 배고픔 신호 살피기", 1);
+                DrawIntroBodyProbe(babyRect, new Vector4(.34f, .58f, .33f, .23f),
+                    "기저귀 · 젖었는지 살피기", 2);
+                DrawIntroBodyProbe(babyRect, new Vector4(.58f, .3f, .25f, .34f),
+                    "등 · 토닥여 달래기", 3);
                 return;
             }
 
@@ -530,9 +581,46 @@ namespace NotANap.App
                 _flow.CompleteIntro();
         }
 
-        private void DrawIntroCauseButton(Rect rect, string label, int choice)
+        /// <summary>
+        /// 인트로용 신체 히트존. ratio는 아기 rect 대비 (x, y, width, height) 비율이며
+        /// 플레이 화면의 DrawLinkedBodyActions와 같은 값을 쓴다.
+        /// </summary>
+        private void DrawIntroBodyProbe(Rect babyRect, Vector4 ratio, string label, int choice)
         {
-            if (!DrawPrimaryButton(rect, label)) return;
+            var hotspot = new Rect(
+                babyRect.x + babyRect.width * ratio.x,
+                babyRect.y + babyRect.height * ratio.y,
+                babyRect.width * ratio.z,
+                babyRect.height * ratio.w);
+            bool hovered = hotspot.Contains(Event.current.mousePosition);
+            float pulse = (Mathf.Sin(Time.unscaledTime * 3.1f + choice) + 1f) * .5f;
+            Color accent = hovered
+                ? new Color(.45f, .9f, .86f)
+                : new Color(1f, .72f, .3f);
+
+            Color previous = GUI.color;
+            GUI.color = new Color(accent.r, accent.g, accent.b,
+                hovered ? .5f : .26f + pulse * .14f);
+            GUI.DrawTexture(hotspot, _itemGlow, ScaleMode.StretchToFill, true);
+            GUI.color = previous;
+            if (hovered) DrawCareSparkles(hotspot.center, .42f, 2);
+
+            float labelWidth = _portrait ? 420f : 340f;
+            float labelHeight = _portrait ? 46f : 36f;
+            var labelRect = new Rect(hotspot.center.x - labelWidth * .5f,
+                hotspot.yMax + 6f, labelWidth, labelHeight);
+            DrawGlassPanel(labelRect, hovered ? .9f : .62f);
+            GUI.Label(labelRect, label, OverlayLabelStyle(_portrait ? 21 : 17,
+                FontStyle.Bold, hovered ? accent : new Color(.93f, .93f, .9f),
+                TextAnchor.MiddleCenter));
+
+            if (GUI.Button(hotspot, GUIContent.none, GUIStyle.none) ||
+                GUI.Button(labelRect, GUIContent.none, GUIStyle.none))
+                ResolveIntroProbe(choice);
+        }
+
+        private void ResolveIntroProbe(int choice)
+        {
             _introBeat = choice;
             _audio?.PlayUi();
             TriggerImpact(choice == 1
@@ -543,9 +631,7 @@ namespace NotANap.App
 
         private void DrawFamilySetup()
         {
-            float width = _portrait ? PortraitWidth : LandscapeWidth;
-            float height = _portrait ? PortraitHeight : LandscapeHeight;
-            Fill(new Rect(0, 0, width, height), new Color(0.01f, 0.02f, 0.035f, 0.52f));
+            FillViewport(new Color(0.01f, 0.02f, 0.035f, 0.52f));
             GUI.Label(_portrait
                     ? new Rect(60f, 55f, 960f, 78f)
                     : new Rect(90f, 50f, 1000f, 64f),
@@ -553,15 +639,17 @@ namespace NotANap.App
             GUI.Label(_portrait
                     ? new Rect(60f, 130f, 960f, 60f)
                     : new Rect(90f, 112f, 1250f, 44f),
-                "엄마와 아빠의 입 모양과 목소리를 골라 주세요",
+                "엄마와 아빠의 눈매·머리결·입·코·피부 톤과 목소리를 골라 주세요",
                 _caption);
 
             if (_portrait)
             {
                 DrawParentTraitPanel(new Rect(48f, 190f, 474f, 540f), "아빠",
-                    ref _dadBigMouth, ref _dadHighVoice);
+                    ref _dadMonolid, ref _dadStraightHair, ref _dadBigMouth, ref _dadBigNose,
+                    ref _dadDeepSkin, ref _dadHighVoice);
                 DrawParentTraitPanel(new Rect(558f, 190f, 474f, 540f), "엄마",
-                    ref _momBigMouth, ref _momHighVoice);
+                    ref _momMonolid, ref _momStraightHair, ref _momBigMouth, ref _momBigNose,
+                    ref _momDeepSkin, ref _momHighVoice);
                 DrawBabyGachaResult(new Rect(240f, 735f, 600f, 500f));
                 DrawBabyNameInput(new Rect(190f, 1370f, 700f, 112f));
                 if (DrawPrimaryButton(new Rect(90f, 1500f, 900f, 124f),
@@ -586,10 +674,12 @@ namespace NotANap.App
             }
             else
             {
-                DrawParentTraitPanel(new Rect(90f, 200f, 480f, 420f), "아빠",
-                    ref _dadBigMouth, ref _dadHighVoice);
-                DrawParentTraitPanel(new Rect(600f, 200f, 480f, 420f), "엄마",
-                    ref _momBigMouth, ref _momHighVoice);
+                DrawParentTraitPanel(new Rect(90f, 200f, 480f, 470f), "아빠",
+                    ref _dadMonolid, ref _dadStraightHair, ref _dadBigMouth, ref _dadBigNose,
+                    ref _dadDeepSkin, ref _dadHighVoice);
+                DrawParentTraitPanel(new Rect(600f, 200f, 480f, 470f), "엄마",
+                    ref _momMonolid, ref _momStraightHair, ref _momBigMouth, ref _momBigNose,
+                    ref _momDeepSkin, ref _momHighVoice);
                 DrawBabyGachaResult(new Rect(1120f, 165f, 610f, 650f));
                 DrawBabyNameInput(new Rect(1120f, 720f, 610f, 64f));
                 if (DrawPrimaryButton(new Rect(160f, 720f, 420f, 82f),
@@ -643,35 +733,49 @@ namespace NotANap.App
         }
 
         private void DrawParentTraitPanel(Rect rect, string title,
-            ref bool bigMouth, ref bool highVoice)
+            ref bool monolid, ref bool straightHair, ref bool bigMouth, ref bool bigNose,
+            ref bool deepSkin, ref bool highVoice)
         {
             DrawGlassPanel(rect, 0.76f);
             GUI.Label(new Rect(rect.x + 28f, rect.y + 22f, rect.width - 56f, 48f),
                 title, OverlayLabelStyle(_portrait ? 31 : 27, FontStyle.Bold,
                     new Color(1f, 0.85f, 0.62f)));
-            float gap = 14f;
-            float choiceWidth = (rect.width - 56f - gap) * 0.5f;
             float firstLabelY = rect.y + 72f;
-            float rowStep = _portrait ? 145f : 106f;
-            float buttonHeight = _portrait ? 122f : 60f;
-            DrawBinaryTraitRow(firstLabelY, "입 모양", "작은 입", "큰 입",
-                rect, choiceWidth, gap, buttonHeight, ref bigMouth);
-            DrawBinaryTraitRow(firstLabelY + rowStep, "목소리", "낮고 차분하게", "높고 씩씩하게",
-                rect, choiceWidth, gap, buttonHeight, ref highVoice);
+            // 여섯 형질은 라벨과 선택지를 한 행에 둬서 작은 화면에서도 서로 겹치지 않는다.
+            float rowStep = (rect.yMax - 16f - firstLabelY) / 6f;
+            DrawBinaryTraitRow(firstLabelY, "눈매", "쌍꺼풀", "무쌍", rect, rowStep, ref monolid);
+            DrawBinaryTraitRow(firstLabelY + rowStep, "머리결", "곱슬", "직모",
+                rect, rowStep, ref straightHair);
+            DrawBinaryTraitRow(firstLabelY + rowStep * 2f, "입 모양", "작은 입", "큰 입",
+                rect, rowStep, ref bigMouth);
+            DrawBinaryTraitRow(firstLabelY + rowStep * 3f, "코 모양", "작은 코", "큰 코",
+                rect, rowStep, ref bigNose);
+            DrawBinaryTraitRow(firstLabelY + rowStep * 4f, "피부 톤", "밝은 톤", "진한 톤",
+                rect, rowStep, ref deepSkin);
+            DrawBinaryTraitRow(firstLabelY + rowStep * 5f, "목소리", "낮고 차분", "높고 씩씩",
+                rect, rowStep, ref highVoice);
         }
 
         private void DrawBinaryTraitRow(float labelY, string label, string left, string right,
-            Rect panel, float choiceWidth, float gap, float buttonHeight, ref bool rightSelected)
+            Rect panel, float rowStep, ref bool rightSelected)
         {
-            GUI.Label(new Rect(panel.x + 28f, labelY, panel.width - 56f, 28f), label, _caption);
-            float buttonY = labelY + 30f;
-            if (DrawChoiceButton(new Rect(panel.x + 28f, buttonY, choiceWidth, buttonHeight),
+            float inset = 22f;
+            float labelWidth = _portrait ? 76f : 70f;
+            float gap = 9f;
+            float choiceWidth = (panel.width - inset * 2f - labelWidth - gap * 2f) * .5f;
+            float buttonHeight = rowStep - 8f;
+            float buttonY = labelY + 2f;
+            GUI.Label(new Rect(panel.x + inset, labelY, labelWidth, rowStep), label,
+                OverlayLabelStyle(_portrait ? 19 : 17, FontStyle.Bold,
+                    new Color(.78f, .82f, .86f), TextAnchor.MiddleLeft));
+            float firstX = panel.x + inset + labelWidth + gap;
+            if (DrawChoiceButton(new Rect(firstX, buttonY, choiceWidth, buttonHeight),
                     left, !rightSelected))
             {
                 rightSelected = false;
                 _familyRolled = false;
             }
-            if (DrawChoiceButton(new Rect(panel.x + 28f + choiceWidth + gap, buttonY,
+            if (DrawChoiceButton(new Rect(firstX + choiceWidth + gap, buttonY,
                     choiceWidth, buttonHeight), right, rightSelected))
             {
                 rightSelected = true;
@@ -697,19 +801,26 @@ namespace NotANap.App
                 _itemShadow, ScaleMode.StretchToFill, true);
             if (portrait != null) DrawGeneticPortrait(artRect, portrait);
             string mouthSource = TraitSource(_babyBigMouth, _dadBigMouth, _momBigMouth);
+            string noseSource = TraitSource(_babyBigNose, _dadBigNose, _momBigNose);
+            string skinSource = TraitSource(_babyDeepSkin, _dadDeepSkin, _momDeepSkin);
             string voiceSource = TraitSource(_babyHighVoice, _dadHighVoice, _momHighVoice);
+            string eyeSource = TraitSource(_babyMonolid, _dadMonolid, _momMonolid);
+            string hairSource = TraitSource(_babyStraightHair, _dadStraightHair, _momStraightHair);
             var resultPanel = new Rect(area.x + 20f, area.y + artSize - 5f,
-                area.width - 40f, 155f);
+                area.width - 40f, _portrait ? 155f : 125f);
             DrawGlassPanel(resultPanel, 0.82f);
-            GUI.Label(new Rect(resultPanel.x + 24f, resultPanel.y + 14f,
-                    resultPanel.width - 48f, 42f),
-                $"{(_babyBigMouth ? "큰 입" : "작은 입")} · {(_babyHighVoice ? "높은 목소리" : "낮은 목소리")}",
-                OverlayLabelStyle(_portrait ? 27 : 23, FontStyle.Bold,
+            GUI.Label(new Rect(resultPanel.x + 24f, resultPanel.y + 12f,
+                    resultPanel.width - 48f, _portrait ? 58f : 48f),
+                $"{(_babyMonolid ? "무쌍" : "쌍꺼풀")} · {(_babyStraightHair ? "직모" : "곱슬")} · " +
+                $"{(_babyBigMouth ? "큰 입" : "작은 입")}\n{(_babyBigNose ? "큰 코" : "작은 코")} · " +
+                $"{(_babyDeepSkin ? "진한 톤" : "밝은 톤")} · {(_babyHighVoice ? "높은 목소리" : "낮은 목소리")}",
+                OverlayLabelStyle(_portrait ? 21 : 17, FontStyle.Bold,
                     Color.white, TextAnchor.MiddleCenter));
-            GUI.Label(new Rect(resultPanel.x + 24f, resultPanel.y + 62f,
-                    resultPanel.width - 48f, 70f),
-                $"입은 {mouthSource}, 목소리는 {voiceSource}를 닮았어요",
-                OverlayLabelStyle(_portrait ? 21 : 18, FontStyle.Normal,
+            GUI.Label(new Rect(resultPanel.x + 24f, resultPanel.y + (_portrait ? 70f : 60f),
+                    resultPanel.width - 48f, _portrait ? 72f : 56f),
+                $"눈매·머리결은 {eyeSource}·{hairSource}, 입·코는 {mouthSource}·{noseSource},\n" +
+                $"피부·목소리는 {skinSource}·{voiceSource}를 닮았어요",
+                OverlayLabelStyle(_portrait ? 17 : 14, FontStyle.Normal,
                     new Color(0.86f, 0.9f, 0.94f), TextAnchor.MiddleCenter));
         }
 
@@ -717,8 +828,12 @@ namespace NotANap.App
         {
             _familyRollCount++;
             int seed = _familyRollCount * 1103515245 + 12345;
+            _babyMonolid = (seed & 1) == 0 ? _dadMonolid : _momMonolid;
+            _babyStraightHair = (seed & 2) == 0 ? _dadStraightHair : _momStraightHair;
             _babyBigMouth = (seed & 4) == 0 ? _dadBigMouth : _momBigMouth;
             _babyHighVoice = (seed & 8) == 0 ? _dadHighVoice : _momHighVoice;
+            _babyBigNose = (seed & 16) == 0 ? _dadBigNose : _momBigNose;
+            _babyDeepSkin = (seed & 32) == 0 ? _dadDeepSkin : _momDeepSkin;
             _babyVoiceVariant = _babyHighVoice ? 0 : 2;
             _familyRolled = true;
             _audio?.SetBabyVoiceVariant(_babyVoiceVariant);
@@ -727,7 +842,9 @@ namespace NotANap.App
 
         private Texture2D GeneticBabyPortrait()
         {
-            return _geneticDoubleCurly;
+            if (_babyMonolid)
+                return _babyStraightHair ? _geneticMonolidStraight : _geneticMonolidCurly;
+            return _babyStraightHair ? _geneticDoubleStraight : _geneticDoubleCurly;
         }
 
         private void DrawGeneticPortrait(Rect rect, Texture2D portrait)
@@ -826,11 +943,32 @@ namespace NotANap.App
             _mouthWarpProfiles[textureName] = new MouthWarpProfile(x, y, radiusX, radiusY, angle);
         }
 
+        /// <summary>
+        /// 코 위치는 입 프로파일에서 유도한다. 프레임마다 좌표를 다시 재면
+        /// 입과 코가 어긋날 수 있고, 얼굴이 기운 프레임에서 특히 티가 난다.
+        /// 입 중심에서 얼굴 위쪽으로 입 반경에 비례해 올라간 지점을 쓰고,
+        /// 그 방향을 입과 같은 각도로 회전시켜 누운 프레임까지 함께 따라가게 한다.
+        /// </summary>
+        private static Vector2 NoseCenterFromTop(MouthWarpProfile profile)
+        {
+            float distance = profile.Radius.x * .62f;
+            float radians = profile.Angle * Mathf.Deg2Rad;
+            return new Vector2(
+                profile.CenterFromTop.x - distance * Mathf.Sin(radians),
+                profile.CenterFromTop.y - distance * Mathf.Cos(radians));
+        }
+
+        // 진한 피부는 곱셈 틴트라 원화의 명암을 유지한 채 톤만 내려간다.
+        private static readonly Color DeepSkinTint = new Color(.74f, .58f, .47f);
+
         private void DrawBabyTexture(Rect rect, Texture2D texture)
         {
             if (texture == null) return;
-            if (!_babyBigMouth || _mouthWarpMaterial == null ||
-                !_mouthWarpProfiles.TryGetValue(texture.name, out var profile) ||
+            texture = ResolveBabyVariantTexture(texture);
+            bool hasProfile = _mouthWarpProfiles.TryGetValue(texture.name, out var profile);
+            bool warpsFace = (_babyBigMouth || _babyBigNose) && hasProfile;
+            // 피부 톤은 얼굴 좌표가 필요 없으므로 프로파일이 없는 프레임에도 적용한다.
+            if (_mouthWarpMaterial == null || (!warpsFace && !_babyDeepSkin) ||
                 Event.current.type != EventType.Repaint)
             {
                 GUI.DrawTexture(rect, texture, ScaleMode.ScaleToFit, true);
@@ -855,12 +993,28 @@ namespace NotANap.App
             Vector3 bottomRight = GUI.matrix.MultiplyPoint3x4(new Vector3(fitted.xMax, fitted.yMax));
             var screenRect = new Rect(topLeft.x, topLeft.y,
                 bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
-            _mouthWarpMaterial.SetVector("_MouthCenter",
-                new Vector4(profile.CenterFromTop.x, 1f - profile.CenterFromTop.y, 0f, 0f));
+            bool warpsMouth = warpsFace && _babyBigMouth;
+            bool warpsNose = warpsFace && _babyBigNose;
+            _mouthWarpMaterial.SetVector("_MouthCenter", warpsMouth
+                ? new Vector4(profile.CenterFromTop.x, 1f - profile.CenterFromTop.y, 0f, 0f)
+                : Vector4.zero);
             _mouthWarpMaterial.SetVector("_MouthRadius",
                 new Vector4(profile.Radius.x, profile.Radius.y, 0f, 0f));
             _mouthWarpMaterial.SetFloat("_MouthAngle", profile.Angle * Mathf.Deg2Rad);
-            _mouthWarpMaterial.SetFloat("_MouthStrength", .28f);
+            _mouthWarpMaterial.SetFloat("_MouthStrength", warpsMouth ? .28f : 0f);
+            if (warpsNose)
+            {
+                Vector2 nose = NoseCenterFromTop(profile);
+                _mouthWarpMaterial.SetVector("_NoseCenter",
+                    new Vector4(nose.x, 1f - nose.y, 0f, 0f));
+                float noseRadius = profile.Radius.x * .52f;
+                _mouthWarpMaterial.SetVector("_NoseRadius",
+                    new Vector4(noseRadius, noseRadius, 0f, 0f));
+                _mouthWarpMaterial.SetFloat("_NoseAngle", profile.Angle * Mathf.Deg2Rad);
+            }
+            _mouthWarpMaterial.SetFloat("_NoseStrength", warpsNose ? .22f : 0f);
+            _mouthWarpMaterial.SetColor("_SkinTint", DeepSkinTint);
+            _mouthWarpMaterial.SetFloat("_SkinStrength", _babyDeepSkin ? .85f : 0f);
             _mouthWarpMaterial.SetColor("_Color", GUI.color);
             // screenRect는 이미 GUI 행렬이 적용된 좌표다. 그대로 그리면 WebGL에서
             // 반응형 스케일이 두 번 적용되어 큰 입 아기가 화면 밖으로 밀려난다.
@@ -868,6 +1022,39 @@ namespace NotANap.App
             GUI.matrix = Matrix4x4.identity;
             Graphics.DrawTexture(screenRect, texture, _mouthWarpMaterial);
             GUI.matrix = previousMatrix;
+        }
+
+        private Texture2D ResolveBabyVariantTexture(Texture2D baseTexture)
+        {
+            if (!_familyRolled || baseTexture == null) return baseTexture;
+
+            string variant = BabyArtVariantKey();
+            if (string.IsNullOrEmpty(variant)) return baseTexture;
+
+            string relativePath;
+            if (BabyStateTextureNames.Contains(baseTexture.name))
+                relativePath = baseTexture.name;
+            else if (BabyAnimatedTextureNames.Contains(baseTexture.name))
+                relativePath = $"Animated/{baseTexture.name}";
+            else if (BabyInteractionTextureNames.Contains(baseTexture.name))
+                relativePath = $"Interaction/{baseTexture.name}";
+            else
+                return baseTexture;
+
+            string cacheKey = $"{variant}/{relativePath}";
+            if (_babyVariantTextures.TryGetValue(cacheKey, out var cached))
+                return cached != null ? cached : baseTexture;
+
+            Texture2D resolved = Resources.Load<Texture2D>($"Art/Baby/Variants/{cacheKey}");
+            _babyVariantTextures[cacheKey] = resolved;
+            return resolved != null ? resolved : baseTexture;
+        }
+
+        private string BabyArtVariantKey()
+        {
+            if (_babyMonolid)
+                return _babyStraightHair ? "monolid_straight" : "monolid_curly";
+            return _babyStraightHair ? "double_straight" : null;
         }
 
         private void DrawAnchoringShadow(Rect subjectRect, float widthRatio = .56f,
@@ -887,7 +1074,10 @@ namespace NotANap.App
         }
 
         private bool IsGeneticPortrait(Texture2D portrait)
-            => ReferenceEquals(portrait, _geneticDoubleCurly);
+            => ReferenceEquals(portrait, _geneticDoubleCurly) ||
+               ReferenceEquals(portrait, _geneticDoubleStraight) ||
+               ReferenceEquals(portrait, _geneticMonolidCurly) ||
+               ReferenceEquals(portrait, _geneticMonolidStraight);
 
         private static string TraitSource(bool babyTrait, bool dadTrait, bool momTrait)
         {
@@ -901,7 +1091,7 @@ namespace NotANap.App
         {
             var vm = _flow.BuildV2Setup();
             if (_portrait) { DrawPortraitSetup(vm); return; }
-            Fill(new Rect(0, 0, LandscapeWidth, LandscapeHeight), new Color(0.01f, 0.02f, 0.035f, 0.34f));
+            FillViewport(new Color(0.01f, 0.02f, 0.035f, 0.34f));
             GUI.Label(new Rect(90, 64, 900, 56), $"{vm.NightLabel}  ·  밤 준비", _display);
             GUI.Label(new Rect(1360, 64, 460, 64), $"가져갈 물건  {vm.SelectedCount} / {vm.Slots}",
                 OverlayLabelStyle(34, FontStyle.Bold, new Color(0.96f, 0.93f, 0.86f),
@@ -1312,7 +1502,7 @@ namespace NotANap.App
 
         private void DrawPortraitObservationSheet(V2PlayViewModel vm)
         {
-            Fill(new Rect(0, 0, PortraitWidth, PortraitHeight), new Color(0, 0, 0, .62f));
+            FillViewport(new Color(0, 0, 0, .62f));
             var sheet = new Rect(28f, 650f, 1024f, 1270f);
             DrawGlassPanel(sheet, .98f);
             Fill(new Rect(sheet.x, sheet.y, sheet.width, 6f), new Color(1f, .7f, .28f));
@@ -1392,11 +1582,7 @@ namespace NotANap.App
 
         private void DrawPlayScene(V2PlayViewModel vm, Rect rect, bool portrait)
         {
-            var backdropRect = portrait
-                ? new Rect(0, 0, PortraitWidth, PortraitHeight)
-                : rect;
-            DrawRoomFocusBackdrop(vm.CaregiverLocation, backdropRect);
-            Fill(backdropRect, RoomFocusTint(vm.CaregiverLocation));
+            DrawViewportRoomFocusBackdrop(vm.CaregiverLocation);
 
             bool babyVisible = vm.BabyLocation == vm.CaregiverLocation && !RoomTransitionActive();
             if (babyVisible)
@@ -1551,8 +1737,8 @@ namespace NotANap.App
                 // Horizontal sleeping art needs its own non-overlapping body
                 // map. These five targets partition the visible body and end
                 // before the primary-action block begins.
-                mouth = new Rect(babyRect.x + babyRect.width * .07f,
-                    babyRect.y + 360f, babyRect.width * .24f, 120f);
+                mouth = new Rect(babyRect.x + babyRect.width * .105f,
+                    babyRect.y + 382f, babyRect.width * .17f, 72f);
                 chest = new Rect(babyRect.x + babyRect.width * .32f,
                     babyRect.y + 370f, babyRect.width * .18f, 120f);
                 back = new Rect(babyRect.x + babyRect.width * .52f,
@@ -1564,8 +1750,10 @@ namespace NotANap.App
             }
             else
             {
-                mouth = new Rect(babyRect.x + babyRect.width * .38f,
-                    babyRect.y + babyRect.height * .17f, babyRect.width * .24f, babyRect.height * .2f);
+                // 표정과 눈을 가리지 않도록 입 주변만 감싸는 작은 접점으로 제한한다.
+                mouth = new Rect(babyRect.x + babyRect.width * .40f,
+                    babyRect.y + babyRect.height * .36f,
+                    babyRect.width * .20f, babyRect.height * .13f);
                 back = new Rect(babyRect.x + babyRect.width * .58f,
                     babyRect.y + babyRect.height * .3f, babyRect.width * .25f, babyRect.height * .34f);
                 chest = new Rect(babyRect.x + babyRect.width * .27f,
@@ -1587,15 +1775,8 @@ namespace NotANap.App
                     ? V2ActionId.ChangeDiaper
                     : V2ActionId.CheckDiaper;
 
-            V2ActionId recommendedAction = V2ActionId.Pat;
-            if (!vm.CauseResolved)
-                recommendedAction = vm.DiaperChangedPendingDisposal || vm.DiaperWetConfirmed ||
-                    vm.DiaperRecommendationVisible ? diaperAction : mouthAction;
-            if (vm.FeedingReady)
-            {
-                recommendedAction = V2ActionId.FeedPreparedBottle;
-            }
             V2ActionId chestAction = vm.CarrierOn ? V2ActionId.ToggleCarrier : V2ActionId.Hold;
+            V2ActionId? recommendedAction = RecommendedBodyAction(vm, mouthAction, diaperAction);
             var diaperButton = DirectAction(vm, diaperAction);
             string diaperCost = diaperButton != null && !string.IsNullOrEmpty(diaperButton.CostLabel)
                 ? " · " + diaperButton.CostLabel : string.Empty;
@@ -1605,27 +1786,58 @@ namespace NotANap.App
                 new BodyActionLink(mouth, mouthAction,
                     mouthAction == V2ActionId.FeedPreparedBottle ? "입가 · 준비한 분유 수유" :
                     mouthAction == V2ActionId.Pacifier ? "입가 · 쪽쪽이 건네기" :
-                    "입과 손 · 배고픔 신호 살피기"),
-                new BodyActionLink(back, V2ActionId.Pat, "등 · 같은 리듬으로 토닥이기"),
+                    "입과 손 · 배고픔 신호 살피기",
+                    mouthAction == V2ActionId.FeedPreparedBottle ? "준비한 분유를 먹여보세요" :
+                    mouthAction == V2ActionId.Pacifier ? "쪽쪽이를 건네보세요" :
+                    "입과 손을 살펴보세요"),
+                new BodyActionLink(back, V2ActionId.Pat, "등 · 같은 리듬으로 토닥이기",
+                    "등을 토닥여 보세요"),
                 new BodyActionLink(chest, chestAction,
-                    vm.CarrierOn ? "가슴 · 아기띠 풀어주기" : "가슴 · 목을 받쳐 품에 안기"),
+                    vm.CarrierOn ? "가슴 · 아기띠 풀어주기" : "가슴 · 목을 받쳐 품에 안기",
+                    vm.CarrierOn ? "아기띠를 풀어주세요" : "목을 받쳐 안아보세요"),
                 new BodyActionLink(diaper, diaperAction,
                     diaperAction == V2ActionId.DisposeDiaper ? "기저귀 · 싸서 버리기" + diaperCost :
                     diaperAction == V2ActionId.ChangeDiaper
                         ? $"기저귀 · {(vm.DiaperStoolConfirmed ? "대변 처리" : "소변 기저귀 갈기")}{diaperCost}"
-                        : "기저귀 · 상태 확인" + diaperCost),
+                        : "기저귀 · 상태 확인" + diaperCost,
+                    diaperAction == V2ActionId.DisposeDiaper ? "사용한 기저귀를 버려주세요" :
+                    diaperAction == V2ActionId.ChangeDiaper ? "기저귀를 갈아주세요" :
+                    "기저귀를 확인해 보세요"),
                 new BodyActionLink(limbs, V2ActionId.CheckLimbRelaxation,
-                    "팔다리 · 힘이 풀렸는지 살피기")
+                    "팔다리 · 힘이 풀렸는지 살피기", "팔다리의 힘을 살펴보세요")
             };
             if (IsSleeping(vm) && !portrait)
                 links.Add(new BodyActionLink(mattress, V2ActionId.Laydown,
-                    "침대 · 천천히 내려놓기"));
+                    "침대 · 천천히 내려놓기", "천천히 내려놓아 보세요"));
 
             DrawLinkedBodyActions(vm, links, recommendedAction, pulse, portrait);
         }
 
+        private static V2ActionId? RecommendedBodyAction(V2PlayViewModel vm,
+            V2ActionId mouthAction, V2ActionId diaperAction)
+        {
+            // 상단의 NextActionHeadline과 같은 상태 우선순위를 사용한다.
+            // 방 이동·기다리기처럼 신체 접점이 아닌 행동은 억지로 몸 위에 추천하지 않는다.
+            if (vm.HandsNeedWashing) return null;
+            if (vm.DiaperChangedPendingDisposal || vm.DiaperStoolConfirmed ||
+                vm.DiaperWetConfirmed)
+                return diaperAction;
+            if (!vm.CauseResolved)
+            {
+                if (vm.FeedingReady && vm.RevealedCause == WakeCause.Hunger)
+                    return V2ActionId.FeedPreparedBottle;
+                return vm.DiaperRecommendationVisible ? diaperAction : mouthAction;
+            }
+            if (vm.SleepStage == V2SleepStage.RemActiveSleep) return null;
+            if (vm.SleepStage == V2SleepStage.NremDeepSleep && !vm.DeepSleepObserved)
+                return V2ActionId.CheckLimbRelaxation;
+            if (vm.SleepStage == V2SleepStage.NremDeepSleep)
+                return vm.BabyHeld ? V2ActionId.Laydown : null;
+            return vm.BabyHeld ? V2ActionId.Pat : V2ActionId.Hold;
+        }
+
         private void DrawLinkedBodyActions(V2PlayViewModel vm, List<BodyActionLink> links,
-            V2ActionId recommendedAction, float pulse, bool portrait)
+            V2ActionId? recommendedAction, float pulse, bool portrait)
         {
             var active = new List<BodyActionLink>(links.Count);
             for (int i = 0; i < links.Count; i++)
@@ -1647,15 +1859,17 @@ namespace NotANap.App
                         throw new InvalidOperationException(
                             $"Portrait body hit target {active[i].Action} escaped its block: " +
                             active[i].Hotspot);
-                int recommendedIndex = active.FindIndex(link => link.Action == recommendedAction);
-                if (recommendedIndex >= 0)
+                int recommendedIndex = active.FindIndex(link =>
+                    recommendedAction.HasValue && link.Action == recommendedAction.Value);
+                if (recommendedIndex >= 0 && Time.unscaledTime >= _directCueHiddenUntil)
                 {
                     BodyActionLink recommendedLink = active[recommendedIndex];
                     Color old = GUI.color;
-                    GUI.color = new Color(1f, .74f, .34f, .10f + pulse * .18f);
+                    GUI.color = new Color(1f, .74f, .34f,
+                        RecommendedGlowBaseAlpha + pulse * RecommendedGlowPulseAlpha);
                     GUI.DrawTexture(recommendedLink.Hotspot, _itemGlow, ScaleMode.StretchToFill, true);
                     GUI.color = old;
-                    DrawRectOutline(recommendedLink.Hotspot, new Color(1f, .72f, .3f), 5f);
+                    DrawBodyActionCallout(recommendedLink, true);
                     if (GUI.Button(recommendedLink.Hotspot, GUIContent.none, GUIStyle.none))
                     {
                         PerformV2Action(recommendedLink.Action);
@@ -1686,7 +1900,8 @@ namespace NotANap.App
 
                 bool bodyHovered = link.Hotspot.Contains(mouse);
                 bool labelHovered = labelRect.Contains(mouse);
-                bool recommended = link.Action == recommendedAction &&
+                bool recommended = recommendedAction.HasValue &&
+                    link.Action == recommendedAction.Value &&
                     Time.unscaledTime >= _directCueHiddenUntil;
                 Color accent = bodyHovered
                     ? new Color(.45f, .9f, .86f)
@@ -1694,27 +1909,35 @@ namespace NotANap.App
 
                 float glowAlpha = bodyHovered || labelHovered
                     ? .5f
-                    : recommended ? .07f + pulse * .09f : .018f;
-                Color previousColor = GUI.color;
-                GUI.color = new Color(accent.r, accent.g, accent.b, glowAlpha);
-                GUI.DrawTexture(link.Hotspot, _itemGlow, ScaleMode.StretchToFill, true);
-                GUI.color = previousColor;
+                    : recommended
+                        ? RecommendedGlowBaseAlpha + pulse * RecommendedGlowPulseAlpha
+                        : 0f;
+                if (glowAlpha > 0f)
+                {
+                    Color previousColor = GUI.color;
+                    GUI.color = new Color(accent.r, accent.g, accent.b, glowAlpha);
+                    GUI.DrawTexture(link.Hotspot, _itemGlow, ScaleMode.StretchToFill, true);
+                    GUI.color = previousColor;
+                }
 
                 if (bodyHovered || labelHovered)
                 {
-                    DrawRectOutline(link.Hotspot, accent, portrait ? 4f : 3f);
                     DrawCareSparkles(link.Hotspot.center, .42f, 2);
                 }
 
                 DrawGlassPanel(labelRect, bodyHovered || labelHovered ? .9f : .54f);
                 Fill(new Rect(labelRect.x, labelRect.y + 6f, bodyHovered ? 6f : 4f,
                     labelRect.height - 12f), accent);
-                string prefix = string.Empty;
+                string prefix = recommended ? "★ " : string.Empty;
                 GUI.Label(new Rect(labelRect.x + 14f, labelRect.y,
                         labelRect.width - 24f, labelRect.height), prefix + link.Label,
                     OverlayLabelStyle(portrait ? 17 : 14, FontStyle.Bold,
-                        bodyHovered || labelHovered ? accent : new Color(.91f, .91f, .89f),
+                        bodyHovered || labelHovered ? accent : recommended
+                            ? new Color(1f, .84f, .58f)
+                            : new Color(.91f, .91f, .89f),
                         TextAnchor.MiddleLeft));
+
+                if (recommended) DrawBodyActionCallout(link, false);
 
                 bool clickedBody = GUI.Button(link.Hotspot, GUIContent.none, GUIStyle.none);
                 bool clickedLabel = GUI.Button(labelRect, GUIContent.none, GUIStyle.none);
@@ -1723,6 +1946,29 @@ namespace NotANap.App
                 PerformV2Action(link.Action);
                 return;
             }
+        }
+
+        private void DrawBodyActionCallout(BodyActionLink link, bool portrait)
+        {
+            float width = portrait ? 360f : 300f;
+            float height = portrait ? 58f : 44f;
+            float canvasWidth = portrait ? PortraitWidth : LandscapeWidth;
+            bool placeRight = link.Hotspot.center.x < canvasWidth * .5f;
+            float x = placeRight
+                ? link.Hotspot.xMax + (portrait ? 18f : 14f)
+                : link.Hotspot.x - width - (portrait ? 18f : 14f);
+            x = Mathf.Clamp(x, portrait ? 32f : 24f, canvasWidth - width - (portrait ? 32f : 24f));
+            float minY = portrait ? PortraitSceneContentY + 8f : 80f;
+            float maxY = portrait ? PortraitPrimaryActionY - height - 8f : LandscapeHeight - height - 24f;
+            float y = Mathf.Clamp(link.Hotspot.center.y - height * .5f, minY, maxY);
+            var callout = new Rect(x, y, width, height);
+            DrawGlassPanel(callout, .9f, true);
+            Fill(new Rect(placeRight ? callout.x : callout.xMax - 5f,
+                callout.y + 8f, 5f, callout.height - 16f), new Color(1f, .72f, .3f));
+            GUI.Label(new Rect(callout.x + 14f, callout.y, callout.width - 28f, callout.height),
+                link.Prompt,
+                OverlayLabelStyle(portrait ? 21 : 16, FontStyle.Bold,
+                    new Color(1f, .9f, .7f), TextAnchor.MiddleCenter));
         }
 
         private void DrawPortraitActionLauncher(V2PlayViewModel vm)
@@ -1742,14 +1988,6 @@ namespace NotANap.App
                 _observationSheetOpen = true;
         }
 
-        private static void DrawRectOutline(Rect rect, Color color, float thickness)
-        {
-            Fill(new Rect(rect.x, rect.y, rect.width, thickness), color);
-            Fill(new Rect(rect.x, rect.yMax - thickness, rect.width, thickness), color);
-            Fill(new Rect(rect.x, rect.y, thickness, rect.height), color);
-            Fill(new Rect(rect.xMax - thickness, rect.y, thickness, rect.height), color);
-        }
-
         private V2ActionButtonViewModel DirectAction(V2PlayViewModel vm, V2ActionId id)
             => vm.Actions.Find(action => action.Action == id && action.Enabled);
 
@@ -1766,7 +2004,7 @@ namespace NotANap.App
                     break;
                 default:
                     DrawNurseryThermometer(vm,
-                        portrait ? new Rect(28, 790, 250, 148) : new Rect(1400, 630, 180, 128),
+                        portrait ? new Rect(28, 790, 250, 148) : new Rect(1640, 785, 210, 128),
                         portrait);
                     DrawSceneActionHotspot(vm,
                         portrait ? new Rect(28, 340, 190, 260) : new Rect(420, 170, 160, 250),
@@ -1780,7 +2018,7 @@ namespace NotANap.App
                             new Rect(75, 610, 160, 155),
                             vm.NoiseOn ? "백색소음 끄기" : "백색소음기", ItemId.Noise, false);
                         if (vm.HasPacifier)
-                            DrawPacifierProp(vm, new Rect(1535, 672, 78, 78), false);
+                            DrawPacifierProp(vm, new Rect(1480, 790, 78, 78), false);
                         if (!vm.CarrierOn)
                             DrawRoomObject(vm, V2ActionId.ToggleCarrier,
                                 new Rect(1280, 515, 105, 175), "아기띠", ItemId.Carrier, false);
@@ -2083,16 +2321,23 @@ namespace NotANap.App
             Fill(new Rect(rect.x, rect.y, portrait ? 6f : 5f, rect.height),
                 checkedBoth ? new Color(.44f, .84f, .62f) : new Color(1f, .7f, .3f));
             GUI.Label(new Rect(rect.x + 18f, rect.y + 7f, rect.width - 36f, portrait ? 38f : 30f),
-                "온습도계", OverlayLabelStyle(portrait ? 23 : 18, FontStyle.Bold,
+                checkedBoth ? "확인 완료 · 온습도계" : "미확인 · 온습도계",
+                OverlayLabelStyle(portrait ? 23 : 18, FontStyle.Bold,
                     new Color(.94f, .91f, .84f), TextAnchor.MiddleLeft));
-            string temperature = vm.TemperatureChecked ? $"{vm.TemperatureCelsius:0.#}°" : "--°";
-            string humidity = vm.HumidityChecked ? $"{vm.HumidityPercent:0.#}%" : "--%";
-            GUI.Label(new Rect(rect.x + 18f, rect.y + (portrait ? 48f : 40f), rect.width - 36f,
-                    portrait ? 58f : 48f), $"{temperature}   {humidity}",
-                OverlayLabelStyle(portrait ? 34 : 27, FontStyle.Bold, Color.white,
-                    TextAnchor.MiddleCenter));
+            var valuesRect = new Rect(rect.x + 18f, rect.y + (portrait ? 48f : 40f),
+                rect.width - 36f, portrait ? 58f : 48f);
+            float halfWidth = valuesRect.width * .5f;
+            DrawEnvironmentMeterValue(new Rect(valuesRect.x, valuesRect.y, halfWidth, valuesRect.height),
+                $"{vm.TemperatureCelsius:0.#}°", vm.TemperatureChecked,
+                vm.TemperatureCelsius >= vm.RecommendedTemperatureMin &&
+                vm.TemperatureCelsius <= vm.RecommendedTemperatureMax, portrait);
+            DrawEnvironmentMeterValue(new Rect(valuesRect.x + halfWidth, valuesRect.y,
+                    halfWidth, valuesRect.height),
+                $"{vm.HumidityPercent:0.#}%", vm.HumidityChecked,
+                vm.HumidityPercent >= vm.RecommendedHumidityMin &&
+                vm.HumidityPercent <= vm.RecommendedHumidityMax, portrait);
             GUI.Label(new Rect(rect.x + 18f, rect.yMax - (portrait ? 37f : 31f), rect.width - 36f,
-                    portrait ? 31f : 26f), checkedBoth ? "확인 완료" : "눌러서 확인",
+                    portrait ? 31f : 26f), checkedBoth ? "권장 범위와 비교했어요" : "눈으로 확인하기",
                 OverlayLabelStyle(portrait ? 17 : 14, FontStyle.Bold,
                     checkedBoth ? new Color(.62f, .94f, .72f) : new Color(1f, .84f, .58f),
                     TextAnchor.MiddleCenter));
@@ -2102,6 +2347,27 @@ namespace NotANap.App
                 _roomObjectAnimationStarted = Time.unscaledTime;
                 PerformV2Action(V2ActionId.CheckEnvironment);
             }
+        }
+
+        private void DrawEnvironmentMeterValue(Rect rect, string value, bool observed,
+            bool inRecommendedRange, bool portrait)
+        {
+            Color valueColor = !observed
+                ? new Color(.86f, .9f, .94f, .28f)
+                : inRecommendedRange
+                    ? new Color(.62f, .94f, .72f)
+                    : new Color(1f, .72f, .38f);
+            GUIStyle style = OverlayLabelStyle(portrait ? 34 : 27, FontStyle.Bold,
+                valueColor, TextAnchor.MiddleCenter);
+            if (!observed)
+            {
+                // 값은 이미 방에 존재하지만 아직 눈으로 읽지 않았다는 표현이다.
+                // 낮은 알파의 한 픽셀 잔상을 더해 고장 표시가 아닌 흐릿한 판독으로 보이게 한다.
+                GUI.Label(new Rect(rect.x + 1f, rect.y + 1f, rect.width, rect.height), value,
+                    OverlayLabelStyle(portrait ? 34 : 27, FontStyle.Bold,
+                        new Color(.86f, .9f, .94f, .10f), TextAnchor.MiddleCenter));
+            }
+            GUI.Label(rect, value, style);
         }
 
         private void DrawRoomPickupAnimation(V2PlayViewModel vm, bool portrait)
@@ -2484,6 +2750,16 @@ namespace NotANap.App
             GUI.color = old;
         }
 
+        private void DrawViewportRoomFocusBackdrop(HomeLocation location)
+        {
+            Matrix4x4 previousMatrix = GUI.matrix;
+            GUI.matrix = Matrix4x4.identity;
+            var viewport = new Rect(0f, 0f, Screen.width, Screen.height);
+            DrawRoomFocusBackdrop(location, viewport);
+            Fill(viewport, RoomFocusTint(location));
+            GUI.matrix = previousMatrix;
+        }
+
         private Texture2D RoomBackdrop(HomeLocation location) => location switch
         {
             HomeLocation.Kitchen => _kitchenRoom,
@@ -2864,12 +3140,6 @@ namespace NotANap.App
             var outcome = ActiveVisualOutcome();
             var current = _babyVisual.AnimationFrameFor(vm, outcome, _ambientFrame);
             var previous = _babyVisual.AnimationFrameFor(vm, outcome, _previousAmbientFrame);
-            if (_familyRolled && outcome == null &&
-                _babyVisual.Resolve(vm, null) == BabyVisualPresenter.VisualState.AwakeCalm)
-            {
-                current = GeneticBabyPortrait();
-                previous = current;
-            }
             float blend = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((now - _ambientTransitionStarted) / _ambientTransitionDuration));
             Color oldColor = GUI.color;
             if (current == previous)
@@ -3033,7 +3303,7 @@ namespace NotANap.App
 
         private void DrawPortraitOverlay(OverlayViewModel overlay)
         {
-            Fill(new Rect(0, 0, PortraitWidth, PortraitHeight), new Color(0, 0, 0, 0.72f));
+            FillViewport(new Color(0, 0, 0, 0.72f));
             var box = new Rect(80, 560, 920, 680);
             Panel(box, 0.99f);
             GUI.Label(new Rect(135, 625, 810, 80), overlay.Title, Centered(_headline));
@@ -3368,9 +3638,24 @@ namespace NotANap.App
                 return "삼키는 리듬이 급하지 않다. 배고픔이 먼저인 밤은 아니었나 보다.";
             if (outcome.WasMisdiagnosis)
                 return "이 돌봄보다 먼저 살펴야 할 다른 불편이 남아 있다.";
-            if (outcome.Action == V2ActionId.CheckHungerSignals &&
-                !outcome.HungerSignalsMatchCause)
-                return "입은 움직이지만 몸의 불편은 다른 곳에서 먼저 오는 듯하다.";
+            // 확인 계열은 "무엇을 확인했고 결론이 무엇인지"를 헤드라인에 담는다.
+            // 묘사만 남기면 아래 상세 줄을 읽기 전까지 무슨 검사였는지 알 수 없다.
+            if (outcome.Action == V2ActionId.CheckHungerSignals)
+                return !outcome.HungerSignalsMatchCause ||
+                       outcome.HungerSignalStage == HungerSignalStage.None
+                    ? "배고픔 확인 · 지금은 아니에요"
+                    : outcome.HungerSignalStage == HungerSignalStage.Late
+                        ? "배고픔 확인 · 지금 수유가 필요해요"
+                        : outcome.HungerSignalStage == HungerSignalStage.Active
+                            ? "배고픔 확인 · 배고픔 신호예요"
+                            : "배고픔 확인 · 초기 신호가 보여요";
+            if (outcome.Action == V2ActionId.CheckDiaper)
+                return outcome.DiaperCheckResult switch
+                {
+                    DiaperCheckResult.Stool => "기저귀 확인 · 대변이에요",
+                    DiaperCheckResult.Wet => "기저귀 확인 · 젖었어요",
+                    _ => "기저귀 확인 · 깨끗해요"
+                };
             if (outcome.EventIds.Contains(GameEventId.LaydownSucceeded))
                 return "숨이 그대로 이어진다.";
             if (outcome.EventIds.Contains(GameEventId.LaydownFailed) ||
@@ -3382,8 +3667,6 @@ namespace NotANap.App
                 V2ActionId.Pat => "토닥임에 호흡이 천천히 맞춰진다.",
                 V2ActionId.CatchBreath => "한 번 길게 숨을 내쉰다.",
                 V2ActionId.Grandma => "도움을 건네받자 아기의 몸이 포근한 품으로 기대온다.",
-                V2ActionId.CheckHungerSignals => "입과 손의 움직임을 살폈다.",
-                V2ActionId.CheckDiaper => "불편한 곳부터 차례로 확인했다.",
                 V2ActionId.ChangeDiaper => "깨끗한 기저귀로 갈아주었다.",
                 V2ActionId.DisposeDiaper => "사용한 기저귀를 싸서 버렸다.",
                 V2ActionId.WashHands => "비누로 손을 씻었다.",
@@ -3407,7 +3690,7 @@ namespace NotANap.App
 
         private void DrawOverlay(OverlayViewModel overlay)
         {
-            Fill(new Rect(0, 0, LandscapeWidth, LandscapeHeight), new Color(0, 0, 0, 0.62f));
+            FillViewport(new Color(0, 0, 0, 0.62f));
             var box = new Rect(600, 300, 720, 460);
             Panel(box, 0.99f);
             GUI.Label(new Rect(650, 350, 620, 52), overlay.Title, Centered(_headline));
@@ -3429,7 +3712,7 @@ namespace NotANap.App
         {
             var vm = _flow.BuildV2Diary();
             if (_portrait) { DrawPortraitDiary(vm); return; }
-            Fill(new Rect(0, 0, LandscapeWidth, LandscapeHeight), new Color(0.015f, 0.035f, 0.065f, 0.84f));
+            FillViewport(new Color(0.015f, 0.035f, 0.065f, 0.84f));
             GUI.Label(new Rect(110, 76, 1100, 58), $"{_flow.BabyName} · {vm.NightLabel} 밤의 기록", _display);
             Panel(new Rect(110, 200, 560, 680));
             GUI.Label(new Rect(155, 245, 470, 34), "밤의 결과", _caption);
@@ -3466,7 +3749,7 @@ namespace NotANap.App
 
         private void DrawPortraitTitle()
         {
-            Fill(new Rect(0, 0, PortraitWidth, PortraitHeight), new Color(0.01f, 0.02f, 0.035f, 0.3f));
+            FillViewport(new Color(0.01f, 0.02f, 0.035f, 0.3f));
             if (!_titleDropAttempted)
             {
                 GUI.Label(new Rect(58, 80, 400, 90), "02:47", _display);
@@ -3552,7 +3835,7 @@ namespace NotANap.App
 
         private void DrawPortraitSetup(SetupViewModel vm)
         {
-            Fill(new Rect(0, 0, PortraitWidth, PortraitHeight), new Color(0.01f, 0.02f, 0.035f, 0.36f));
+            FillViewport(new Color(0.01f, 0.02f, 0.035f, 0.36f));
             GUI.Label(new Rect(48, 55, 750, 74), $"{vm.NightLabel} · 밤 준비", _display);
             if (vm.IsFirstNight) DrawCarePairSetup(vm, true);
             else
@@ -3593,7 +3876,7 @@ namespace NotANap.App
 
         private void DrawPortraitDiary(V2DiaryViewModel vm)
         {
-            Fill(new Rect(0, 0, PortraitWidth, PortraitHeight), new Color(0.015f, 0.035f, 0.065f, 0.9f));
+            FillViewport(new Color(0.015f, 0.035f, 0.065f, 0.9f));
             GUI.Label(new Rect(60, 70, 960, 80), $"{_flow.BabyName} · {vm.NightLabel} 밤의 기록", _display);
             Panel(new Rect(60, 210, 960, 620));
             GUI.Label(new Rect(110, 260, 860, 48), "밤의 결과", _caption);
@@ -3663,7 +3946,7 @@ namespace NotANap.App
             var vm = _flow.BuildEnding();
             float width = _portrait ? PortraitWidth : LandscapeWidth;
             float height = _portrait ? PortraitHeight : LandscapeHeight;
-            Fill(new Rect(0, 0, width, height), new Color(0.01f, 0.025f, 0.05f, 0.88f));
+            FillViewport(new Color(0.01f, 0.025f, 0.05f, 0.88f));
             float panelWidth = _portrait ? 920 : 1180;
             float panelHeight = _portrait ? 1180 : 720;
             float x = (width - panelWidth) * 0.5f;

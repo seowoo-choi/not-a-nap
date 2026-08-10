@@ -31,6 +31,17 @@ namespace NotANap.Presentation.Tests
         }
 
         [Test]
+        public void V2Snapshot_ExposesConfiguredEnvironmentRangesForObservedMeterValues()
+        {
+            var vm = StartV2().BuildV2Play();
+
+            Assert.AreEqual(20, vm.RecommendedTemperatureMin);
+            Assert.AreEqual(22, vm.RecommendedTemperatureMax);
+            Assert.AreEqual(40, vm.RecommendedHumidityMin);
+            Assert.AreEqual(60, vm.RecommendedHumidityMax);
+        }
+
+        [Test]
         public void SterilizeActionAppearsOnlyForExceptionalUnsanitizedBottle()
         {
             var flow = StartV2();

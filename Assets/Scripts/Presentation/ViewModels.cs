@@ -198,6 +198,10 @@ namespace NotANap.Presentation
         public bool DeepSleepObserved;
         public double TemperatureCelsius;
         public double HumidityPercent;
+        public double RecommendedTemperatureMin;
+        public double RecommendedTemperatureMax;
+        public double RecommendedHumidityMin;
+        public double RecommendedHumidityMax;
         public double BabyTemperatureCelsius;
         public bool TemperatureChecked;
         public bool HumidityChecked;
