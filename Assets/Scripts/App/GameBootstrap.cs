@@ -38,6 +38,9 @@ namespace NotANap.App
         private V2PresentationActionResult _lastResult;
         private HomeMoveOutcome _lastMove;
         private int _timedEncounterSequence = -1;
+        /// <summary>원인을 못 찾은 채 이어 붙일 수 있는 자동 토닥임 횟수.</summary>
+        private const int UnresolvedPatRepeatLimit = 3;
+        private int _continuousPatRepeats;
         /// <summary>가로 화면에서 신체 행동 콜아웃이 내려갈 수 있는 하단 한계선.</summary>
         private float _landscapeCalloutBottom = 674f;
         private float _decisionDeadline;
@@ -1978,8 +1981,12 @@ namespace NotANap.App
             }
 
             bool babyOnRight = !portrait && active[0].Hotspot.center.x > 1300f;
-            Rect panel = new Rect(babyOnRight ? 1040f : 1510f, 365f, 360f,
-                54f + active.Count * 48f);
+            // 주방·욕실은 화면 가운데를 준비 소품이 채운다. 아기 반대편 열에
+            // 패널을 세우면 눌러야 할 소품을 그대로 덮으므로 왼쪽 아래로 내린다.
+            Rect panel = vm.CaregiverLocation != HomeLocation.Nursery
+                ? new Rect(40f, 596f, 340f, 54f + active.Count * 48f)
+                : new Rect(babyOnRight ? 1040f : 1510f, 365f, 360f,
+                    54f + active.Count * 48f);
             DrawGlassPanel(panel, .7f);
             GUI.Label(new Rect(panel.x + 18f, panel.y + 8f, panel.width - 36f, 32f),
                 "아기를 눌러 행동 선택",
@@ -2304,12 +2311,15 @@ namespace NotANap.App
             // Kitchen props live inside the scene slot (y < primary action).
             // Previously they occupied y=1035~1350 and collided with the item
             // dock, room navigation and status HUD on portrait screens.
+            // 가로에서는 세 소품의 캡션이 모두 yMax 근처에 붙는다. 장면 피드백
+            // 패널(y 686)과 겹치지 않도록 소품을 30px 올려 캡션이 686 위에서
+            // 끝나게 한다.
             Rect powder = splitPortrait ? new Rect(66, 530, 210, 260)
-                : portrait ? new Rect(90, 520, 250, 305) : new Rect(480, 395, 255, 310);
+                : portrait ? new Rect(90, 520, 250, 305) : new Rect(480, 365, 255, 310);
             Rect bottle = splitPortrait ? new Rect(290, 520, 180, 275)
-                : portrait ? new Rect(405, 500, 225, 330) : new Rect(825, 375, 220, 330);
+                : portrait ? new Rect(405, 500, 225, 330) : new Rect(825, 345, 220, 330);
             Rect cooling = splitPortrait ? new Rect(118, 690, 250, 195)
-                : portrait ? new Rect(705, 600, 260, 225) : new Rect(1110, 470, 285, 235);
+                : portrait ? new Rect(705, 600, 260, 225) : new Rect(1110, 440, 285, 235);
 
             DrawFormulaTin(powder, vm.FormulaMeasured, portrait);
             DrawFeedingBottleState(bottle, vm, portrait);
@@ -2329,7 +2339,9 @@ namespace NotANap.App
                 !vm.BottleMixed ? "빈 젖병 · 분유가루가 기다리고 있어요" :
                 !vm.BottleCooled ? "분유가 채워졌어요 · 이제 식혀주세요" :
                 "수유 준비 완료 · 아기에게 가져가세요";
-            float stateY = portrait ? 878f : 670f;
+            // 소품 캡션 세 개가 나란히 놓이는 띠 위에 요약 문장을 겹쳐 두면
+            // 넷이 한 줄에서 뒤엉킨다. 가로에서는 소품 위쪽으로 올린다.
+            float stateY = portrait ? 878f : 288f;
             GUI.Label(new Rect(portrait ? 120 : 500, stateY,
                     portrait ? 840 : 900, portrait ? 48 : 46), state,
                 OverlayLabelStyle(portrait ? 25 : 21, FontStyle.Bold,
@@ -3611,11 +3623,20 @@ namespace NotANap.App
                     StopContinuousCare("아기가 잠들어 토닥이기를 멈췄습니다");
                     return;
                 }
+                // 수면 진입 자체가 원인 해소를 요구하므로, 원인을 못 찾은 채로는
+                // 아무리 토닥여도 아기가 잠들지 않는다. 그대로 두면 체력 30까지
+                // 밤을 통째로 태우는 무한 루프가 되니 몇 번 뒤 진단으로 돌려보낸다.
+                if (!vm.CauseResolved && _continuousPatRepeats >= UnresolvedPatRepeatLimit)
+                {
+                    StopContinuousCare("달래도 잠들지 않아요 · 먼저 원인을 찾아보세요");
+                    return;
+                }
                 if (DirectAction(vm, V2ActionId.Pat) == null)
                 {
                     StopContinuousCare("지금은 토닥일 수 없어 멈췄습니다");
                     return;
                 }
+                if (!vm.CauseResolved) _continuousPatRepeats++;
                 PerformV2Action(V2ActionId.Pat, true);
                 return;
             }
@@ -3675,6 +3696,7 @@ namespace NotANap.App
         private void StopContinuousCare(string notice = null)
         {
             _continuousCare = ContinuousCareMode.None;
+            _continuousPatRepeats = 0;
             _continuousEncounterSequence = -1;
             _nextContinuousActionAt = -10f;
             _continuousStopNotice = notice;
@@ -3704,6 +3726,7 @@ namespace NotANap.App
                 if (!automatic && action == V2ActionId.Pat && !outcome.WasMisdiagnosis)
                 {
                     _continuousCare = ContinuousCareMode.Pat;
+                    _continuousPatRepeats = 0;
                     _continuousEncounterSequence =
                         _flow.Session.Night.V2.Diagnosis.EncounterSequence;
                 }
