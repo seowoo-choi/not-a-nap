@@ -375,7 +375,10 @@ namespace NotANap.Presentation
                     v2.ElapsedMinutes >= v2.Diagnosis.DiaperRecommendationSuppressedUntilMinute &&
                     !v2.Diagnosis.CheckedCauses.Contains(WakeCause.Diaper),
                 HandsNeedWashing = v2.HandsNeedWashing,
-                CurrentSignal = v2.VisibleSignals.Count > 0
+                // 관찰 기록(VisibleSignals)은 밤의 기록용으로 남지만, 아기가 잠든 뒤에도
+                // 그대로 현재 신호로 보이면 "몸의 긴장이 풀린다 / 입맛을 다시고 있어요"처럼
+                // 헤드라인과 정반대인 문장이 한 카드에 같이 뜬다. 자는 동안은 수면 서술로 돌린다.
+                CurrentSignal = !IsAsleep(v2) && v2.VisibleSignals.Count > 0
                     ? PresentationCopyMapper.ObservationSignal(v2.VisibleSignals[0])
                     : DefaultSignal(v2, Night.Baby.Hunger),
                 CaregiverReflection = v2.CaregiverComposure >= 65
@@ -404,7 +407,10 @@ namespace NotANap.Presentation
                         ? (Night.Wearing.Carrier ? "아기띠 벗기" : "아기띠 착용")
                         : PresentationCopyMapper.V2ActionLabel(action),
                     CostLabel = V2ActionCostLabel(action),
-                    Enabled = !Night.Over && IsV2ActionAvailable(action)
+                    Enabled = !Night.Over && IsV2ActionAvailable(action),
+                    DisabledReason = !Night.Over && IsV2ActionAvailable(action)
+                        ? null
+                        : V2ActionDisabledReason(action)
                 });
             }
             return vm;
@@ -468,6 +474,84 @@ namespace NotANap.Presentation
             if (action == V2ActionId.CheckBodyTemperature) return true;
             if (action == V2ActionId.Hold) return !Night.Wearing.Carrier;
             return true;
+        }
+
+        /// <summary>
+        /// 지금 고를 수 없는 이유를 한 줄로 돌려준다. 목록에서 항목을 통째로 지우면
+        /// "분유 먹이기가 없어졌다"처럼 읽히고, 어디로 가야 하는지도 알 수 없다.
+        /// </summary>
+        private string V2ActionDisabledReason(V2ActionId action)
+        {
+            if (Night.Over) return "밤이 끝났어요";
+            if (Night.Parent.Stamina <= 0) return "먼저 숨을 고르세요";
+            var location = Night.V2.CaregiverLocation;
+            bool withBaby = Night.Baby.Held || location == HomeLocation.Nursery;
+            switch (action)
+            {
+                case V2ActionId.SterilizeBottle:
+                case V2ActionId.PrepareWater:
+                case V2ActionId.CoolBottle:
+                    return "주방에서 할 수 있어요";
+                case V2ActionId.FeedPreparedBottle:
+                    return Night.V2.HandsNeedWashing
+                        ? "손을 씻고 나서 먹일 수 있어요"
+                        : "아기 곁에서 먹일 수 있어요";
+                case V2ActionId.WashHands:
+                    return Night.V2.HandsNeedWashing
+                        ? "욕실에서 씻을 수 있어요"
+                        : "지금은 손을 씻지 않아도 돼요";
+                case V2ActionId.CheckDiaper:
+                    return Night.V2.Diagnosis.DiaperWetConfirmed ||
+                           Night.V2.Diagnosis.DiaperChangedPendingDisposal
+                        ? "이미 확인했어요 · 갈아주면 돼요"
+                        : Night.V2.Diagnosis.CheckedCauses.Contains(WakeCause.Diaper)
+                            ? "이번 각성에는 이미 확인했어요"
+                            : withBaby ? "조금 전에 확인해 깨끗했어요" : "아기 곁에서 확인할 수 있어요";
+                case V2ActionId.ChangeDiaper:
+                    return "기저귀를 먼저 확인해야 해요";
+                case V2ActionId.DisposeDiaper:
+                    return "갈아 준 기저귀가 있어야 해요";
+                case V2ActionId.CheckBodyTemperature:
+                    return Night.V2.BathThermometerRetrieved
+                        ? "욕실에서 아기와 함께 잴 수 있어요"
+                        : "욕실에서 탕온계를 먼저 챙기세요";
+                case V2ActionId.AdjustTemperature:
+                case V2ActionId.AdjustHumidity:
+                case V2ActionId.Grandma:
+                    return Run.GrandmaUsed && action == V2ActionId.Grandma
+                        ? "이번 밤에는 이미 도움을 받았어요"
+                        : Run.IsFinalNight && action == V2ActionId.Grandma
+                            ? "백일째 밤은 혼자 건너야 해요"
+                            : "아기방에서 할 수 있어요";
+                case V2ActionId.CheckEnvironment:
+                    return "아기방이나 욕실에서 살필 수 있어요";
+                case V2ActionId.ToggleNoise:
+                    return !Night.HasItem(ItemId.Noise) ? "오늘 밤 챙기지 않은 물건이에요"
+                        : Night.NoiseDisabled ? "오늘은 더 쓸 수 없어요"
+                        : "아기방에서 켤 수 있어요";
+                case V2ActionId.CheckMonitor:
+                    return !Night.HasItem(ItemId.Monitor)
+                        ? "오늘 밤 챙기지 않은 물건이에요"
+                        : "아기 곁을 떠나 있을 때 쓰는 물건이에요";
+                case V2ActionId.Pacifier:
+                    return !Night.HasItem(ItemId.Pacifier) ? "오늘 밤 챙기지 않은 물건이에요"
+                        : Night.PacifierLeft <= 0 ? "오늘은 더 물릴 수 없어요"
+                        : "아기 곁에서 물릴 수 있어요";
+                case V2ActionId.ToggleCarrier:
+                    return !Night.HasItem(ItemId.Carrier) ? "오늘 밤 챙기지 않은 물건이에요"
+                        : Night.CarrierDisabledTurns > 0 ? "지금은 다시 맬 수 없어요"
+                        : "아기 곁에서 맬 수 있어요";
+                case V2ActionId.Laydown:
+                    return !withBaby || !Night.Baby.Held ? "아기를 안고 있어야 눕힐 수 있어요"
+                        : location != HomeLocation.Nursery ? "아기방 침대에 눕힐 수 있어요"
+                        : "깊이 잠든 뒤에 눕히면 성공해요";
+                case V2ActionId.Hold:
+                    return Night.Wearing.Carrier ? "아기띠를 벗고 안아주세요" : "아기 곁에서 안을 수 있어요";
+                case V2ActionId.CatchBreath:
+                    return "이번 밤에 숨 고르기를 다 썼어요";
+                default:
+                    return withBaby ? "지금은 고를 수 없어요" : "아기 곁에서 할 수 있어요";
+            }
         }
 
         private string V2ActionCostLabel(V2ActionId action)
@@ -667,6 +751,10 @@ namespace NotANap.Presentation
                     : "강한 울음 전의 입맛 다시기와 손 빨기를 기억해보세요.";
             return "조용한 반응도 하나의 신호예요. 반응이 작다고 서둘러 행동을 바꾸지 않아도 괜찮아요.";
         }
+
+        private static bool IsAsleep(V2NightState v2)
+            => v2.SleepCycle.Stage == V2SleepStage.RemActiveSleep ||
+               v2.SleepCycle.Stage == V2SleepStage.NremDeepSleep;
 
         private static string DefaultSignal(V2NightState v2, double hunger)
         {

@@ -41,6 +41,8 @@ namespace NotANap.App
         /// <summary>원인을 못 찾은 채 이어 붙일 수 있는 자동 토닥임 횟수.</summary>
         private const int UnresolvedPatRepeatLimit = 3;
         private int _continuousPatRepeats;
+        /// <summary>방 안 물건 위에 얹어 그릴 신체 행동 콜아웃. 프레임마다 다시 채운다.</summary>
+        private BodyActionLink? _deferredCallout;
         /// <summary>가로 화면에서 신체 행동 콜아웃이 내려갈 수 있는 하단 한계선.</summary>
         private float _landscapeCalloutBottom = 674f;
         private float _decisionDeadline;
@@ -1378,6 +1380,27 @@ namespace NotANap.App
             }
         }
 
+        /// <summary>지금 고를 수 없는 행동을 이유와 함께 흐리게 남긴다. 입력은 받지 않는다.</summary>
+        private void DrawBlockedActionRow(Rect rect, V2ActionButtonViewModel action)
+        {
+            DrawGlassPanel(rect, .34f);
+            float iconSize = rect.height - 18f;
+            var sigil = new Rect(rect.x + 12f, rect.y + (rect.height - iconSize * .72f) * .5f,
+                iconSize * .72f, iconSize * .72f);
+            Fill(sigil, new Color(.26f, .28f, .31f, .9f));
+            GUI.Label(sigil, ActionSigil(action.Action),
+                LabelStyle(25, FontStyle.Bold, new Color(.62f, .64f, .66f), TextAnchor.MiddleCenter));
+            float textInset = sigil.width + 30f;
+            GUI.Label(new Rect(rect.x + textInset, rect.y + 4f, rect.width - textInset - 12f,
+                    rect.height * .5f), action.Label,
+                LabelStyle(36, FontStyle.Bold, new Color(.64f, .66f, .68f), TextAnchor.MiddleLeft));
+            GUI.Label(new Rect(rect.x + textInset, rect.y + rect.height * .52f,
+                    rect.width - textInset - 12f, rect.height * .4f),
+                action.DisabledReason,
+                OverlayLabelStyle(28, FontStyle.Bold, new Color(.88f, .7f, .42f),
+                    TextAnchor.MiddleLeft, true));
+        }
+
         private bool DrawActionButton(Rect rect, V2ActionButtonViewModel action, V2PlayViewModel vm, bool portrait)
         {
             ItemId? item = ItemForAction(action.Action);
@@ -1631,21 +1654,34 @@ namespace NotANap.App
             DrawCommandTab(new Rect(394f, 1000f, 292f, 122f), "돌보기", ActionGroup.Care, !exhausted);
             DrawCommandTab(new Rect(716f, 1000f, 292f, 122f), "수유 준비", ActionGroup.Feed, !exhausted);
 
+            // 고를 수 없는 항목을 목록에서 지우면 "분유 먹이기가 없어졌다"로 읽히고
+            // 어디로 가야 하는지도 사라진다. 아래쪽에 이유와 함께 흐리게 남긴다.
             var actions = ActionsFor(_actionGroup, exhausted);
-            int visible = 0;
+            var ready = new List<V2ActionButtonViewModel>();
+            var blocked = new List<V2ActionButtonViewModel>();
             for (int i = 0; i < actions.Length; i++)
             {
                 var action = vm.Actions.Find(candidate => candidate.Action == actions[i]);
-                if (action == null || !action.Enabled) continue;
-                int col = visible % 2;
-                int row = visible / 2;
-                var rect = new Rect(72f + col * 476f, 1150f + row * 146f, 448f, 126f);
-                if (DrawActionButton(rect, action, vm, true))
+                if (action == null) continue;
+                (action.Enabled ? ready : blocked).Add(action);
+            }
+            int visible = 0;
+            for (int i = 0; i < ready.Count; i++)
+            {
+                var rect = new Rect(72f + visible % 2 * 476f, 1150f + visible / 2 * 146f, 448f, 126f);
+                if (DrawActionButton(rect, ready[i], vm, true))
                 {
                     _observationSheetOpen = false;
-                    PerformV2Action(action.Action);
+                    PerformV2Action(ready[i].Action);
                     return;
                 }
+                visible++;
+            }
+            for (int i = 0; i < blocked.Count; i++)
+            {
+                var rect = new Rect(72f + visible % 2 * 476f, 1150f + visible / 2 * 146f, 448f, 126f);
+                if (rect.yMax > PortraitHeight - 40f) break;
+                DrawBlockedActionRow(rect, blocked[i]);
                 visible++;
             }
         }
@@ -1665,6 +1701,9 @@ namespace NotANap.App
 
         private void DrawPlayScene(V2PlayViewModel vm, Rect rect, bool portrait)
         {
+            // 콜아웃은 방 안 물건(백색소음기·온습도계 등)보다 나중에 그려야 한다.
+            // 먼저 그리면 물건 아트와 패널이 그 위를 덮어 글자를 읽을 수 없다.
+            _deferredCallout = null;
             DrawViewportRoomFocusBackdrop(vm.CaregiverLocation);
 
             bool babyVisible = vm.BabyLocation == vm.CaregiverLocation && !RoomTransitionActive();
@@ -1710,6 +1749,8 @@ namespace NotANap.App
             DrawSignalRibbon(vm, portrait);
             DrawHomeJourneyMap(vm, portrait);
             DrawRoomTravelMoment(portrait);
+            if (_deferredCallout.HasValue)
+                DrawBodyActionCallout(_deferredCallout.Value, portrait);
         }
 
         private bool HasCompositeAction(V2PlayViewModel vm)
@@ -1968,7 +2009,7 @@ namespace NotANap.App
                         RecommendedGlowBaseAlpha + pulse * RecommendedGlowPulseAlpha);
                     GUI.DrawTexture(recommendedLink.Hotspot, _itemGlow, ScaleMode.StretchToFill, true);
                     GUI.color = old;
-                    DrawBodyActionCallout(recommendedLink, true);
+                    _deferredCallout = recommendedLink;
                     if (GUI.Button(recommendedLink.Hotspot, GUIContent.none, GUIStyle.none))
                     {
                         PerformV2Action(recommendedLink.Action);
@@ -2040,7 +2081,7 @@ namespace NotANap.App
                             : new Color(.91f, .91f, .89f),
                         TextAnchor.MiddleLeft));
 
-                if (recommended) DrawBodyActionCallout(link, false);
+                if (recommended) _deferredCallout = link;
 
                 bool clickedBody = GUI.Button(link.Hotspot, GUIContent.none, GUIStyle.none);
                 bool clickedLabel = GUI.Button(labelRect, GUIContent.none, GUIStyle.none);

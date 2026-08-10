@@ -253,6 +253,8 @@ namespace NotANap.Presentation
         public string Label;
         public string CostLabel;
         public bool Enabled;
+        /// <summary>지금 고를 수 없는 이유. 비활성 항목을 그냥 숨기면 사라진 것처럼 보인다.</summary>
+        public string DisabledReason;
     }
 
     /// <summary>V2 Core의 구조화된 결과를 손실 없이 Presentation에 전달한다.</summary>
