@@ -117,6 +117,9 @@ namespace NotANap.Core
         public double SleepStartCalmThreshold = 78;
         public double HoldSleepGain = 12;
         public double PatSleepGain = 9;
+        // 원인을 못 찾은 채 토닥이면 아기는 절반만 진정한다. 무진단 연타를
+        // 막으면서도 "일단 달래보기"라는 실제 육아 행동은 남겨 둔다.
+        public double UnresolvedCauseComfortMultiplier = .5;
 
         public static V2BalanceConfig Default() => new V2BalanceConfig();
     }

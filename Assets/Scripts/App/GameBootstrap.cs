@@ -1502,7 +1502,7 @@ namespace NotANap.App
             DrawLandscapeStatusOrnaments(vm);
             DrawEchoSource(vm, new Rect(390, 548, 1140, 126), false);
             DrawSceneFeedback(vm, new Rect(390, 686, 1140, 76), false);
-            DrawContinuousCareControl(new Rect(790, 118, 390, 84), false);
+            DrawContinuousCareControl(vm, new Rect(790, 118, 390, 84), false);
 
             if (_flow.PendingOverlay != null) DrawOverlay(_flow.PendingOverlay);
         }
@@ -1550,7 +1550,7 @@ namespace NotANap.App
             }
             else
                 DrawSceneFeedback(vm, new Rect(58, PortraitContextY, 964, 154), true);
-            DrawContinuousCareControl(PortraitPrimaryActionRect(), true);
+            DrawContinuousCareControl(vm, PortraitPrimaryActionRect(), true);
             GUI.enabled = previousEnabled;
             if (_observationSheetOpen) DrawPortraitObservationSheet(vm);
         }
@@ -3611,9 +3611,9 @@ namespace NotANap.App
                     StopContinuousCare("아기가 잠들어 토닥이기를 멈췄습니다");
                     return;
                 }
-                if (!vm.CauseResolved || DirectAction(vm, V2ActionId.Pat) == null)
+                if (DirectAction(vm, V2ActionId.Pat) == null)
                 {
-                    StopContinuousCare("확인할 신호가 생겨 토닥이기를 멈췄습니다");
+                    StopContinuousCare("지금은 토닥일 수 없어 멈췄습니다");
                     return;
                 }
                 PerformV2Action(V2ActionId.Pat, true);
@@ -3633,7 +3633,7 @@ namespace NotANap.App
             PerformV2Action(next, true);
         }
 
-        private void DrawContinuousCareControl(Rect rect, bool portrait)
+        private void DrawContinuousCareControl(V2PlayViewModel vm, Rect rect, bool portrait)
         {
             if (_continuousCare == ContinuousCareMode.None)
             {
@@ -3650,9 +3650,24 @@ namespace NotANap.App
             string label = _continuousCare == ContinuousCareMode.Pat
                 ? "토닥이는 중  ·  멈추기"
                 : "기저귀 처리 중  ·  멈추기";
-            GUI.Label(rect, label,
+            // 원인을 못 찾은 채 토닥이면 Core가 진정 폭을 절반으로 준다.
+            // 왜 잘 안 진정되는지 화면에서 바로 읽히게 배지로 알린다.
+            bool halfEffect = _continuousCare == ContinuousCareMode.Pat && !vm.CauseResolved;
+            var labelRect = halfEffect
+                ? new Rect(rect.x, rect.y, rect.width, rect.height * .56f)
+                : rect;
+            GUI.Label(labelRect, label,
                 OverlayLabelStyle(portrait ? 34 : 20, FontStyle.Bold,
                     new Color(1f, .88f, .68f), TextAnchor.MiddleCenter));
+            if (halfEffect)
+            {
+                var badge = new Rect(rect.x + 10f, rect.y + rect.height * .54f,
+                    rect.width - 20f, rect.height * .36f);
+                DrawGlassPanel(badge, .5f);
+                GUI.Label(badge, "원인을 아직 못 찾았어요  ·  진정 효과 절반",
+                    OverlayLabelStyle(portrait ? 24 : 14, FontStyle.Bold,
+                        new Color(1f, .74f, .38f), TextAnchor.MiddleCenter));
+            }
             if (GUI.Button(rect, GUIContent.none, GUIStyle.none))
                 StopContinuousCare("직접 멈췄습니다");
         }
@@ -3683,8 +3698,10 @@ namespace NotANap.App
             }
             if (outcome.Accepted)
             {
-                if (!automatic && action == V2ActionId.Pat && !outcome.WasMisdiagnosis &&
-                    _flow.Session.Night.V2.Diagnosis.CauseResolved)
+                // 원인을 못 찾았어도 "일단 달래보기"는 실제 육아 행동이므로
+                // 연속 토닥이기를 막지 않는다. 대신 Core가 진정 폭을 절반으로
+                // 낮추고 화면에는 그 사실을 배지로 알린다.
+                if (!automatic && action == V2ActionId.Pat && !outcome.WasMisdiagnosis)
                 {
                     _continuousCare = ContinuousCareMode.Pat;
                     _continuousEncounterSequence =

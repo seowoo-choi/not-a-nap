@@ -269,7 +269,7 @@ namespace NotANap.Core
                 case V2ActionId.Pat:
                     Consume(outcome, config.V2.DefaultActionMinutes, -4);
                     night.Baby.Calm = CoreMath.Clamp(night.Baby.Calm +
-                        12 * night.V2.Modifier.ComfortActionModifier, 0, 100);
+                        PatCalmGain(night, config), 0, 100);
                     night.Baby.Sleep = CoreMath.Clamp(night.Baby.Sleep +
                         config.V2.PatSleepGain *
                         night.V2.Modifier.SleepGainMultiplier, 0, 100);
@@ -398,6 +398,22 @@ namespace NotANap.Core
             foreach (var signal in outcome.ObservedSignals)
                 if (!night.V2.VisibleSignals.Contains(signal))
                     night.V2.VisibleSignals.Add(signal);
+        }
+
+        /// <summary>
+        /// 토닥임의 진정 폭. 원인을 아직 못 찾았으면 절반만 준다.
+        /// 다만 토닥임 자체가 정답인 자연 각성·모로 반사는 ApplyComfort에서
+        /// 곧바로 원인이 풀리므로 온전한 폭을 유지한다.
+        /// </summary>
+        private static double PatCalmGain(NightState night, GameBalanceConfig config)
+        {
+            double gain = 12 * night.V2.Modifier.ComfortActionModifier;
+            var diagnosis = night.V2.Diagnosis;
+            if (diagnosis.CauseResolved ||
+                diagnosis.ActiveCause == WakeCause.NaturalCycle ||
+                diagnosis.ActiveCause == WakeCause.MoroReflex)
+                return gain;
+            return gain * config.V2.UnresolvedCauseComfortMultiplier;
         }
 
         private static void ApplyComfort(RunState run, NightState night, V2ActionOutcome outcome,

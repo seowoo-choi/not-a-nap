@@ -329,6 +329,49 @@ namespace NotANap.Core.Tests
         }
 
         [Test]
+        public void PattingBeforeFindingCauseCalmsOnlyHalfAsMuch()
+        {
+            var config = GameBalanceConfig.Default();
+
+            var blindRun = RunState.Create(Temperament.Soft);
+            var blindNight = Night(blindRun, config);
+            V2TimeResolver.TriggerWake(blindNight, WakeCause.Hunger, config);
+            double blindBefore = blindNight.Baby.Calm;
+            V2ActionResolver.Apply(blindRun, blindNight, V2ActionId.Pat, config,
+                new SequenceRandomSource(0));
+            double blindGain = blindNight.Baby.Calm - blindBefore;
+
+            var knownRun = RunState.Create(Temperament.Soft);
+            var knownNight = Night(knownRun, config);
+            V2TimeResolver.TriggerWake(knownNight, WakeCause.Hunger, config);
+            knownNight.V2.Diagnosis.CauseResolved = true;
+            double knownBefore = knownNight.Baby.Calm;
+            V2ActionResolver.Apply(knownRun, knownNight, V2ActionId.Pat, config,
+                new SequenceRandomSource(0));
+            double knownGain = knownNight.Baby.Calm - knownBefore;
+
+            Assert.Greater(knownGain, 0);
+            Assert.AreEqual(knownGain * config.V2.UnresolvedCauseComfortMultiplier, blindGain, 1e-6);
+            // 진단 없이 토닥여도 오진 처벌은 없다. 느릴 뿐 막다른 길이 아니다.
+            Assert.AreEqual(0, blindNight.V2.Metrics.MisdiagnosisCount);
+        }
+
+        [Test]
+        public void PattingKeepsFullEffectWhenPattingItselfIsTheAnswer()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            V2TimeResolver.TriggerWake(night, WakeCause.MoroReflex, config);
+            double before = night.Baby.Calm;
+
+            V2ActionResolver.Apply(run, night, V2ActionId.Pat, config, new SequenceRandomSource(0));
+
+            Assert.IsTrue(night.V2.Diagnosis.CauseResolved);
+            Assert.AreEqual(12, night.Baby.Calm - before, 1e-6);
+        }
+
+        [Test]
         public void SafeObservationCanNarrowCauseWithoutInventingMismatch()
         {
             var config = GameBalanceConfig.Default();
