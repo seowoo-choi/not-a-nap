@@ -32,7 +32,7 @@ namespace NotANap.Core.Tests
         }
 
         [Test]
-        public void DiaryFactsNeverInventUnperformedAction()
+        public void NarrativeFactsNeverInventUnperformedAction()
         {
             var run = RunState.Create(Temperament.Soft);
             var night = NightFactory.CreateV2Night(run,
@@ -42,7 +42,7 @@ namespace NotANap.Core.Tests
             V2ActionResolver.Apply(run, night, V2ActionId.CheckHungerSignals,
                 GameBalanceConfig.Default(), new SequenceRandomSource(.5));
 
-            var facts = ReflectionResolver.BuildDiaryFacts(run, night);
+            var facts = ReflectionResolver.BuildNarrativeFacts(run, night);
 
             Assert.AreEqual(V2ActionId.CheckHungerSignals, facts.MostRepeatedAction);
             Assert.IsFalse(facts.UsedCatchBreath);
@@ -119,14 +119,14 @@ namespace NotANap.Core.Tests
             night.V2.ActionAudit.Add(new ActionAuditEntry
                 { Action = V2ActionId.Pat, Accepted = true, EncounterSequence = 2 });
 
-            var facts = ReflectionResolver.BuildDiaryFacts(run, night);
+            var facts = ReflectionResolver.BuildNarrativeFacts(run, night);
 
             Assert.AreEqual(V2ActionId.Pacifier, facts.RejectedAction);
             Assert.IsFalse(facts.FollowupAction.HasValue);
         }
 
         [Test]
-        public void PrepareNextFeedDuringSleepAppearsInDiaryFacts()
+        public void PrepareNextFeedDuringSleepAppearsInNarrativeFacts()
         {
             var run = RunState.Create(Temperament.Soft);
             var config = GameBalanceConfig.Default();
@@ -138,7 +138,7 @@ namespace NotANap.Core.Tests
 
             Assert.IsTrue(V2SleepIntervalResolver.Apply(run, night,
                 SleepIntervalChoice.PrepareNextFeed, config, new SequenceRandomSource(.5)));
-            var facts = ReflectionResolver.BuildDiaryFacts(run, night);
+            var facts = ReflectionResolver.BuildNarrativeFacts(run, night);
 
             Assert.AreEqual(SleepIntervalChoice.PrepareNextFeed, facts.SleepIntervalChoice);
             Assert.AreEqual(FeedingPreparationStep.PrepareWater, facts.LongestPreparationStep);

@@ -1,9 +1,34 @@
 # Codex 현재 상태 감사
 
 최초 감사일: 2026-07-18 (Asia/Seoul)
-최신 코드 재감사: 2026-07-21, `main` / `f4c10fa`
+2차 재감사: 2026-07-21, `main` / `f4c10fa`
+최신 재감사: 2026-08-10, `main` / `0d9216e`
 
-## 2026-07-21 최신 결론
+## 2026-08-10 최신 결론
+
+**아래 2026-07-21 결론은 그 시점의 기록이며 현재 상태가 아니다.** 그때 `미완성`으로 적은 항목의
+대부분은 이후 커밋에서 해소됐다. 제출 문서(포트폴리오·AI 활용 기술 문서)와 이 감사 문서가
+어긋나 있어 재감사했고, 항목별 근거는 다음과 같다.
+
+| 2026-07-21 지적 | 현재 | 근거 |
+|---|---|---|
+| DIARY 이후 “처음부터 다시”, 둘째 밤·백일밤·Ending 미연결 | 해소 | `ScreenState.Ending`, `GameFlowController.AdvanceFromV2Diary/AdvanceToEnding`, `EndingResolver.Decide`. 회귀 테스트 `FirstNightDiaryAdvancesSameRunToSecondNightSetup`, `HundredthNightDiaryAdvancesToCoreResolvedEnding` |
+| Hunger·환경의 시간 변화 미구현 | 해소 | `V2NightResolvers`가 경과 분에 비례해 `Baby.Hunger` 증가 |
+| 상태 기반 각성 원인 판정 미구현 | 해소 | `V2NightResolvers`가 기저귀·허기·온도·습도 상태에서 `WakeCause`를 결정 |
+| 기저귀 우선 확인 규칙 충돌 | 해소 | `V2ActionResolver`가 첫 `CheckDiaper`를 안전한 배제 검사로 처리하고 오판에서 제외 |
+| Carrier/Noise/Monitor의 V2 효과 없음, Pacifier 소지 검사 없음 | 해소 | `V2ActionResolver`가 아이템별 소지·비활성 조건을 검사하고 `V2NightResolvers`가 백색소음 효과를 반영 |
+| 피로 신호 미연결 | 해소 | 관찰 행동이 `Yawning`, `RubbingEyes` 등 신호를 `ObservedSignals`로 산출 |
+| 온습도 기본값·조절량 0 | 설계 변경 | 조절은 고정 증감이 아니라 권장 밴드(20~22℃ / 40~60%)로 클램프하는 방식으로 구현. `GameBalanceConfig.TemperatureAdjustment`·`HumidityAdjustment`는 더 이상 쓰이지 않는 잔여 필드로 정리 대상 |
+| 인게임 LLM 서술이 폴백만 존재 | 해소 | `NarrativeRequest`(요청) + `NarrativeProxyClient`(전송) + `NarrativeBoundary`(응답 검증) + `GameSessionPresenter.ApplyNarrative`(문구 교체). 계약은 [`narrative-proxy.md`](narrative-proxy.md) |
+
+따라서 현재 상태는 `세 밤 제품 루프 + 엔딩 연결 완료`다. 자동 테스트는 EditMode 180건 전부 통과한다
+(Core 168건 + 서술 경계 12건). 남은 확인 사항은 다음과 같다.
+
+- 서술 프록시는 저장소 변수 `NARRATIVE_PROXY_URL`이 설정된 빌드에서만 실제 호출한다.
+  변수가 없으면 규칙 기반 폴백 서술로 동작하며, 이는 의도된 기본값이다.
+- `TemperatureAdjustment`/`HumidityAdjustment` 미사용 필드 정리.
+
+## 2026-07-21 결론 (당시 기록, 현재 상태 아님)
 
 이 문서의 2026-07-18 기록 이후 V2 Core와 실행 가능한 Presentation 셸이 추가되었다. 현재 상태는 다음과 같다.
 

@@ -23,10 +23,10 @@ namespace NotANap.Core
             return facts;
         }
 
-        public static DiaryFacts BuildDiaryFacts(RunState run, NightState night)
+        public static NarrativeFacts BuildNarrativeFacts(RunState run, NightState night)
         {
             if (night?.V2 == null) throw new ArgumentException("V2 night is required.", nameof(night));
-            var facts = new DiaryFacts
+            var facts = new NarrativeFacts
             {
                 NightId = night.NightId,
                 LongestSleepMinutes = night.V2.Metrics.LongestSleepStretchMinutes,

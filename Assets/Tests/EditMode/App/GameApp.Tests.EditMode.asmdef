@@ -1,0 +1,25 @@
+{
+    "name": "GameApp.Tests.EditMode",
+    "rootNamespace": "NotANap.App.Tests",
+    "references": [
+        "GameCore",
+        "GamePresentation",
+        "GameApp"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ],
+    "noEngineReferences": false
+}

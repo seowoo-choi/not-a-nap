@@ -33,6 +33,9 @@ namespace NotANap.Presentation
         private DiaryViewModel _diary;
         private bool _v2DiaryBuilt;
         private List<MemoryNote> _v2MemoryNotes = new List<MemoryNote>();
+        /// <summary>경계를 통과한 AI 서술. 화면 문구만 덮어쓰며 판정에는 쓰이지 않는다.</summary>
+        private NarrativeResponse _narrative;
+        private NightId? _narrativeNight;
 
         public GameSessionPresenter(IRandomSource rng, GameBalanceConfig config = null)
         {
@@ -582,7 +585,7 @@ namespace NotANap.Presentation
             }
             var evaluation = NightEvaluationResolver.Evaluate(Night, _config);
             var m = evaluation.Metrics;
-            var facts = ReflectionResolver.BuildDiaryFacts(Run, Night);
+            var facts = ReflectionResolver.BuildNarrativeFacts(Run, Night);
             var viewModel = new V2DiaryViewModel
             {
                 NightId = Night.NightId,
@@ -622,7 +625,46 @@ namespace NotANap.Presentation
                 viewModel.HabitNotes.Add(note.Text);
                 viewModel.HabitEffects.Add(note.Sub);
             }
+            ApplyNarrativeOverrides(viewModel);
             return viewModel;
+        }
+
+        // ── AI 서술 (판정 불개입) ───────────────────────────────
+
+        /// <summary>이번 밤의 서술 요청 본문. 허용된 사실 ID와 수치만 담긴다.</summary>
+        public string BuildNarrativePayload()
+        {
+            if (Night?.V2 == null || !Night.Over) return null;
+            var evaluation = NightEvaluationResolver.Evaluate(Night, _config);
+            return NarrativeRequest.BuildPayload(ReflectionResolver.BuildNarrativeFacts(Run, Night), evaluation.Grade);
+        }
+
+        /// <summary>
+        /// 프록시 응답을 화면 문구로만 받아들인다. 경계를 통과하지 못하면 폴백 서술을 유지한다.
+        /// Run/Night 상태와 판정은 이 경로에서 절대 변경되지 않는다.
+        /// </summary>
+        public bool ApplyNarrative(NightId night, NarrativeResponse response)
+        {
+            if (response == null) return false;
+            var validated = NarrativeBoundary.ValidateStructured(response);
+            if (!validated.IsValid) return false;
+            _narrative = validated;
+            _narrativeNight = night;
+            return true;
+        }
+
+        /// <summary>현재 밤의 일지가 AI 서술로 표시되는지 (화면 표기·테스트용).</summary>
+        public bool HasNarrativeFor(NightId night) => _narrative != null && _narrativeNight == night;
+
+        private void ApplyNarrativeOverrides(V2DiaryViewModel viewModel)
+        {
+            if (!HasNarrativeFor(viewModel.NightId)) return;
+            viewModel.BabyResponseReflection = _narrative.NoticedSignal;
+            viewModel.CaregiverGrowth = _narrative.CaregiverGrowth;
+            viewModel.ActionLearning = _narrative.HabitReflection;
+            viewModel.FamilyUnderstanding = _narrative.FamilyUnderstanding;
+            viewModel.ShareCardText = _narrative.ShareCard;
+            viewModel.NarrativeFromAi = true;
         }
 
         public EndingViewModel BuildEnding()
@@ -661,7 +703,7 @@ namespace NotANap.Presentation
                 ? "final-carrier-buckle" : id == TargetedEventId.NoiseBattery
                     ? "final-noise-battery" : "final-dawn-waking");
 
-        private static string BuildHabitReflection(DiaryFacts facts)
+        private static string BuildHabitReflection(NarrativeFacts facts)
         {
             if (facts.Rhythms.Count == 0 || facts.Rhythms[0].Id == RhythmId.Neutral)
                 return "아직 굳어진 습관은 없다. 오늘 반복한 행동이 다음 밤의 규칙이 된다.";
@@ -669,7 +711,7 @@ namespace NotANap.Presentation
             return $"{card.Help} {card.Burden}";
         }
 
-        private static string BuildFamilyUnderstanding(DiaryFacts facts)
+        private static string BuildFamilyUnderstanding(NarrativeFacts facts)
         {
             if (facts.FeedingPreparationIncident)
                 return "소독 젖병이 비자 엄마의 밤 준비가 보였다.";
@@ -678,7 +720,7 @@ namespace NotANap.Presentation
             return "아기를 기다리며 엄마가 채운 밤의 시간이 보였다.";
         }
 
-        private static string BuildActionLearning(DiaryFacts facts)
+        private static string BuildActionLearning(NarrativeFacts facts)
         {
             if (facts.RejectedAction.HasValue && facts.FollowupAction.HasValue)
                 return $"{PresentationCopyMapper.V2ActionLabel(facts.RejectedAction.Value)} 대신 " +
@@ -690,7 +732,7 @@ namespace NotANap.Presentation
             return "신호를 보고 행동을 바꿨다. 울음이 커지기 전에 움직였다.";
         }
 
-        private static string BuildCaregiverFactReflection(DiaryFacts facts)
+        private static string BuildCaregiverFactReflection(NarrativeFacts facts)
         {
             if (facts.UsedCatchBreath)
                 return $"{facts.WakeCount}번 깨어나도 숨을 골랐다. 남은 체력 {facts.ParentStamina:0}.";
@@ -703,7 +745,7 @@ namespace NotANap.Presentation
             return $"{facts.WakeCount}번 깨어난 뒤에도 체력 {facts.ParentStamina:0}을 남겼다.";
         }
 
-        private static string BuildBabyResponseReflection(DiaryFacts facts)
+        private static string BuildBabyResponseReflection(NarrativeFacts facts)
         {
             if (facts.RejectedAction.HasValue && facts.FollowupAction.HasValue)
                 return $"{PresentationCopyMapper.V2ActionLabel(facts.RejectedAction.Value)}에는 보채고, " +
@@ -736,6 +778,8 @@ namespace NotANap.Presentation
             _eventCursor = 0;
             _v2DiaryBuilt = false;
             _v2MemoryNotes.Clear();
+            _narrative = null;
+            _narrativeNight = null;
             return true;
         }
 

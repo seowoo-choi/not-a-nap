@@ -7,7 +7,10 @@ NHN NAN 2026 해커톤 사전 과제. Unity 2D → WebGL 빌드 → GitHub Pages
 ## 절대 규칙
 - 게임 판정(수치·확률·승패)은 전부 결정론적 C# 엔진이 담당한다. LLM은 판정하지 않는다.
 - AI(LLM)는 밤 종료 시 1회만 호출해 육아일지 등 서술만 생성한다. 게임 상태와 판정은 변경하지 않으며 실패 시 규칙 기반 폴백을 사용한다.
+  호출 경로와 요청·응답 계약의 원본은 docs/narrative-proxy.md다. 응답이 Core로 돌아오는 경로는
+  NarrativeBoundary를 통과하는 GameSessionPresenter.ApplyNarrative 하나뿐이다.
 - API 키를 유니티 빌드/저장소에 절대 넣지 않는다. 서버리스 프록시 URL만 설정한다.
+  프롬프트도 클라이언트에 두지 않는다 — 게임은 ID와 수치로 된 사실만 보내고 프롬프트는 프록시가 소유한다.
 - 코어 로직(GameCore)은 MonoBehaviour 없는 순수 C#으로 작성해 Unity Test Framework로 테스트한다.
 - V2 통잠 루프의 제품 규칙은 docs/vertical-slice-spec.md, 실제 구현 순서는
   docs/code-first-development-plan.md가 원본이다. Reference/prototype.html과 V1 GameAction은
@@ -21,8 +24,11 @@ NHN NAN 2026 해커톤 사전 과제. Unity 2D → WebGL 빌드 → GitHub Pages
 
 ## 현재 개발 게이트
 
+(최종 갱신 2026-08-10 · `0d9216e`. 상태 판단의 원본은 docs/codex-current-state.md의 최신 재감사 절이다.)
+
 - Figma 35개 프레임을 35개 Unity Scene으로 만들지 않는다. 실제 화면은 TITLE/SETUP/PLAY/DIARY/FINAL_INTRO/ENDING이다.
-- 현재 한 밤 Presentation은 존재하지만 세 밤 Memory/Ending 연결, 정상 온습도, 상태 기반 각성,
-  기저귀 우선 규칙, 피로 신호, V2 아이템 게이트가 미완성이다.
-- 새 Presentation 확장 전 docs/code-first-development-plan.md의 P0-1~P0-5를 순서대로 완료한다.
+- 세 밤 Memory/Ending 연결, 상태 기반 각성, 기저귀 우선 규칙, 피로 신호, V2 아이템 게이트,
+  인게임 LLM 서술 호출은 완료됐다. 새 작업은 이 위에 얹되 EditMode 테스트로 회귀를 막는다.
+- 온습도 조절은 고정 증감이 아니라 권장 밴드(20~22℃ / 40~60%)로 클램프하는 방식이다.
+  GameBalanceConfig.TemperatureAdjustment·HumidityAdjustment는 미사용 잔여 필드다.
 - Bouncer는 LEGACY 역직렬화만 유지하고 V2 신규 선택 UI에는 노출하지 않는다.

@@ -35,6 +35,24 @@ jobs:
           restore-keys: |
             Library-${{ runner.os }}-WebGL-
 
+      # 서술 프록시 URL만 빌드에 주입한다. API 키는 프록시가 소유하며 저장소·빌드에 들어가지 않는다.
+      # 변수를 설정하지 않으면 파일이 빈 URL로 남아 게임은 규칙 기반 폴백 서술로 동작한다.
+      - name: Configure narrative proxy
+        shell: bash
+        env:
+          NARRATIVE_PROXY_URL: ${{ vars.NARRATIVE_PROXY_URL }}
+        run: |
+          if [ -z "$NARRATIVE_PROXY_URL" ]; then
+            echo "NARRATIVE_PROXY_URL not set - building with rule-based fallback narration."
+            exit 0
+          fi
+          case "$NARRATIVE_PROXY_URL" in
+            https://*) ;;
+            *) echo "Narrative proxy URL must be https (GitHub Pages blocks mixed content)."; exit 1 ;;
+          esac
+          printf '{"url":"%s","timeoutSeconds":8}\n' "$NARRATIVE_PROXY_URL" > Assets/Resources/narrative-proxy.json
+          echo "Narrative proxy configured."
+
       - name: Build WebGL
         uses: game-ci/unity-builder@v4
         env:

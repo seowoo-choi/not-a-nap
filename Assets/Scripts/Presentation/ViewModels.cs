@@ -288,12 +288,14 @@ namespace NotANap.Presentation
         public string MotherInsight;
         public string CompanionMessage;
         public string ShareCardText;
-        public DiaryFacts Facts;
+        public NarrativeFacts Facts;
         public string HabitReflection;
         public string FamilyUnderstanding;
         public string ActionLearning;
         public string CaregiverFactReflection;
         public string BabyResponseReflection;
+        /// <summary>서술 문구가 AI 응답으로 대체됐는지. false면 규칙 기반 폴백 서술이다.</summary>
+        public bool NarrativeFromAi;
         public readonly List<string> HabitNotes = new List<string>();
         public readonly List<string> HabitEffects = new List<string>();
     }

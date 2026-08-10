@@ -33,6 +33,8 @@ namespace NotANap.App
         private const float PortraitContextY = 1592f;
 
         private GameFlowController _flow;
+        /// <summary>AI 서술 요청을 밤당 1회로 묶는 게이트. 런을 다시 시작하면 새로 만든다.</summary>
+        private NarrativeCallGate _narrativeGate = new NarrativeCallGate();
         private BabyVisualPresenter _babyVisual;
         private GameFeelAudio _audio;
         private V2PresentationActionResult _lastResult;
@@ -3970,9 +3972,12 @@ namespace NotANap.App
         private void DrawDiary()
         {
             var vm = _flow.BuildV2Diary();
+            EnsureNarrativeRequested(vm);
             if (_portrait) { DrawPortraitDiary(vm); return; }
             FillViewport(new Color(0.015f, 0.035f, 0.065f, 0.84f));
             GUI.Label(new Rect(110, 76, 1100, 58), $"{_flow.BabyName} · {vm.NightLabel} 밤의 기록", _display);
+            if (vm.NarrativeFromAi)
+                GUI.Label(new Rect(1230, 92, 580, 34), "AI 육아일지 · 판정에는 관여하지 않음", _caption);
             Panel(new Rect(110, 200, 560, 680));
             GUI.Label(new Rect(155, 245, 470, 34), "밤의 결과", _caption);
             GUI.Label(new Rect(155, 292, 470, 126), vm.CaregiverGrowth, _headline);
@@ -4137,6 +4142,8 @@ namespace NotANap.App
         {
             FillViewport(new Color(0.015f, 0.035f, 0.065f, 0.9f));
             GUI.Label(new Rect(60, 70, 960, 80), $"{_flow.BabyName} · {vm.NightLabel} 밤의 기록", _display);
+            if (vm.NarrativeFromAi)
+                GUI.Label(new Rect(60, 152, 960, 44), "AI 육아일지 · 판정에는 관여하지 않음", _caption);
             Panel(new Rect(60, 210, 960, 620));
             GUI.Label(new Rect(110, 260, 860, 48), "밤의 결과", _caption);
             GUI.Label(new Rect(110, 320, 860, 128), vm.CaregiverGrowth, _headline);
@@ -4167,6 +4174,25 @@ namespace NotANap.App
                 _timedEncounterSequence = -1;
                 _actionEncounterSequence = -1;
             }
+        }
+
+        /// <summary>
+        /// 밤 종료 화면에 들어온 뒤 서술 요청을 정확히 한 번 보낸다.
+        /// 프록시 URL이 없거나 호출이 실패하면 이미 그려져 있는 규칙 기반 폴백 서술이 그대로 남는다.
+        /// 실패해도 재시도하지 않는다 — 밤당 1회 호출 원칙을 코드로 지킨다.
+        /// </summary>
+        private void EnsureNarrativeRequested(V2DiaryViewModel vm)
+        {
+            if (!NarrativeProxySettings.Enabled) return;
+            if (!_narrativeGate.TryBegin(vm.NightId)) return;
+            string payload = _flow.Session.BuildNarrativePayload();
+            if (string.IsNullOrEmpty(payload)) return;
+            var session = _flow.Session;
+            var night = vm.NightId;
+            StartCoroutine(NarrativeProxyClient.Request(payload, response =>
+            {
+                if (response != null) session.ApplyNarrative(night, response);
+            }));
         }
 
         private static string NextNightButtonLabel(NightId night)
@@ -4256,6 +4282,7 @@ namespace NotANap.App
                 "첫째 밤부터 다시", _button))
             {
                 _flow = new GameFlowController(new SystemRandomSource(Environment.TickCount));
+                _narrativeGate = new NarrativeCallGate();
                 _lastResult = null;
                 _actionGroup = ActionGroup.Diagnose;
                 _timedEncounterSequence = -1;

@@ -14,7 +14,7 @@ namespace NotANap.Core
     }
 
     /// <summary>AI와 Presentation이 공유하는 검증된 밤 기록. ID와 수치만 보관한다.</summary>
-    public sealed class DiaryFacts
+    public sealed class NarrativeFacts
     {
         public NightId NightId;
         public ObservationSignalId? FirstNoticedSignal;

@@ -1,5 +1,7 @@
 # GitHub Actions WebGL 배포
 
+배포 주소: <https://seowoo-choi.github.io/not-a-nap/>
+
 `.github/workflows/deploy-webgl.yml`은 `main`에 변경이 들어오거나 Actions 화면에서 수동 실행할 때
 Unity WebGL을 빌드하고 GitHub Pages에 배포한다.
 

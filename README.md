@@ -3,6 +3,9 @@
 > 아기는 플레이어의 재우는 방식을 기억합니다.  
 > 첫째 밤과 둘째 밤에 만든 습관이 백일째 밤의 규칙으로 돌아오는, 약 5분 분량의 턴제 육아 로그라이크입니다.
 
+**▶ 지금 플레이 — <https://seowoo-choi.github.io/not-a-nap/>** (브라우저에서 바로 실행, 설치 없음)  
+저장소: <https://github.com/seowoo-choi/not-a-nap>
+
 [![Build and deploy WebGL](https://github.com/seowoo-choi/not-a-nap/actions/workflows/deploy-webgl.yml/badge.svg)](https://github.com/seowoo-choi/not-a-nap/actions/workflows/deploy-webgl.yml)
 
 NHN NAN 2026 해커톤 사전 과제로 제작한 Unity 2D WebGL 게임입니다. 목표는 아기를 가장 빨리 재우는 것이 아니라, 아기의 신호를 관찰하고 가족이 유지할 수 있는 밤 루틴을 만드는 것입니다.
@@ -26,7 +29,8 @@ NHN NAN 2026 해커톤 사전 과제로 제작한 Unity 2D WebGL 게임입니다
 - 수면 중 `같이 쉬기 / 환경 점검 / 다음 수유 준비` 선택
 - 행동과 습관이 다음 밤 및 백일째 밤의 규칙에 반영
 - 모든 판정이 결정론적 순수 C# Core에서 실행
-- LLM은 밤 종료 시 육아일지 서술에만 사용하며 판정에는 관여하지 않음
+- LLM은 밤 종료 시 1회 호출로 육아일지 서술만 생성하며 판정에는 관여하지 않음
+  (API 키 없이 서버리스 프록시 경유, 호출 실패 시 규칙 기반 폴백 서술 — [docs/narrative-proxy.md](docs/narrative-proxy.md))
 
 ## 기술 구성
 

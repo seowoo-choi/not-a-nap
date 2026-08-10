@@ -494,7 +494,7 @@ if (night.Over) { /* → DIARY 로 전환 */ }
   백일째 밤은 최대 2개이며 각 카드에 이전 선택, 도움, 부담을 함께 둔다.
 - 백일째 밤 표적 사건 출처는 `ActiveTargetedEvents`만으로 미리 노출하지 않는다.
   대응하는 `FiredEventIds`가 기록된 뒤에만 원인, 현재 변화, 대응 단서를 표시한다.
-- 육아일지는 `DiaryFacts`의 ID와 수치만 입력으로 쓴다. 화면 문장은
+- 육아일지는 `NarrativeFacts`의 ID와 수치만 입력으로 쓴다. 화면 문장은
   `PresentationCopyMapper`와 `GameSessionPresenter`가 만들며 Core에는 현지화 문장을 두지 않는다.
 - 엔딩은 성공 여부 → 충족 조건 수 → 엔딩 제목 → 설명 → 충족/미충족 조건 순이다.
   `EndingId.MorningWon`은 항상 실패이며 첫 정보가 “아쉬운 밤”이어야 한다.
