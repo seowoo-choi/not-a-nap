@@ -1,0 +1,8 @@
+name = "notanap-narrative"
+main = "src/worker.ts"
+compatibility_date = "2026-08-10"
+compatibility_flags = ["nodejs_compat"]
+
+# API 키는 여기에 두지 않는다. `wrangler secret put ANTHROPIC_API_KEY`로 넣는다.
+[vars]
+ALLOWED_ORIGIN = "https://seowoo-choi.github.io"

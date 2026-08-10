@@ -75,6 +75,13 @@ Core와 Presentation은 `noEngineReferences`라 네트워크에 접근할 수 �
 
 프록시는 CORS 허용 헤더(`Access-Control-Allow-Origin`)를 GitHub Pages 도메인에 대해 내려야 한다.
 
+## 프록시 구현
+
+[`proxy/cloudflare-worker/`](../proxy/cloudflare-worker/)에 배포 가능한 구현이 있다.
+시스템 프롬프트(사실 ID → 한국어 사전 포함)와 API 키는 그쪽이 소유하며,
+Claude를 1회 호출해 structured outputs로 문자열 5개를 받는다.
+배포 절차는 그 폴더의 README에 있다.
+
 ## 설정
 
 `Assets/Resources/narrative-proxy.json`:
