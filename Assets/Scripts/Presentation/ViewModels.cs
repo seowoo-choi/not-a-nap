@@ -207,6 +207,12 @@ namespace NotANap.Presentation
         public bool HumidityChecked;
         public bool BabyTemperatureChecked;
         public bool FeedingReady;
+        /// <summary>수유 준비가 덜 됐을 때 다음에 해야 할 한 단계. 준비가 끝났으면 null.</summary>
+        public string FeedingNextStep;
+        /// <summary>이번 각성에서 배고픔 신호를 이미 살펴봤는지.</summary>
+        public bool HungerChecked;
+        /// <summary>배고픔이 확인됐지만 젖병이 아직 준비되지 않아 주방에 가야 하는 상태.</summary>
+        public bool NeedsKitchenForFeed;
         public bool BottleSanitized;
         public bool FeedingWaterReady;
         public bool FormulaMeasured;

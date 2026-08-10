@@ -74,6 +74,16 @@ namespace NotANap.App
                         vm.SleepStage == V2SleepStage.NremDeepSleep;
         }
 
+        /// <summary>
+        /// 밤 화면을 벗어날 때 울음 상태를 지운다. 이 호출이 없으면 마지막 울음 세기가
+        /// 그대로 남아 다른 화면과 다음 밤까지 울음이 반복 재생된다.
+        /// </summary>
+        public void ClearBabyState()
+        {
+            _cryIntensity = 0f;
+            _sleeping = false;
+        }
+
         public void SetBabyVoiceVariant(int variant)
             => _babyVoicePitch = variant == 0 ? 1.12f : variant == 2 ? 0.9f : 1f;
 

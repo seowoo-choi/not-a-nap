@@ -56,6 +56,8 @@ namespace NotANap.App
         private float _nextKeyboardMoveAt;
         private bool _directHintSeen;
         private float _directCueHiddenUntil = -10f;
+        /// <summary>이번 프레임에 표시할 결정 잔여 초. 각성이 해소됐으면 -1.</summary>
+        private int _decisionSecondsShown = -1;
         private V2ActionId? _roomObjectAction;
         private float _roomObjectAnimationStarted = -10f;
 
@@ -426,6 +428,9 @@ namespace NotANap.App
                 new Vector3(scale, scale, 1));
 
             DrawBackdrop();
+            // 아기 울음은 밤 화면에서만 난다. 여기서 비워 주지 않으면 마지막 울음 세기가
+            // 남아 육아일지·엔딩·다음 밤 세팅에서까지 1.4초마다 계속 재생된다.
+            if (_flow.Screen != ScreenState.Play) _audio.ClearBabyState();
             switch (_flow.Screen)
             {
                 case ScreenState.Title: DrawTitle(); break;
@@ -1558,6 +1563,10 @@ namespace NotANap.App
         {
             var vm = _flow.BuildV2Play();
             UpdateContinuousCare(vm);
+            // 결정 타이머는 화면 어디에 그려지든 매 프레임 흘러야 한다. 예전에는 '방금 한
+            // 행동' 패널이 있을 때만 갱신돼, 방을 옮긴 직후에는 멈춘 것처럼 보이면서도
+            // 만료되면 주저함이 조용히 발동했다.
+            _decisionSecondsShown = vm.CauseResolved ? -1 : UpdateDecisionTimer(vm);
             vm = _flow.BuildV2Play();
             HandleRoomMovementKeys(vm);
             int encounterSequence = _flow.Session.Night.V2.Diagnosis.EncounterSequence;
@@ -1604,6 +1613,27 @@ namespace NotANap.App
                     TextAnchor.MiddleRight));
             DrawProgress(new Rect(1606, 91, 262, 4),
                 1f - vm.RemainingMinutes / 540f, new Color(0.94f, 0.67f, 0.3f));
+            DrawDecisionTimer(new Rect(1348, 104, 520, 38), false);
+        }
+
+        /// <summary>
+        /// 실제로 줄어드는 유일한 실시간 타이머를 항상 보이는 자리에 그린다. "새벽까지 N분"은
+        /// 행동이 시간을 쓸 때만 줄어드는 게임 내 시계라, 둘을 구분해 주지 않으면
+        /// 플레이어는 무엇이 줄고 있는지 알 수 없다.
+        /// </summary>
+        private void DrawDecisionTimer(Rect rect, bool portrait)
+        {
+            if (_decisionSecondsShown < 0) return;
+            bool expired = _decisionSecondsShown == 0;
+            bool urgent = _decisionSecondsShown <= 6;
+            GUI.Label(rect, expired
+                    ? "결정 시간 초과 · 주저하는 사이 울음이 커졌어요"
+                    : $"결정까지 {_decisionSecondsShown}초",
+                OverlayLabelStyle(portrait ? 24 : 19, FontStyle.Bold,
+                    expired ? new Color(.96f, .45f, .38f)
+                    : urgent ? new Color(1f, .7f, .34f)
+                    : new Color(.82f, .85f, .88f),
+                    TextAnchor.MiddleRight));
         }
 
         private void DrawPortraitPlay(V2PlayViewModel vm)
@@ -1625,6 +1655,7 @@ namespace NotANap.App
                     TextAnchor.MiddleCenter));
             DrawProgress(new Rect(735, 145, 289, 5), 1f - vm.RemainingMinutes / 540f,
                 new Color(0.94f, 0.67f, 0.3f));
+            DrawDecisionTimer(new Rect(300, 18, 724, 46), true);
             DrawPortraitItemDock(vm);
             DrawPortraitStatusOrnaments(vm);
             if (vm.EchoSources.Count > 0)
@@ -1951,9 +1982,13 @@ namespace NotANap.App
             var mattress = new Rect(babyRect.x + babyRect.width * .08f,
                 babyRect.yMax - babyRect.height * .08f, babyRect.width * .84f, babyRect.height * .17f);
 
+            // 배고픔 신호를 이미 살펴본 각성에서는 같은 관찰을 다시 걸어 두지 않는다.
+            // 그대로 두면 입가 링크가 영원히 "살피기"에 묶여 다음 행동이 사라진다.
             V2ActionId mouthAction = vm.FeedingReady
                 ? V2ActionId.FeedPreparedBottle
-                : !vm.CauseResolved ? V2ActionId.CheckHungerSignals : V2ActionId.Pacifier;
+                : !vm.CauseResolved && !vm.HungerChecked
+                    ? V2ActionId.CheckHungerSignals
+                    : V2ActionId.Pacifier;
             V2ActionId diaperAction = vm.DiaperChangedPendingDisposal
                 ? V2ActionId.DisposeDiaper
                 : vm.DiaperWetConfirmed
@@ -1977,9 +2012,13 @@ namespace NotANap.App
                     "입과 손을 살펴보세요"),
                 new BodyActionLink(back, V2ActionId.Pat, "등 · 같은 리듬으로 토닥이기",
                     "등을 토닥여 보세요"),
+                // 이미 품에 안고 있는데 "품에 안기"라고 쓰면 같은 행동이 두 번 필요한
+                // 것처럼 읽힌다. 안고 있을 때의 이 자리는 달래기다.
                 new BodyActionLink(chest, chestAction,
-                    vm.CarrierOn ? "가슴 · 아기띠 풀어주기" : "가슴 · 목을 받쳐 품에 안기",
-                    vm.CarrierOn ? "아기띠를 풀어주세요" : "목을 받쳐 안아보세요"),
+                    vm.CarrierOn ? "가슴 · 아기띠 풀어주기"
+                        : vm.BabyHeld ? "가슴 · 품에 안고 달래기" : "가슴 · 목을 받쳐 품에 안기",
+                    vm.CarrierOn ? "아기띠를 풀어주세요"
+                        : vm.BabyHeld ? "품에 안고 달래보세요" : "목을 받쳐 안아보세요"),
                 new BodyActionLink(diaper, diaperAction,
                     diaperAction == V2ActionId.DisposeDiaper ? "기저귀 · 싸서 버리기" + diaperCost :
                     diaperAction == V2ActionId.ChangeDiaper
@@ -2006,10 +2045,13 @@ namespace NotANap.App
         private static Rect NoiseObjectRect(bool portrait)
             => portrait ? new Rect(40, 620, 175, 165) : new Rect(75, 610, 160, 155);
 
-        // 모니터는 아기방 밖에서만 켜지므로 아기방 좌표가 아니라
-        // 두 방 모두에서 같은 자리에 오는 화면 우하단을 쓴다.
-        private static Rect MonitorObjectRect(bool portrait)
-            => portrait ? new Rect(845, 620, 165, 165) : new Rect(255, 625, 140, 140);
+        /// <summary>
+        /// 모니터는 아기방 밖에서만 켜진다. 이전 좌표 (255,625)는 아기방 밖에서 세워지는
+        /// 행동 목록 패널(40,596~380,842) 아래에 그대로 깔려, 물건을 눌러도 패널의 다른
+        /// 버튼이 먼저 먹었다. 아기방 전용인 온습도계 자리(우하단)는 모니터가 뜨는
+        /// 주방·욕실에서 항상 비어 있고, 안고 있는 아기(x 1420~1880, y 86~546)와도 겹치지 않는다.
+        /// </summary>
+        private static Rect MonitorObjectRect() => new Rect(1660, 790, 150, 150);
 
         private static V2ActionId? RecommendedBodyAction(V2PlayViewModel vm,
             V2ActionId mouthAction, V2ActionId diaperAction)
@@ -2024,7 +2066,11 @@ namespace NotANap.App
             {
                 if (vm.FeedingReady && vm.RevealedCause == WakeCause.Hunger)
                     return V2ActionId.FeedPreparedBottle;
-                return vm.DiaperRecommendationVisible ? diaperAction : mouthAction;
+                if (vm.DiaperRecommendationVisible) return diaperAction;
+                if (!vm.HungerChecked) return mouthAction;
+                // 살펴볼 신호를 다 본 뒤의 다음 손길은 달래기다. 수유가 필요한 밤이면
+                // 주방 준비를 안내하는 패널이 따로 다음 단계를 가리킨다.
+                return vm.BabyHeld ? V2ActionId.Pat : V2ActionId.Hold;
             }
             if (vm.SleepStage == V2SleepStage.RemActiveSleep) return null;
             if (vm.SleepStage == V2SleepStage.NremDeepSleep && !vm.DeepSleepObserved)
@@ -2202,9 +2248,12 @@ namespace NotANap.App
             if (_flow.InputLocked || RoomTransitionActive()) return;
             // 아기방을 비운 동안 아기를 살피는 물건이므로, 아기 히트존이 없는
             // 주방·욕실에서도 독립된 진입점이 있어야 한다.
-            if (vm.CaregiverLocation != HomeLocation.Nursery)
-                DrawRoomObject(vm, V2ActionId.CheckMonitor, MonitorObjectRect(portrait),
-                    "베이비 모니터로 아기 살피기", ItemId.Monitor, portrait);
+            // 세로 화면은 주방·욕실 소품과 안고 있는 아기가 장면을 꽉 채워 모니터를
+            // 놓을 빈 자리가 없다. 세로에서는 항상 열리는 관찰 시트의 보조 행동 목록
+            // (DrawUtilityActions)이 같은 진입점을 제공하므로 소품을 그리지 않는다.
+            if (!portrait && vm.CaregiverLocation != HomeLocation.Nursery)
+                DrawRoomObject(vm, V2ActionId.CheckMonitor, MonitorObjectRect(),
+                    "베이비 모니터로 아기 살피기", ItemId.Monitor, false);
             switch (vm.CaregiverLocation)
             {
                 case HomeLocation.Kitchen:
@@ -2270,9 +2319,11 @@ namespace NotANap.App
         private void DrawBathroomGuidance(V2PlayViewModel vm, bool portrait)
         {
             bool babyTogether = vm.BabyLocation == HomeLocation.Bathroom;
+            // 가로에서 x 38~324 · y 220~494는 수면/체력/집중력 상태 오너먼트가 쓴다.
+            // 이 패널을 거기에 겹쳐 두면 두 벌의 글자가 그대로 포개져 읽을 수 없다.
             Rect panel = portrait
-                ? new Rect(58f, 310f, 448f, 286f)
-                : new Rect(52f, 226f, 410f, 252f);
+                ? new Rect(58f, 340f, 448f, 286f)
+                : new Rect(390f, 222f, 430f, 252f);
             DrawGlassPanel(panel, .84f);
             Fill(new Rect(panel.x, panel.y + 14f, 5f, panel.height - 28f),
                 new Color(.42f, .82f, .9f));
@@ -2644,10 +2695,10 @@ namespace NotANap.App
             GUI.DrawTexture(new Rect(objectRect.x - 20, objectRect.y - 20,
                 objectRect.width + 40, objectRect.height + 40), _itemGlow, ScaleMode.StretchToFill, true);
             GUI.color = old;
-            if (vm.CaregiverLocation == HomeLocation.Kitchen)
-                DrawBottleProp(objectRect, actionId);
-            else
-                DrawItemArt(art, objectRect);
+            // 방으로 분기하면 안 된다. 주방에서 그려지는 방 물건은 베이비 모니터뿐인데
+            // 이 분기가 그걸 젖병 소품으로 바꿔 그려 "모니터처럼 안 생긴" 물건이 됐다.
+            // 젖병 소품은 수유 준비 히트존(DrawSceneActionHotspot)이 따로 그린다.
+            DrawItemArt(art, objectRect);
             DrawCareSparkles(objectRect.center, .45f + phase * .5f, 3);
             if (objectRect.Contains(Event.current.mousePosition))
                 GUI.Label(new Rect(objectRect.x - 35, objectRect.y - (portrait ? 48f : 40f),
@@ -2701,6 +2752,13 @@ namespace NotANap.App
                     new Color(0.92f, 0.93f, 0.93f), TextAnchor.MiddleLeft, true));
         }
 
+        /// <summary>다음 목적지 칸에 쓰는 맥동 색. 현재 위치의 고정 주황과 구분된다.</summary>
+        private static Color NeedsRoomPulse()
+        {
+            float pulse = (Mathf.Sin(Time.unscaledTime * 3.4f) + 1f) * .5f;
+            return new Color(1f, .74f, .34f, .45f + pulse * .5f);
+        }
+
         private void DrawHomeJourneyMap(V2PlayViewModel vm, bool portrait)
         {
             // 가로에서는 폭 330 안에 "이동" 라벨과 방 세 칸을 밀어 넣어 칸당 78px밖에
@@ -2730,16 +2788,25 @@ namespace NotANap.App
                         roomWidth, map.height - 16f);
                 bool current = vm.CaregiverLocation == room;
                 bool babyHere = vm.BabyLocation == room;
-                DrawGlassPanel(roomRect, current ? .92f : .5f, current);
-                if (current)
+                // 수유가 필요한데 젖병이 준비되지 않았으면 주방 칸이 다음 목적지다.
+                // 별도 안내 패널을 띄우는 대신 이미 자리가 잡힌 이 칸을 쓴다.
+                bool needsThisRoom = vm.NeedsKitchenForFeed &&
+                    room == HomeLocation.Kitchen && !current;
+                DrawGlassPanel(roomRect, current ? .92f : needsThisRoom ? .82f : .5f,
+                    current || needsThisRoom);
+                if (current || needsThisRoom)
                     Fill(new Rect(roomRect.x, roomRect.y, 4f, roomRect.height),
-                        new Color(.96f, .68f, .3f));
-                string occupants = current && babyHere ? "나와 아기" :
+                        current ? new Color(.96f, .68f, .3f) : NeedsRoomPulse());
+                // 칸 폭이 가로에서 107px밖에 안 된다. 문구가 길면 그대로 뭉친다.
+                string occupants = needsThisRoom ? "수유 준비" :
+                    current && babyHere ? "나와 아기" :
                     current ? "나" : babyHere ? "아기" : "비어 있음";
                 if (portrait)
                     GUI.Label(roomRect, HomeLocationLabel(room) + " · " + occupants,
                         OverlayLabelStyle(25, FontStyle.Bold,
-                            current ? Color.white : new Color(.78f, .81f, .83f),
+                            current ? Color.white
+                            : needsThisRoom ? new Color(1f, .84f, .55f)
+                            : new Color(.78f, .81f, .83f),
                             TextAnchor.MiddleCenter));
                 else
                 {
@@ -2750,8 +2817,10 @@ namespace NotANap.App
                             TextAnchor.MiddleCenter));
                     GUI.Label(new Rect(roomRect.x, roomRect.y + 30f, roomRect.width, 22f),
                         occupants,
-                        OverlayLabelStyle(13, FontStyle.Normal,
-                            current ? new Color(1f, .84f, .58f) : new Color(.6f, .63f, .66f),
+                        OverlayLabelStyle(13, needsThisRoom ? FontStyle.Bold : FontStyle.Normal,
+                            current ? new Color(1f, .84f, .58f)
+                            : needsThisRoom ? new Color(1f, .82f, .5f)
+                            : new Color(.6f, .63f, .66f),
                             TextAnchor.MiddleCenter));
                 }
                 bool enabled = !current && !_flow.InputLocked && !RoomTransitionActive();
@@ -3704,7 +3773,9 @@ namespace NotANap.App
 
         private string DecisionTimerCopy(V2PlayViewModel vm, string prefix = "")
         {
-            int remaining = UpdateDecisionTimer(vm);
+            // DrawPlay가 프레임마다 한 번 갱신해 둔 값을 그대로 쓴다.
+            int remaining = _decisionSecondsShown >= 0
+                ? _decisionSecondsShown : UpdateDecisionTimer(vm);
             return _timeoutSent && remaining <= 0 ? prefix + "시간 초과" : $"{prefix}{remaining}초";
         }
 
@@ -4366,6 +4437,14 @@ namespace NotANap.App
                     default: return "지금은 배고픔 신호가 보이지 않아요.";
                 }
             }
+            // 안기·토닥임·달래는 물건은 원인을 해소하진 않지만 울음을 실제로 낮춘다.
+            // 그 사실을 말해주지 않으면 플레이어에게는 아무 일도 없었던 것으로 보인다.
+            if (outcome.CryRelief > 0)
+                return outcome.Action == V2ActionId.ToggleNoise
+                    ? "백색소음이 방을 채우자 울음이 한풀 꺾였어요."
+                    : vm.RevealedCause == WakeCause.Hunger
+                        ? "울음이 잦아들었어요. 배고픔은 수유로만 해결돼요."
+                        : "울음이 잦아들었어요. 아직 깬 원인은 그대로예요.";
             if (outcome.ObservedSignals.Count > 0)
                 return PresentationCopyMapper.ObservationSignal(outcome.ObservedSignals[0]);
             if (outcome.Action == V2ActionId.CheckEnvironment)

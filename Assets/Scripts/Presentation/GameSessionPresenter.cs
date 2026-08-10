@@ -313,8 +313,16 @@ namespace NotANap.Presentation
             var v2 = Night.V2;
             int total = _config.V2.NightDurationMinutes;
             int clockMinutes = (_config.StartHour * 60 + v2.ElapsedMinutes) % (24 * 60);
+            // 배고픔으로 깬 걸 확인했는데 젖병이 준비되지 않은 상태. 수유 버튼은 준비가
+            // 끝나야 열리므로, 이 상태에서는 주방으로 가야 한다는 사실을 화면이 직접
+            // 말해주지 않으면 각성이 통째로 막다른 길로 보인다.
+            bool needsKitchenForFeed = !v2.Diagnosis.CauseResolved &&
+                v2.Diagnosis.ActiveCause == WakeCause.Hunger &&
+                v2.Diagnosis.CheckedCauses.Contains(WakeCause.Hunger) &&
+                !v2.Feeding.IsReadyToFeed;
             var vm = new V2PlayViewModel
             {
+                NeedsKitchenForFeed = needsKitchenForFeed,
                 NightId = Night.NightId,
                 Clock = $"{clockMinutes / 60:00}:{clockMinutes % 60:00}",
                 ElapsedMinutes = v2.ElapsedMinutes,
@@ -353,6 +361,8 @@ namespace NotANap.Presentation
                 HumidityChecked = v2.Environment.IsHumidityChecked,
                 BabyTemperatureChecked = v2.Environment.IsBabyTemperatureChecked,
                 FeedingReady = v2.Feeding.IsReadyToFeed,
+                FeedingNextStep = v2.Feeding.IsReadyToFeed ? null : FeedingNextStepHint(),
+                HungerChecked = v2.Diagnosis.CheckedCauses.Contains(WakeCause.Hunger),
                 BottleSanitized = v2.Feeding.BottleSanitized,
                 FeedingWaterReady = v2.Feeding.WaterReady,
                 FormulaMeasured = v2.Feeding.FormulaMeasured,
@@ -381,9 +391,12 @@ namespace NotANap.Presentation
                 // 관찰 기록(VisibleSignals)은 밤의 기록용으로 남지만, 아기가 잠든 뒤에도
                 // 그대로 현재 신호로 보이면 "몸의 긴장이 풀린다 / 입맛을 다시고 있어요"처럼
                 // 헤드라인과 정반대인 문장이 한 카드에 같이 뜬다. 자는 동안은 수면 서술로 돌린다.
-                CurrentSignal = !IsAsleep(v2) && v2.VisibleSignals.Count > 0
-                    ? PresentationCopyMapper.ObservationSignal(v2.VisibleSignals[0])
-                    : DefaultSignal(v2, Night.Baby.Hunger),
+                // 수유가 필요한 상태에서는 관찰 문구보다 다음에 할 일이 우선이다.
+                CurrentSignal = needsKitchenForFeed
+                    ? FeedingNextStepHint()
+                    : !IsAsleep(v2) && v2.VisibleSignals.Count > 0
+                        ? PresentationCopyMapper.ObservationSignal(v2.VisibleSignals[0])
+                        : DefaultSignal(v2, Night.Baby.Hunger),
                 CaregiverReflection = v2.CaregiverComposure >= 65
                     ? "숨을 고르자 놓쳤던 신호가 보인다."
                     : "집중력이 흐려진다. 잠깐 숨을 고르자.",
@@ -419,6 +432,20 @@ namespace NotANap.Presentation
             return vm;
         }
 
+        /// <summary>
+        /// 수유까지 남은 단계 중 지금 해야 할 하나를 한 줄로 돌려준다. 준비가 세 단계로
+        /// 나뉘어 있는데 화면에 "먹일 수 없다"만 뜨면 어디로 가야 하는지 알 수 없다.
+        /// </summary>
+        private string FeedingNextStepHint()
+        {
+            var feeding = Night.V2.Feeding;
+            if (!feeding.BottleSanitized) return "주방에서 젖병을 소독해야 해요";
+            if (!feeding.BottleMixed) return "주방에서 분유를 타야 해요";
+            if (!feeding.BottleCooled || !feeding.TemperatureChecked)
+                return "주방에서 젖병을 식혀야 해요";
+            return "아기 곁에서 먹일 수 있어요";
+        }
+
         private bool IsV2ActionAvailable(V2ActionId action)
         {
             if (Night.Parent.Stamina <= 0)
@@ -429,7 +456,14 @@ namespace NotANap.Presentation
                 action == V2ActionId.MeasureFormula || action == V2ActionId.MixFormula ||
                 action == V2ActionId.CoolBottle || action == V2ActionId.CheckBottleTemperature)
                 return location == HomeLocation.Kitchen;
-            if (action == V2ActionId.FeedPreparedBottle) return withBaby && !Night.V2.HandsNeedWashing;
+            // 준비가 덜 된 젖병으로도 버튼이 눌리면 Core가 조용히 거절해 "눌러도 아무 일도
+            // 안 일어나는" 행동이 된다. 여기서 준비 완료까지 확인해 화면과 판정을 일치시킨다.
+            if (action == V2ActionId.FeedPreparedBottle)
+                return withBaby && !Night.V2.HandsNeedWashing && Night.V2.Feeding.IsReadyToFeed;
+            // 같은 각성에서 배고픔 신호를 다시 살펴도 새로 알 수 있는 게 없다.
+            // 열어 두면 추천이 이 행동에 영원히 고정된다.
+            if (action == V2ActionId.CheckHungerSignals)
+                return withBaby && !Night.V2.Diagnosis.CheckedCauses.Contains(WakeCause.Hunger);
             if (action == V2ActionId.CheckDiaper)
                 return withBaby && !Night.V2.Diagnosis.DiaperWetConfirmed &&
                     !Night.V2.Diagnosis.DiaperChangedPendingDisposal &&
@@ -498,7 +532,13 @@ namespace NotANap.Presentation
                 case V2ActionId.FeedPreparedBottle:
                     return Night.V2.HandsNeedWashing
                         ? "손을 씻고 나서 먹일 수 있어요"
-                        : "아기 곁에서 먹일 수 있어요";
+                        : !Night.V2.Feeding.IsReadyToFeed
+                            ? FeedingNextStepHint()
+                            : "아기 곁에서 먹일 수 있어요";
+                case V2ActionId.CheckHungerSignals:
+                    return Night.V2.Diagnosis.CheckedCauses.Contains(WakeCause.Hunger)
+                        ? "이번 각성에는 이미 살펴봤어요"
+                        : "아기 곁에서 살펴볼 수 있어요";
                 case V2ActionId.WashHands:
                     return Night.V2.HandsNeedWashing
                         ? "욕실에서 씻을 수 있어요"

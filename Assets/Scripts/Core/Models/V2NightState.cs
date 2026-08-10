@@ -53,6 +53,8 @@ namespace NotANap.Core
         public bool DiaperStoolConfirmed;
         public bool DiaperChangedPendingDisposal;
         public int DiaperRecommendationSuppressedUntilMinute;
+        /// <summary>이번 각성에서 이미 울음을 달래 준 물건. 토글 연타로 울음을 0까지 지우는 것을 막는다.</summary>
+        public readonly HashSet<V2ActionId> SoothedByAction = new HashSet<V2ActionId>();
 
         public void Begin(WakeCause cause, int decisionSeconds)
         {
@@ -67,6 +69,7 @@ namespace NotANap.Core
             DiaperWetConfirmed = false;
             DiaperStoolConfirmed = false;
             DiaperChangedPendingDisposal = false;
+            SoothedByAction.Clear();
         }
     }
 

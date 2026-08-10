@@ -20,6 +20,8 @@ namespace NotANap.Core
         public bool MonitorRead;
         public bool HeadSupported;
         public double ComposureDelta;
+        /// <summary>이 행동으로 줄어든 울음 세기(양수). 원인 해소와 무관한 '달래기'의 결과다.</summary>
+        public double CryRelief;
         public string ActivityLocation;
         public readonly List<ObservationSignalId> ObservedSignals = new List<ObservationSignalId>();
         public readonly List<FeedingPreparationStep> MissingPreparationSteps = new List<FeedingPreparationStep>();

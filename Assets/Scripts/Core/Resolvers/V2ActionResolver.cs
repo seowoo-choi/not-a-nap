@@ -197,6 +197,10 @@ namespace NotANap.Core
                     if (!night.HasItem(ItemId.Noise) || night.NoiseDisabled)
                         return RejectAndAudit(night, outcome, V2ActionBlockReason.ItemUnavailable);
                     night.Wearing.Noise = !night.Wearing.Noise;
+                    // 켜고 끄는 데도 시간이 든다. 0분짜리 토글이면 울음 완화를 무한히 긁을 수 있다.
+                    Consume(outcome, config.V2.SoothingItemMinutes, -1);
+                    if (night.Wearing.Noise)
+                        ApplySoothingItem(night, outcome, config, action);
                     break;
                 case V2ActionId.ToggleCarrier:
                     if (!night.HasItem(ItemId.Carrier) ||
@@ -207,6 +211,9 @@ namespace NotANap.Core
                     night.Baby.Held = true;
                     night.V2.HeadSupported = true;
                     outcome.HeadSupported = true;
+                    Consume(outcome, config.V2.SoothingItemMinutes, -1);
+                    if (night.Wearing.Carrier)
+                        ApplySoothingItem(night, outcome, config, action);
                     break;
                 case V2ActionId.CheckMonitor:
                     if (!night.HasItem(ItemId.Monitor))
@@ -419,23 +426,57 @@ namespace NotANap.Core
         private static void ApplyComfort(RunState run, NightState night, V2ActionOutcome outcome,
             GameBalanceConfig config, IRandomSource rng)
         {
-                    if (!night.V2.Diagnosis.CauseResolved &&
-                        (night.V2.Diagnosis.ActiveCause == WakeCause.NaturalCycle ||
-                         night.V2.Diagnosis.ActiveCause == WakeCause.MoroReflex))
-                        ResolveCause(night, outcome);
-                    if (!night.V2.Diagnosis.CauseResolved && night.V2.Diagnosis.ActiveCause == WakeCause.Diaper)
-                        ApplyMisdiagnosis(night, outcome, config);
-                    else if (night.V2.Diagnosis.CauseResolved)
-                    {
-                        if (night.Baby.Calm >= config.V2.SleepStartCalmThreshold)
-                        {
-                            V2TimeResolver.BeginSleep(night, V2SleepStage.RemActiveSleep);
-                            if (night.V2.NextWake == null || night.V2.NextWake.Triggered)
-                                WakeScheduler.Schedule(night, config, rng);
-                        }
-                        else if (night.Baby.Calm >= config.V2.DrowsyCalmThreshold)
-                            V2TimeResolver.SetDrowsy(night);
-                    }
+            var diagnosis = night.V2.Diagnosis;
+            if (!diagnosis.CauseResolved &&
+                (diagnosis.ActiveCause == WakeCause.NaturalCycle ||
+                 diagnosis.ActiveCause == WakeCause.MoroReflex))
+                ResolveCause(night, outcome);
+
+            if (!diagnosis.CauseResolved && diagnosis.ActiveCause == WakeCause.Diaper)
+            {
+                // 기저귀 우선 규칙: 젖은 채로 안아 달래는 건 원인을 미루는 선택이다.
+                ApplyMisdiagnosis(night, outcome, config);
+                return;
+            }
+            if (!diagnosis.CauseResolved)
+            {
+                // 원인은 그대로지만 안기·토닥임은 실제로 울음을 누그러뜨린다.
+                // 이게 없으면 배고픔·온습도 각성에서 플레이어가 무엇을 하든
+                // 울음이 커지기만 해 각성이 통째로 막다른 길이 된다.
+                RelieveCry(night, outcome, config.V2.ComfortCryRelief *
+                    night.V2.Modifier.ComfortActionModifier);
+                return;
+            }
+            if (night.Baby.Calm >= config.V2.SleepStartCalmThreshold)
+            {
+                V2TimeResolver.BeginSleep(night, V2SleepStage.RemActiveSleep);
+                if (night.V2.NextWake == null || night.V2.NextWake.Triggered)
+                    WakeScheduler.Schedule(night, config, rng);
+            }
+            else if (night.Baby.Calm >= config.V2.DrowsyCalmThreshold)
+                V2TimeResolver.SetDrowsy(night);
+        }
+
+        /// <summary>원인 해소와 무관하게 울음 세기만 낮춘다. 판정은 그대로 결정론적이다.</summary>
+        private static void RelieveCry(NightState night, V2ActionOutcome outcome, double amount)
+        {
+            if (amount <= 0) return;
+            double before = night.V2.CryIntensity;
+            night.V2.CryIntensity = CoreMath.Clamp(before - amount, 0, 100);
+            outcome.CryRelief += before - night.V2.CryIntensity;
+        }
+
+        /// <summary>
+        /// 달래는 물건(쪽쪽이·백색소음·아기띠)의 진정 효과. 한 각성에 물건당 한 번만
+        /// 적용해 0분짜리 토글을 반복해 울음을 지우는 우회를 막는다.
+        /// </summary>
+        private static void ApplySoothingItem(NightState night, V2ActionOutcome outcome,
+            GameBalanceConfig config, V2ActionId action)
+        {
+            var diagnosis = night.V2.Diagnosis;
+            if (diagnosis.CauseResolved || !diagnosis.SoothedByAction.Add(action)) return;
+            RelieveCry(night, outcome, config.V2.SoothingItemCryRelief *
+                night.V2.Modifier.ComfortActionModifier);
         }
 
         public static V2ActionOutcome ApplyDecisionTimeout(RunState run, NightState night,
@@ -542,6 +583,7 @@ namespace NotANap.Core
                 ? config.V2.PacifierLovesCalmGain : config.V2.PacifierNeutralCalmGain;
             night.PacifierLeft--;
             night.Baby.Calm = CoreMath.Clamp(night.Baby.Calm + gain, 0, 100);
+            ApplySoothingItem(night, outcome, config, V2ActionId.Pacifier);
             AddTrace(run, night, outcome, CoreTraceIds.PacifierAccepted, ActionId.Pacifier);
         }
 

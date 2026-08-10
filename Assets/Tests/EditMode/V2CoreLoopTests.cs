@@ -1046,5 +1046,91 @@ namespace NotANap.Core.Tests
             Assert.Greater(night.Parent.Stamina, 0);
             Assert.Greater(night.V2.ElapsedMinutes, elapsedBefore);
         }
+
+        [Test]
+        public void ComfortLowersCryEvenWhileTheCauseStaysUnresolved()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            V2TimeResolver.TriggerWake(night, WakeCause.Hunger, config);
+            night.V2.CryIntensity = 60;
+
+            var pat = V2ActionResolver.Apply(run, night, V2ActionId.Pat,
+                config, new SequenceRandomSource(0));
+
+            Assert.IsTrue(pat.Accepted);
+            Assert.Greater(pat.CryRelief, 0);
+            // 달래기는 원인을 대신 해결하지 않는다. 그래도 울음은 실제로 내려가야
+            // 배고픔·온습도 각성이 손쓸 수 없는 막다른 길이 되지 않는다.
+            Assert.IsFalse(night.V2.Diagnosis.CauseResolved);
+            Assert.Less(night.V2.CryIntensity, 60);
+        }
+
+        [Test]
+        public void ComfortOnADiaperWakeIsStillCountedAsMisdiagnosis()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            V2TimeResolver.TriggerWake(night, WakeCause.Diaper, config);
+            double cryBefore = night.V2.CryIntensity;
+
+            var hold = V2ActionResolver.Apply(run, night, V2ActionId.Hold,
+                config, new SequenceRandomSource(0));
+
+            Assert.IsTrue(hold.WasMisdiagnosis);
+            Assert.AreEqual(0, hold.CryRelief);
+            Assert.Greater(night.V2.CryIntensity, cryBefore);
+        }
+
+        [Test]
+        public void SoothingItemRelievesCryOnlyOncePerEncounter()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            V2TimeResolver.TriggerWake(night, WakeCause.Hunger, config);
+            night.V2.CryIntensity = 60;
+
+            var wear = V2ActionResolver.Apply(run, night, V2ActionId.ToggleCarrier,
+                config, new SequenceRandomSource(0));
+            var remove = V2ActionResolver.Apply(run, night, V2ActionId.ToggleCarrier,
+                config, new SequenceRandomSource(0));
+            var wearAgain = V2ActionResolver.Apply(run, night, V2ActionId.ToggleCarrier,
+                config, new SequenceRandomSource(0));
+
+            Assert.Greater(wear.CryRelief, 0);
+            Assert.AreEqual(0, remove.CryRelief);
+            Assert.AreEqual(0, wearAgain.CryRelief,
+                "토글을 반복해 울음을 0까지 지울 수 있으면 안 된다.");
+            // 켜고 끄는 데도 시간이 든다. 0분짜리 행동이면 완화를 무한히 긁을 수 있다.
+            Assert.Greater(wear.TimeDeltaMinutes, 0);
+        }
+
+        [Test]
+        public void HungerWakeIsOnlyResolvedByAFullyPreparedFeed()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            V2TimeResolver.TriggerWake(night, WakeCause.Hunger, config);
+
+            V2ActionResolver.Apply(run, night, V2ActionId.Pat, config, new SequenceRandomSource(0));
+            V2ActionResolver.Apply(run, night, V2ActionId.Hold, config, new SequenceRandomSource(0));
+            Assert.IsFalse(night.V2.Diagnosis.CauseResolved);
+
+            night.V2.CaregiverLocation = HomeLocation.Kitchen;
+            V2ActionResolver.Apply(run, night, V2ActionId.PrepareWater, config, new SequenceRandomSource(0));
+            V2ActionResolver.Apply(run, night, V2ActionId.CoolBottle, config, new SequenceRandomSource(0));
+            Assert.IsTrue(night.V2.Feeding.IsReadyToFeed);
+
+            night.V2.CaregiverLocation = HomeLocation.Nursery;
+            var fed = V2ActionResolver.Apply(run, night, V2ActionId.FeedPreparedBottle,
+                config, new SequenceRandomSource(0));
+
+            Assert.IsTrue(fed.Accepted);
+            Assert.IsTrue(night.V2.Diagnosis.CauseResolved);
+        }
     }
 }

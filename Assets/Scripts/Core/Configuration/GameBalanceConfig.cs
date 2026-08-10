@@ -119,6 +119,14 @@ namespace NotANap.Core
         // 원인을 못 찾은 채 토닥이면 아기는 절반만 진정한다. 무진단 연타를
         // 막으면서도 "일단 달래보기"라는 실제 육아 행동은 남겨 둔다.
         public double UnresolvedCauseComfortMultiplier = .5;
+        // 원인을 아직 해소하지 못한 각성에서도 안기·토닥임은 울음을 실제로 누그러뜨린다.
+        // 이 완화가 없으면 배고픔·온습도 각성에서 CryIntensity가 단조 증가만 해
+        // 플레이어가 무엇을 하든 울음이 새벽까지 커지기만 한다.
+        public double ComfortCryRelief = 9;
+        // 쪽쪽이·백색소음·아기띠는 원인을 해소하지 않지만 한 각성에 한 번은
+        // 실제로 아기를 달랜다. 시간 비용과 1회 제한으로 토글 연타를 막는다.
+        public double SoothingItemCryRelief = 6;
+        public int SoothingItemMinutes = 2;
 
         public static V2BalanceConfig Default() => new V2BalanceConfig();
     }

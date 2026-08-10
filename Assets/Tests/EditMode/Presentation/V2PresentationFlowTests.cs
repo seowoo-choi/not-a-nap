@@ -359,5 +359,53 @@ namespace NotANap.Presentation.Tests
             Assert.AreEqual(NightId.SecondNight, flow.Session.Night.NightId);
             Assert.IsNotNull(flow.Session.Night.V2);
         }
+
+        [Test]
+        public void FeedActionStaysLockedUntilThePreparationIsActuallyFinished()
+        {
+            var flow = StartV2();
+            var feeding = flow.Session.Night.V2.Feeding;
+            feeding.BottleSanitized = true;
+            feeding.WaterReady = true;
+            feeding.FormulaMeasured = true;
+            feeding.BottleMixed = true;
+            feeding.BottleCooled = false;
+            feeding.TemperatureChecked = false;
+
+            var vm = flow.BuildV2Play();
+            var feed = vm.Actions.First(a => a.Action == V2ActionId.FeedPreparedBottle);
+            // 예전에는 버튼이 열려 있는데 Core가 조용히 거절해, 눌러도 아무 일도
+            // 일어나지 않는 행동으로 보였다.
+            Assert.IsFalse(feed.Enabled);
+            Assert.AreEqual("주방에서 젖병을 식혀야 해요", feed.DisabledReason);
+            Assert.AreEqual("주방에서 젖병을 식혀야 해요", vm.FeedingNextStep);
+
+            feeding.BottleCooled = true;
+            feeding.TemperatureChecked = true;
+
+            var ready = flow.BuildV2Play();
+            Assert.IsTrue(ready.Actions.First(a => a.Action == V2ActionId.FeedPreparedBottle).Enabled);
+            Assert.IsNull(ready.FeedingNextStep);
+        }
+
+        [Test]
+        public void HungerSignalCheckIsNotOfferedTwiceInTheSameEncounter()
+        {
+            var flow = StartV2();
+            V2TimeResolver.TriggerWake(flow.Session.Night, WakeCause.Hunger,
+                GameBalanceConfig.Default());
+
+            Assert.IsTrue(flow.BuildV2Play().Actions
+                .First(a => a.Action == V2ActionId.CheckHungerSignals).Enabled);
+
+            flow.ActV2(V2ActionId.CheckHungerSignals);
+
+            var vm = flow.BuildV2Play();
+            var check = vm.Actions.First(a => a.Action == V2ActionId.CheckHungerSignals);
+            // 열어 두면 몸 위의 추천이 이 관찰에 영원히 고정돼 다음 행동이 사라진다.
+            Assert.IsTrue(vm.HungerChecked);
+            Assert.IsFalse(check.Enabled);
+            Assert.AreEqual("이번 각성에는 이미 살펴봤어요", check.DisabledReason);
+        }
     }
 }
