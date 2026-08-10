@@ -2701,23 +2701,23 @@ namespace NotANap.App
 
         private void DrawHomeJourneyMap(V2PlayViewModel vm, bool portrait)
         {
+            // 가로에서는 폭 330 안에 "이동" 라벨과 방 세 칸을 밀어 넣어 칸당 78px밖에
+            // 남지 않았고, 그 안에 "아기방 · 나와 아기"를 12pt 한 줄로 그려 글자가
+            // 뭉갰다. 라벨을 빼고 폭을 넓혀 방 이름과 누가 있는지를 두 줄로 나눈다.
             Rect map = portrait
                 ? new Rect(58f, PortraitRoomMapY, 964f, PortraitRoomMapHeight)
-                : new Rect(1540f, 690f, 330f, 62f);
+                : new Rect(1540f, 682f, 356f, 74f);
             DrawGlassPanel(map, 0.7f);
-            Rect titleRect = portrait
-                ? new Rect(map.x + 22f, map.y + 7f, map.width - 44f, 34f)
-                : new Rect(map.x + 8f, map.y, 62f, map.height);
-            GUI.Label(titleRect, portrait ? "방 이동" : "이동",
-                OverlayLabelStyle(portrait ? 23 : 14, FontStyle.Bold,
-                    new Color(.96f, .78f, .5f),
-                    portrait ? TextAnchor.MiddleLeft : TextAnchor.MiddleCenter));
+            if (portrait)
+                GUI.Label(new Rect(map.x + 22f, map.y + 7f, map.width - 44f, 34f), "방 이동",
+                    OverlayLabelStyle(23, FontStyle.Bold, new Color(.96f, .78f, .5f),
+                        TextAnchor.MiddleLeft));
 
             HomeLocation[] rooms =
                 { HomeLocation.Nursery, HomeLocation.Kitchen, HomeLocation.Bathroom };
-            float startX = map.x + (portrait ? 14f : 70f);
-            float gap = portrait ? 12f : 7f;
-            float roomWidth = (map.xMax - startX - 12f - gap * 2f) / 3f;
+            float startX = map.x + (portrait ? 14f : 10f);
+            float gap = portrait ? 12f : 8f;
+            float roomWidth = (map.xMax - startX - (portrait ? 12f : 10f) - gap * 2f) / 3f;
             for (int i = 0; i < rooms.Length; i++)
             {
                 HomeLocation room = rooms[i];
@@ -2732,12 +2732,26 @@ namespace NotANap.App
                 if (current)
                     Fill(new Rect(roomRect.x, roomRect.y, 4f, roomRect.height),
                         new Color(.96f, .68f, .3f));
-                string occupants = current && babyHere ? " · 나와 아기" :
-                    current ? " · 나" : babyHere ? " · 아기" : "";
-                GUI.Label(roomRect, HomeLocationLabel(room) + occupants,
-                        OverlayLabelStyle(portrait ? 25 : 12, FontStyle.Bold,
-                        current ? Color.white : new Color(.78f, .81f, .83f),
-                        TextAnchor.MiddleCenter));
+                string occupants = current && babyHere ? "나와 아기" :
+                    current ? "나" : babyHere ? "아기" : "비어 있음";
+                if (portrait)
+                    GUI.Label(roomRect, HomeLocationLabel(room) + " · " + occupants,
+                        OverlayLabelStyle(25, FontStyle.Bold,
+                            current ? Color.white : new Color(.78f, .81f, .83f),
+                            TextAnchor.MiddleCenter));
+                else
+                {
+                    GUI.Label(new Rect(roomRect.x, roomRect.y + 6f, roomRect.width, 26f),
+                        HomeLocationLabel(room),
+                        OverlayLabelStyle(17, FontStyle.Bold,
+                            current ? Color.white : new Color(.82f, .85f, .87f),
+                            TextAnchor.MiddleCenter));
+                    GUI.Label(new Rect(roomRect.x, roomRect.y + 30f, roomRect.width, 22f),
+                        occupants,
+                        OverlayLabelStyle(13, FontStyle.Normal,
+                            current ? new Color(1f, .84f, .58f) : new Color(.6f, .63f, .66f),
+                            TextAnchor.MiddleCenter));
+                }
                 bool enabled = !current && !_flow.InputLocked && !RoomTransitionActive();
                 bool previousEnabled = GUI.enabled;
                 GUI.enabled = previousEnabled && enabled;
