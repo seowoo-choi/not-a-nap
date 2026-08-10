@@ -259,7 +259,9 @@ namespace NotANap.Presentation
                     Id = def.Id,
                     Emoji = def.Emoji,
                     Name = def.Name,
-                    Desc = def.Desc,
+                    Role = def.Role,
+                    Effects = def.Effects,
+                    Cost = def.Cost,
                     Side = def.Side,
                     Selected = sel,
                     Disabled = !sel && full,
@@ -343,9 +345,19 @@ namespace NotANap.Presentation
                 DrowsyCalmThreshold = _config.V2.DrowsyCalmThreshold,
                 SleepStartCalmThreshold = _config.V2.SleepStartCalmThreshold,
                 ParentStamina = Night.Parent.Stamina,
-                CaregiverComposure = v2.CaregiverComposure,
+                BabyMood = BabyMoodResolver.Evaluate(Night, _config),
+                BabyMoodLabel = BabyMoodResolver.Label(BabyMoodResolver.Evaluate(Night, _config)),
                 CryIntensity = v2.CryIntensity,
                 Hunger = Night.Baby.Hunger,
+                HungerStage = ObservationResolver.GetHungerStage(Night.Baby.Hunger, _config.V2),
+                HungerLabel = PresentationCopyMapper.HungerStageLabel(
+                    ObservationResolver.GetHungerStage(Night.Baby.Hunger, _config.V2)),
+                FatigueStage = BabyClockResolver.GetFatigueStage(v2, _config),
+                FatigueLabel = PresentationCopyMapper.FatigueStageLabel(
+                    BabyClockResolver.GetFatigueStage(v2, _config)),
+                AwakeMinutes = BabyClockResolver.AwakeMinutes(v2),
+                MinutesSinceFeed = BabyClockResolver.MinutesSinceFeed(v2),
+                MinutesSinceDiaperChange = BabyClockResolver.MinutesSinceDiaperChange(v2),
                 BabyHeld = Night.Baby.Held,
                 IsLimbRelaxed = v2.SleepCycle.IsLimbRelaxed,
                 IsBreathingRegular = v2.SleepCycle.IsBreathingRegular,
@@ -375,6 +387,9 @@ namespace NotANap.Presentation
                 HasNoise = Night.HasItem(ItemId.Noise) && !Night.NoiseDisabled,
                 NoiseOn = Night.Wearing.Noise,
                 HasMonitor = Night.HasItem(ItemId.Monitor),
+                BabyStateVisible = IsBabyStateVisible(Night, v2, _config),
+                BabyStateViaMonitor = !IsBesideBaby(Night, v2) && IsMonitorReadFresh(Night, v2, _config),
+                BabyStateBlockedReason = BabyStateBlockedReason(Night, v2, _config),
                 HeadSupported = v2.HeadSupported,
                 CaregiverLocation = v2.CaregiverLocation,
                 BabyLocation = Night.Baby.Held ? v2.CaregiverLocation : HomeLocation.Nursery,
@@ -397,9 +412,9 @@ namespace NotANap.Presentation
                     : !IsAsleep(v2) && v2.VisibleSignals.Count > 0
                         ? PresentationCopyMapper.ObservationSignal(v2.VisibleSignals[0])
                         : DefaultSignal(v2, Night.Baby.Hunger),
-                CaregiverReflection = v2.CaregiverComposure >= 65
-                    ? "숨을 고르자 놓쳤던 신호가 보인다."
-                    : "집중력이 흐려진다. 잠깐 숨을 고르자.",
+                // 보호자 상태가 아니라 아기 상태를 말한다. 화면에 서는 수치가 아기 기분이므로
+                // 곁의 한 줄도 그 수치가 왜 그 값인지 설명하는 문장이어야 한다.
+                CaregiverReflection = ReadMoodReason(Night, v2, _config),
                 NightRoleTitle = PresentationCopyMapper.NightRoleTitle(Night.NightId),
                 NightRuleChange = PresentationCopyMapper.NightRoleSummary(Night.NightId),
                 Grade = Night.Over ? NightEvaluationResolver.Evaluate(Night, _config).Grade : null
@@ -611,6 +626,20 @@ namespace NotANap.Presentation
                     : $"{_config.V2.DiaperDisposeMinutes}분 · 체력 -{_config.V2.DiaperDisposeStaminaCost:0}";
             if (action == V2ActionId.WashHands)
                 return $"{_config.V2.WashHandsMinutes}분 · 체력 -{_config.V2.WashHandsStaminaCost:0}";
+            // 할머니 찬스는 런당 한 번뿐인 큰 카드다. 무엇이 얼마나 바뀌는지 모르면
+            // 아낄지 쓸지 판단할 수 없으므로 아기 상태 변화를 그대로 적는다.
+            if (action == V2ActionId.Grandma)
+                return $"{_config.V2.DefaultActionMinutes}분 · 체력 +35 · 진정 95 · 울음 0 · " +
+                       "각성 원인 해결 · 바로 잠듦 · 런당 1회";
+            if (action == V2ActionId.Pacifier)
+                return $"{_config.V2.DefaultActionMinutes}분 · 체력 -1 · 진정 +" +
+                       $"{(Night.V2.Profile.PacifierAffinity == PacifierAffinity.Loves ? _config.V2.PacifierLovesCalmGain : _config.V2.PacifierNeutralCalmGain):0}" +
+                       $" · 남은 {Night.PacifierLeft}회";
+            if (action == V2ActionId.CheckMonitor)
+                return "2분 · 체력 -1 · 아기방 밖에서만";
+            if (action == V2ActionId.ToggleNoise)
+                return "0분 · 진정 효과 없음 · 각성 간격 +" +
+                       $"{NoiseMachine.PotentialWakeDelayBonusMinutes(Night, _config)}분 · 외부 소음 차단";
             return null;
         }
 
@@ -836,9 +865,54 @@ namespace NotANap.Presentation
             return "조용한 반응도 하나의 신호예요. 반응이 작다고 서둘러 행동을 바꾸지 않아도 괜찮아요.";
         }
 
+        // ── 아기 상태를 읽을 수 있는가 ──────────────────────────
+        // 예전에는 어디에 있든 진정도·울음·배고픔이 늘 보였다. 그러면 베이비 모니터가
+        // "아기방 밖에서 아기를 본다"는 자기 역할을 잃고 분위기 문장만 돌려주는
+        // 물건이 된다. 아기 곁을 떠나면 수치를 닫고, 모니터만 그 문을 연다.
+
+        private static bool IsBesideBaby(NightState night, V2NightState v2)
+            => night.Baby.Held || v2.CaregiverLocation == HomeLocation.Nursery;
+
+        private static bool IsMonitorReadFresh(NightState night, V2NightState v2, GameBalanceConfig config)
+            => night.HasItem(ItemId.Monitor) &&
+               v2.ElapsedMinutes - v2.MonitorReadAtMinute <= config.V2.MonitorReadFreshMinutes;
+
+        private static bool IsBabyStateVisible(NightState night, V2NightState v2, GameBalanceConfig config)
+            => IsBesideBaby(night, v2) || IsMonitorReadFresh(night, v2, config);
+
+        private static string BabyStateBlockedReason(NightState night, V2NightState v2, GameBalanceConfig config)
+        {
+            if (IsBabyStateVisible(night, v2, config)) return null;
+            return night.HasItem(ItemId.Monitor)
+                ? "아기가 보이지 않아요. 베이비 모니터로 확인하세요."
+                : "아기가 보이지 않아요. 아기방으로 돌아가야 알 수 있어요.";
+        }
+
         private static bool IsAsleep(V2NightState v2)
             => v2.SleepCycle.Stage == V2SleepStage.RemActiveSleep ||
                v2.SleepCycle.Stage == V2SleepStage.NremDeepSleep;
+
+        /// <summary>
+        /// 아기 기분 수치가 왜 그 값인지 한 줄로 되짚는다. 기분을 가장 크게 깎고 있는
+        /// 항목을 먼저 말해 "무엇을 먼저 손보면 되는지"가 수치와 함께 읽히게 한다.
+        /// </summary>
+        private static string ReadMoodReason(NightState night, V2NightState v2, GameBalanceConfig config)
+        {
+            if (IsAsleep(v2))
+                return v2.SleepCycle.Stage == V2SleepStage.NremDeepSleep
+                    ? "깊이 잠들어 기분이 안정적이다."
+                    : "얕은 잠이라 작은 자극에도 기분이 흔들린다.";
+            double cryDrop = v2.CryIntensity * config.V2.MoodCryWeight;
+            double hungerDrop = System.Math.Max(0, night.Baby.Hunger - config.V2.HungerEarlyThreshold)
+                                * config.V2.MoodHungerWeight;
+            if (cryDrop <= 0 && hungerDrop <= 0)
+                return night.Baby.Calm >= config.V2.DrowsyCalmThreshold
+                    ? "기분이 좋다. 이대로 잠들 수 있는 상태다."
+                    : "기분은 나쁘지 않지만 아직 잠들 만큼 진정되지는 않았다.";
+            return cryDrop >= hungerDrop
+                ? $"울음이 기분을 {cryDrop:0} 깎고 있다. 원인을 찾아 없애야 한다."
+                : $"배고픔이 기분을 {hungerDrop:0} 깎고 있다. 분유를 준비해야 한다.";
+        }
 
         private static string DefaultSignal(V2NightState v2, double hunger)
         {

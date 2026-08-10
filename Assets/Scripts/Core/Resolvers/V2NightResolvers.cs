@@ -39,6 +39,8 @@ namespace NotANap.Core
                     : config.V2.WinterScenarioTemperature;
             night.V2.Environment.HumidityPercent = 50;
             night.V2.Environment.BabyTemperatureCelsius = 36.7;
+            // 지난 밤들의 백색소음 습관화를 밤 시작 시점에 한 번만 굳힌다.
+            night.V2.NoiseHabituation = CoreMath.Clamp01(run.GetEffectiveMemory().NoiseHab);
             // 가정에서 젖병은 평소 세척·소독해 둔 상태가 기본이다.
             // 돌발 상황이 이 값을 false로 바꾼 밤에만 소독 행동이 필요하다.
             night.V2.Feeding.BottleSanitized = true;
@@ -134,6 +136,8 @@ namespace NotANap.Core
             int max = config.V2.WakeDelayMaxMinutes;
             int rawDelay = min + rng.NextInt(max - min + 1);
             int delay = Math.Max(1, (int)Math.Round(rawDelay / night.V2.Modifier.WakeFrequencyMultiplier));
+            // 백색소음기는 자는 아기를 달래지 않는다. 다음 각성까지의 간격만 늘린다.
+            delay += NoiseMachine.WakeDelayBonusMinutes(night, config);
             int atMinute = night.V2.ElapsedMinutes + delay;
             bool diaperEligible = night.V2.DiaperWakeCount < config.V2.MaxDiaperWakesPerNight &&
                                   atMinute >= night.V2.NextDiaperEligibleMinute;
@@ -200,6 +204,7 @@ namespace NotANap.Core
             }
 
             night.Hour = (GameConfig.StartHour + night.V2.ElapsedMinutes / 60) % 24;
+            RunExternalNoise(night, config, rng);
             FinalNightResolver.RunScheduledEvents(run, night, rng);
             if (night.V2.ElapsedMinutes >= config.V2.NightDurationMinutes)
             {
@@ -221,12 +226,9 @@ namespace NotANap.Core
         {
             var v2 = night.V2;
             night.Baby.Hunger = CoreMath.Clamp(night.Baby.Hunger + minutes * .25, 0, 100);
-            if (night.Wearing.Noise && night.HasItem(ItemId.Noise) && !night.NoiseDisabled)
-            {
-                double effectiveness = 1 - run.GetEffectiveMemory().NoiseHab;
-                night.Baby.Calm = CoreMath.Clamp(night.Baby.Calm + minutes * .4 * effectiveness, 0, 100);
+            // 켜 둔 소음기는 진정도를 올리지 않는다. 사용 시간만 습관으로 쌓인다.
+            if (NoiseMachine.IsActive(night))
                 night.Stats.NoiseTurns += Math.Max(1, (int)Math.Ceiling(minutes / 15d));
-            }
             if (night.Wearing.Carrier)
                 night.Stats.CarrierTurns += Math.Max(1, (int)Math.Ceiling(minutes / 15d));
             bool sleeping = v2.SleepCycle.Stage == V2SleepStage.RemActiveSleep ||
@@ -248,10 +250,46 @@ namespace NotANap.Core
             else if (night.Baby.Crying)
             {
                 double holdFactor = v2.HoldWhilePreparing ? config.V2.HoldPreparingCryMultiplier : 1;
+                // 아기띠로 밀착해 안고 있으면 이동·준비 중에도 울음이 덜 오른다.
+                if (night.Wearing.Carrier) holdFactor *= config.V2.CarrierCryMultiplier;
                 v2.CryIntensity = CoreMath.Clamp(v2.CryIntensity + minutes * .2 *
                     v2.Modifier.CryEscalationMultiplier * holdFactor, 0, 100);
             }
             v2.ElapsedMinutes += minutes;
+        }
+
+        /// <summary>
+        /// 밤마다 한 번 있는 외부 소음 돌발. 백색소음기가 존재 이유를 증명하는 자리다.
+        /// 켜 두었으면 소리가 덮여 아기가 깨지 않고, 없으면 놀라서 깬다(모로 반사).
+        /// </summary>
+        private static void RunExternalNoise(NightState night, GameBalanceConfig config, IRandomSource rng)
+        {
+            int at = night.NightId switch
+            {
+                NightId.SecondNight => config.V2.SecondNightExternalNoiseMinute,
+                NightId.HundredthNight => config.V2.FinalNightExternalNoiseMinute,
+                _ => -1
+            };
+            if (at < 0 || night.V2.ElapsedMinutes < at) return;
+            if (!night.FiredEventIds.Add("v2-external-noise")) return;
+
+            string source = night.NightId == NightId.SecondNight
+                ? "딩동— 초인종이 울렸다. 하필 지금." : "윗집에서 쿵 소리가 났다.";
+            bool sleeping = night.V2.SleepCycle.Stage == V2SleepStage.RemActiveSleep ||
+                            night.V2.SleepCycle.Stage == V2SleepStage.NremDeepSleep;
+            if (!sleeping)
+            {
+                night.AddLog(source, LogClass.Warn);
+                return;
+            }
+            if (rng.NextDouble() < NoiseMachine.ExternalWakeGuard(night, config))
+            {
+                night.AddLog($"{source} 백색소음이 소리를 덮었다. 아기는 그대로 잔다.", LogClass.Good);
+                return;
+            }
+            night.AddLog($"{source} 아기가 놀라 깼다.", LogClass.Warn);
+            TriggerWake(night, WakeCause.MoroReflex, config);
+            if (night.V2.NextWake != null) night.V2.NextWake.Triggered = true;
         }
 
         public static void BeginSleep(NightState night, V2SleepStage stage)
@@ -272,6 +310,8 @@ namespace NotANap.Core
             WakeScheduler.RequireV2(night);
             night.V2.Metrics.RecordWake();
             night.V2.SleepCycle.CurrentSleepStretchMinutes = 0;
+            // 피로는 이 시점부터 다시 쌓인다.
+            night.V2.AwakeSinceMinute = night.V2.ElapsedMinutes;
             SetStage(night.V2.SleepCycle, V2SleepStage.Awake);
             night.Baby.Crying = true;
             night.V2.CryIntensity = Math.Max(night.V2.CryIntensity, 20);

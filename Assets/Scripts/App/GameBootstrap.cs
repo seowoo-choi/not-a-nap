@@ -102,6 +102,12 @@ namespace NotANap.App
         private ItemId? _setupFocus;
         private bool _titleDropAttempted;
         private int _introBeat;
+        /// <summary>인트로 1단계에서 이미 눌러 확인한 부위 비트마스크.</summary>
+        private int _introProbeMask;
+        /// <summary>마지막으로 확인한 부위의 결과 한 줄.</summary>
+        private string _introProbeNote;
+        /// <summary>인트로 모니터 장면에서 실제로 화면을 봤는지.</summary>
+        private bool _introMonitorRead;
         private bool _dadMonolid;
         private bool _momMonolid = true;
         private bool _dadStraightHair;
@@ -525,32 +531,89 @@ namespace NotANap.App
                 "아침 6시까지 함께 버텨라.\n깊은 잠 · 체력 · 맨손 눕히기 중 둘을 지켜라.", _body);
             if (DrawPrimaryButton(new Rect(120, 735, 790, 110), "오늘 밤 버티기  →"))
             {
-                _introBeat = 0;
+                ResetIntro();
                 _flow.BeginFamilySetup();
             }
         }
+
+        // ── 인트로(튜토리얼) ────────────────────────────────────────
+        // 이 화면은 정답 맞히기가 아니다. 예전 인트로는 "입과 손"만 정답이고
+        // 등·기저귀를 누르면 울음이 커지는 오답이었다. 그래서 플레이어는 배제
+        // 절차 대신 찍기를 배웠고, 등 토닥이기는 한 번도 배우지 못했으며,
+        // 주방 칩을 한 번 누르면 곧장 "먹였다"로 건너뛰어 분유 준비 순서가
+        // 통째로 사라졌다.
+        //
+        // 지금은 본편과 같은 문법을 순서대로 한 번씩 밟는다.
+        //   ① 세 곳(입과 손·등·기저귀)을 모두 눌러 배제하고 원인을 남긴다
+        //   ② 아기띠로 두 손을 비우고 주방으로 옮긴다
+        //   ③ 분유를 순서대로(섞기 → 식히고 온도 확인) 준비한다
+        //   ④ 아기방으로 돌아와 먹이고, 등을 토닥여 재운다
+        //   ⑤ 얕은 잠에서 실패해 보고, 깊은 잠을 확인한 뒤 내려놓는다
+        //   ⑥ 백색소음기와 베이비 모니터의 쓰임을 각각 한 번씩 확인한다
+        private const int IntroProbe = 0;
+        private const int IntroCause = 1;
+        private const int IntroCarrier = 2;
+        private const int IntroToKitchen = 3;
+        private const int IntroPrepMix = 4;
+        private const int IntroPrepCool = 5;
+        private const int IntroToNursery = 6;
+        private const int IntroFeed = 7;
+        private const int IntroSoothe = 8;
+        private const int IntroFellAsleep = 9;
+        private const int IntroLaydownFailed = 10;
+        private const int IntroDeepSleep = 11;
+        private const int IntroNoise = 12;
+        private const int IntroMonitor = 13;
+        private const int IntroDone = 14;
+
+        // 1단계에서 눌러 본 곳을 기억한다. 세 곳을 다 확인해야 다음으로 간다.
+        private const int ProbeMouth = 1;
+        private const int ProbeBack = 2;
+        private const int ProbeDiaper = 4;
+        private const int ProbeAll = ProbeMouth | ProbeBack | ProbeDiaper;
+
+        private static readonly Vector4 IntroMouthRatio = new Vector4(.38f, .17f, .24f, .2f);
+        private static readonly Vector4 IntroChestRatio = new Vector4(.27f, .32f, .3f, .28f);
+        private static readonly Vector4 IntroBackRatio = new Vector4(.58f, .3f, .25f, .34f);
+        private static readonly Vector4 IntroDiaperRatio = new Vector4(.34f, .58f, .33f, .23f);
+        private static readonly Vector4 IntroLimbRatio = new Vector4(.16f, .68f, .68f, .2f);
+        private static readonly Vector4 IntroCribRatio = new Vector4(.08f, .92f, .84f, .17f);
+
+        private void ResetIntro()
+        {
+            _introBeat = IntroProbe;
+            _introProbeMask = 0;
+            _introProbeNote = null;
+            _introMonitorRead = false;
+        }
+
+        private bool IntroInKitchen => _introBeat == IntroPrepMix || _introBeat == IntroPrepCool ||
+                                       _introBeat == IntroToNursery;
+
+        private Rect IntroBabyRect()
+        {
+            float size = _portrait ? 650f : 620f;
+            return _portrait
+                ? new Rect(215f, 210f, size, size)
+                : new Rect(1050f, 110f, size, size);
+        }
+
+        /// <summary>다음 버튼·방 이동 칩·소품 칩이 함께 쓰는 하단 띠.</summary>
+        private Rect IntroStripRect() => _portrait
+            ? new Rect(90f, 1250f, 900f, 132f)
+            : new Rect(110f, 655f, 720f, 104f);
 
         private void DrawIntro()
         {
             FillViewport(new Color(0.01f, 0.015f, 0.025f, 0.48f));
 
-            float babySize = _portrait ? 650f : 620f;
-            var babyRect = _portrait
-                ? new Rect(215f, 210f, babySize, babySize)
-                : new Rect(1050f, 110f, babySize, babySize);
-            Texture2D introPortrait = _introBeat > 1
-                ? _introBabyArt
-                : (_familyRolled ? GeneticBabyPortrait() : _introBabyArt);
-            if (introPortrait != null)
-            {
-                GUI.DrawTexture(new Rect(babyRect.center.x - babySize * 0.28f,
-                    babyRect.yMax - babySize * 0.12f, babySize * 0.56f, babySize * 0.09f),
-                    _itemShadow, ScaleMode.StretchToFill, true);
-                DrawGeneticPortrait(babyRect, introPortrait);
-            }
+            Rect babyRect = IntroBabyRect();
+            if (_introBeat == IntroMonitor) DrawIntroMonitorScene(babyRect);
+            else if (IntroInKitchen) DrawIntroKitchenProps();
+            else DrawIntroBaby(babyRect);
 
             var copyPanel = _portrait
-                ? new Rect(58f, 820f, 964f, 390f)
+                ? new Rect(58f, 820f, 964f, 402f)
                 : new Rect(110f, 150f, 780f, 470f);
             DrawGlassPanel(copyPanel, 0.82f);
             GUI.Label(new Rect(copyPanel.x + 38f, copyPanel.y + 32f,
@@ -562,66 +625,199 @@ namespace NotANap.App
                 IntroHeadline(),
                 OverlayLabelStyle(_portrait ? 50 : 40, FontStyle.Bold,
                     Color.white, TextAnchor.UpperLeft));
-            GUI.Label(new Rect(copyPanel.x + 38f, copyPanel.y + 220f,
-                copyPanel.width - 76f, 130f), IntroBody(),
-                OverlayLabelStyle(_portrait ? 40 : 27, FontStyle.Normal,
-                    new Color(0.9f, 0.92f, 0.94f), TextAnchor.UpperLeft));
+            GUI.Label(new Rect(copyPanel.x + 38f, copyPanel.y + (_portrait ? 200f : 220f),
+                copyPanel.width - 76f, _portrait ? 190f : 190f), IntroBody(),
+                OverlayLabelStyle(_portrait ? 34 : 26, FontStyle.Normal,
+                    new Color(0.9f, 0.92f, 0.94f), TextAnchor.UpperLeft, true));
 
-            // 인트로는 본편과 같은 문법으로 가르친다. 버튼 목록 대신 실제 플레이에서
-            // 쓰는 신체 부위 히트존을 그대로 눌러보게 하고, 한 단계에 하나씩만 가르친다.
+            // 한 단계에 배울 것은 하나. 눌러야 할 대상만 화면에 살아 있게 둔다.
             switch (_introBeat)
             {
-                case IntroAskCause:
+                case IntroProbe:
                     DrawIntroBodyProbe(babyRect, IntroMouthRatio,
-                        "입과 손 · 배고픔 신호 살피기", IntroCauseFound);
-                    DrawIntroBodyProbe(babyRect, IntroDiaperRatio,
-                        "기저귀 · 젖었는지 살피기", IntroCauseMissed);
+                        IntroProbeDone(ProbeMouth) ? "입과 손 · 확인함" : "입과 손 · 눌러서 확인",
+                        ProbeMouth);
                     DrawIntroBodyProbe(babyRect, IntroBackRatio,
-                        "등 · 토닥여 달래기", IntroCauseMissed);
+                        IntroProbeDone(ProbeBack) ? "등 · 확인함" : "등 · 눌러서 확인",
+                        ProbeBack);
+                    DrawIntroBodyProbe(babyRect, IntroDiaperRatio,
+                        IntroProbeDone(ProbeDiaper) ? "기저귀 · 확인함" : "기저귀 · 눌러서 확인",
+                        ProbeDiaper);
+                    if (_introProbeMask != ProbeAll) return;
+                    break;
+                case IntroPrepMix:
+                case IntroPrepCool:
+                    // 주방 소품 자체가 다음 단계 버튼이다. 별도의 진행 버튼을 같이
+                    // 띄우면 순서를 밟지 않고도 넘어갈 수 있어 배우는 게 사라진다.
+                    return;
+                case IntroCarrier:
+                    DrawIntroBodyProbe(babyRect, IntroChestRatio,
+                        "가슴 · 아기띠로 안기", 0, IntroToKitchen);
+                    return;
+                case IntroToKitchen:
+                    DrawIntroRoomProbe(0, "아기방", "지금 있는 방", false, 0);
+                    DrawIntroRoomProbe(1, "주방", "분유를 준비하는 곳", true, IntroPrepMix);
+                    DrawIntroRoomProbe(2, "욕실", "손을 씻는 곳", false, 0);
+                    return;
+                case IntroToNursery:
+                    DrawIntroRoomProbe(0, "아기방", "아기가 기다리는 곳", true, IntroFeed);
+                    DrawIntroRoomProbe(1, "주방", "지금 있는 방", false, 0);
+                    DrawIntroRoomProbe(2, "욕실", "손을 씻는 곳", false, 0);
+                    return;
+                case IntroFeed:
+                    DrawIntroBodyProbe(babyRect, IntroMouthRatio,
+                        "입가 · 준비한 분유 먹이기", 0, IntroSoothe);
                     return;
                 case IntroSoothe:
                     DrawIntroBodyProbe(babyRect, IntroBackRatio,
-                        "등 · 같은 리듬으로 토닥이기", IntroFellAsleep);
+                        "등 · 같은 리듬으로 토닥이기", 0, IntroFellAsleep);
+                    DrawIntroBodyProbe(babyRect, IntroMouthRatio,
+                        "입가 · 쪽쪽이 물리기 (밤 3회)", 0, IntroFellAsleep);
                     return;
                 case IntroFellAsleep:
                     DrawIntroBodyProbe(babyRect, IntroLimbRatio,
-                        "팔다리 · 힘이 풀렸는지 살피기", IntroDeepSleep);
+                        "팔다리 · 힘이 풀렸는지 살피기", 0, IntroDeepSleep);
                     DrawIntroBodyProbe(babyRect, IntroCribRatio,
-                        "침대 · 지금 내려놓기", IntroLaydownFailed);
+                        "침대 · 지금 내려놓기", 0, IntroLaydownFailed);
                     return;
                 case IntroDeepSleep:
                     DrawIntroBodyProbe(babyRect, IntroCribRatio,
-                        "침대 · 천천히 내려놓기", IntroLaydownDone);
+                        "침대 · 천천히 내려놓기", 0, IntroNoise);
                     return;
-                case IntroFindKitchen:
-                    DrawIntroRoomProbe(0, "아기방", "지금 있는 방", false);
-                    DrawIntroRoomProbe(1, "주방", "분유를 준비하는 곳", true);
-                    DrawIntroRoomProbe(2, "욕실", "손을 씻는 곳", false);
+                case IntroNoise:
+                    DrawIntroPropChip("🔊  백색소음기 켜기",
+                        "진정 효과 0 · 각성 간격 +25분 · 외부 소음 차단",
+                        () => _introBeat = IntroMonitor);
+                    return;
+                case IntroMonitor:
+                    // 먼저 막힌 화면을 보여주고, 모니터를 누른 뒤에야 열리게 한다.
+                    // 설명만 읽히면 이 물건을 왜 챙기는지 끝내 모른다.
+                    if (_introMonitorRead) break;
+                    DrawIntroPropChip("📟  베이비 모니터 보기",
+                        "아기방 밖에서만 · 1회 2분 · 체력 -1",
+                        () => _introMonitorRead = true);
                     return;
             }
 
             var nextRect = _portrait
                 ? new Rect(90f, 1420f, 900f, 128f)
                 : new Rect(110f, 700f, 720f, 92f);
-            string next = _introBeat == IntroCauseMissed ? "다시 살펴보기" :
-                _introBeat == IntroLaydownFailed ? "다시 해보기" :
-                _introBeat == IntroCauseFound ? "분유 준비하러 가기  →" :
-                "오늘 밤 준비하기  →";
+            string next = _introBeat switch
+            {
+                IntroProbe => "세 곳을 다 확인했다  →",
+                IntroCause => "아기띠를 매러 가기  →",
+                IntroMonitor => "이제 알겠다  →",
+                IntroLaydownFailed => "다시 해보기",
+                _ => "오늘 밤 준비하기  →"
+            };
             if (!DrawPrimaryButton(nextRect, next)) return;
-            if (_introBeat == IntroCauseMissed) _introBeat = IntroAskCause;
-            else if (_introBeat == IntroLaydownFailed) _introBeat = IntroFellAsleep;
-            // 원인을 찾은 뒤 곧장 인트로를 끝내면 달래기·얕은 잠·눕히기 단계가
-            // 한 번도 재생되지 않는다. "눕히면 무조건 깬다"는 오해가 여기서 시작된다.
-            else if (_introBeat == IntroCauseFound) _introBeat = IntroFindKitchen;
-            else _flow.CompleteIntro();
+            _audio?.PlayUi();
+            switch (_introBeat)
+            {
+                case IntroProbe: _introBeat = IntroCause; break;
+                case IntroCause: _introBeat = IntroCarrier; break;
+                case IntroMonitor: _introBeat = IntroDone; break;
+                case IntroLaydownFailed: _introBeat = IntroFellAsleep; break;
+                default: _flow.CompleteIntro(); break;
+            }
+        }
+
+        private void DrawIntroBaby(Rect babyRect)
+        {
+            Texture2D portrait = _familyRolled ? GeneticBabyPortrait() : _introBabyArt;
+            if (portrait == null) return;
+            GUI.DrawTexture(new Rect(babyRect.center.x - babyRect.width * 0.28f,
+                babyRect.yMax - babyRect.height * 0.12f, babyRect.width * 0.56f,
+                babyRect.height * 0.09f), _itemShadow, ScaleMode.StretchToFill, true);
+            DrawGeneticPortrait(babyRect, portrait);
+        }
+
+        /// <summary>
+        /// 주방 장면. 본편의 소품 세 개를 같은 순서로 놓아 "분유는 주방에서
+        /// 순서대로 만든다"를 눈으로 먼저 익히게 한다.
+        /// </summary>
+        private void DrawIntroKitchenProps()
+        {
+            bool mixed = _introBeat > IntroPrepMix;
+            bool cooled = _introBeat > IntroPrepCool;
+            Rect powder = _portrait ? new Rect(230f, 250f, 210f, 250f) : new Rect(1060f, 170f, 220f, 265f);
+            Rect bottle = _portrait ? new Rect(470f, 230f, 185f, 285f) : new Rect(1305f, 150f, 195f, 300f);
+            Rect cooling = _portrait ? new Rect(320f, 550f, 250f, 200f) : new Rect(1500f, 250f, 240f, 210f);
+
+            if (_formulaTinArt != null)
+                GUI.DrawTexture(powder, _formulaTinArt, ScaleMode.ScaleToFit, true);
+            if (_feedingBottleArt != null)
+                GUI.DrawTexture(bottle, _feedingBottleArt, ScaleMode.ScaleToFit, true);
+            if (_coolingBasinArt != null)
+                GUI.DrawTexture(cooling, _coolingBasinArt, ScaleMode.ScaleToFit, true);
+
+            // 젖병 안의 분유. 섞기 전에는 비어 있고, 식힌 뒤에는 색이 가라앉는다.
+            if (mixed)
+            {
+                var body = new Rect(bottle.x + bottle.width * .405f,
+                    bottle.y + bottle.height * .46f, bottle.width * .19f, bottle.height * .3f);
+                Fill(new Rect(body.x, body.yMax - body.height * .72f, body.width, body.height * .72f),
+                    cooled ? new Color(.88f, .71f, .39f, .82f) : new Color(.96f, .63f, .25f, .78f));
+            }
+
+            if (_introBeat == IntroPrepMix)
+            {
+                DrawIntroPropHotspot(powder, "분유가루를 떠서 물에 섞기", IntroPrepCool);
+                DrawIntroPropBlocked(cooling, "아직 섞지 않았어요");
+            }
+            else if (_introBeat == IntroPrepCool)
+                DrawIntroPropHotspot(cooling, "젖병을 물에 담가 식히고 온도 확인", IntroToNursery);
+            else
+                DrawIntroPropDone(bottle, "먹일 준비 완료");
+        }
+
+        private void DrawIntroPropHotspot(Rect rect, string label, int nextBeat)
+        {
+            float pulse = (Mathf.Sin(Time.unscaledTime * 3.1f) + 1f) * .5f;
+            bool hovered = rect.Contains(Event.current.mousePosition);
+            Color previous = GUI.color;
+            GUI.color = new Color(1f, .74f, .34f, hovered ? .5f : .24f + pulse * .16f);
+            GUI.DrawTexture(rect, _itemGlow, ScaleMode.StretchToFill, true);
+            GUI.color = previous;
+
+            var labelRect = new Rect(rect.center.x - (_portrait ? 230f : 190f), rect.yMax + 6f,
+                _portrait ? 460f : 380f, _portrait ? 48f : 38f);
+            Fill(labelRect, new Color(0.02f, 0.03f, 0.05f, .58f));
+            GUI.Label(labelRect, label, OverlayLabelStyle(_portrait ? 24 : 18, FontStyle.Bold,
+                hovered ? new Color(.45f, .9f, .86f) : new Color(1f, .92f, .76f),
+                TextAnchor.MiddleCenter));
+            if (GUI.Button(rect, GUIContent.none, GUIStyle.none) ||
+                GUI.Button(labelRect, GUIContent.none, GUIStyle.none))
+            {
+                _audio?.PlayUi();
+                _introBeat = nextBeat;
+                TriggerImpact(new Color(.45f, .88f, .62f, .5f), 2f, .3f);
+            }
+        }
+
+        /// <summary>순서를 어긴 소품. 누를 수 없고 왜 아직인지만 말한다.</summary>
+        private void DrawIntroPropBlocked(Rect rect, string reason)
+        {
+            var labelRect = new Rect(rect.center.x - (_portrait ? 200f : 165f), rect.yMax + 6f,
+                _portrait ? 400f : 330f, _portrait ? 48f : 38f);
+            Fill(labelRect, new Color(0.02f, 0.03f, 0.05f, .5f));
+            GUI.Label(labelRect, reason, OverlayLabelStyle(_portrait ? 22 : 17, FontStyle.Bold,
+                new Color(.62f, .64f, .66f), TextAnchor.MiddleCenter));
+        }
+
+        private void DrawIntroPropDone(Rect rect, string label)
+        {
+            var labelRect = new Rect(rect.center.x - (_portrait ? 200f : 165f), rect.yMax + 6f,
+                _portrait ? 400f : 330f, _portrait ? 48f : 38f);
+            Fill(labelRect, new Color(0.02f, 0.03f, 0.05f, .58f));
+            GUI.Label(labelRect, label, OverlayLabelStyle(_portrait ? 24 : 18, FontStyle.Bold,
+                new Color(.55f, .92f, .67f), TextAnchor.MiddleCenter));
         }
 
         /// <summary>인트로용 방 이동 칩. 본편의 방 이동 스트립과 같은 문법으로 가르친다.</summary>
-        private void DrawIntroRoomProbe(int index, string label, string detail, bool target)
+        private void DrawIntroRoomProbe(int index, string label, string detail, bool target, int nextBeat)
         {
-            Rect strip = _portrait
-                ? new Rect(90f, 1250f, 900f, 132f)
-                : new Rect(110f, 655f, 720f, 104f);
+            Rect strip = IntroStripRect();
             float gap = _portrait ? 14f : 12f;
             float width = (strip.width - gap * 2f) / 3f;
             var chip = new Rect(strip.x + index * (width + gap), strip.y, width, strip.height);
@@ -650,69 +846,139 @@ namespace NotANap.App
             if (!target) return;
             if (GUI.Button(chip, GUIContent.none, GUIStyle.none))
             {
-                _audio.PlayUi();
-                _introBeat = IntroSoothe;
+                _audio?.PlayUi();
+                _introBeat = nextBeat;
             }
         }
 
-        // 인트로 단계. 관찰 → 돌봄 → 얕은 잠 → 깊은 잠 확인 → 눕히기까지
-        // 본편의 한 사이클을 그대로 한 번 밟게 한다.
-        private const int IntroAskCause = 0;
-        private const int IntroCauseFound = 1;
-        private const int IntroCauseMissed = 2;
-        private const int IntroSoothe = 3;
-        private const int IntroFellAsleep = 4;
-        private const int IntroLaydownFailed = 5;
-        private const int IntroDeepSleep = 6;
-        private const int IntroLaydownDone = 7;
-        private const int IntroFindKitchen = 8;
+        /// <summary>방 안 물건(백색소음기·베이비 모니터)을 누르는 한 칸짜리 칩.</summary>
+        private void DrawIntroPropChip(string label, string detail, System.Action onClick)
+        {
+            Rect chip = IntroStripRect();
+            bool hovered = chip.Contains(Event.current.mousePosition);
+            float pulse = (Mathf.Sin(Time.unscaledTime * 3.1f) + 1f) * .5f;
+            Color previous = GUI.color;
+            GUI.color = new Color(1f, .74f, .34f, hovered ? .5f : .22f + pulse * .16f);
+            GUI.DrawTexture(chip, _itemGlow, ScaleMode.StretchToFill, true);
+            GUI.color = previous;
+            DrawGlassPanel(chip, hovered ? .9f : .72f, true);
+            GUI.Label(new Rect(chip.x, chip.y + (_portrait ? 22f : 16f), chip.width,
+                    _portrait ? 48f : 38f), label,
+                OverlayLabelStyle(_portrait ? 36 : 26, FontStyle.Bold,
+                    new Color(1f, .88f, .68f), TextAnchor.MiddleCenter));
+            GUI.Label(new Rect(chip.x, chip.y + (_portrait ? 74f : 56f), chip.width,
+                    _portrait ? 44f : 34f), detail,
+                OverlayLabelStyle(_portrait ? 26 : 18, FontStyle.Normal,
+                    new Color(.92f, .86f, .74f), TextAnchor.MiddleCenter));
+            if (GUI.Button(chip, GUIContent.none, GUIStyle.none))
+            {
+                _audio?.PlayUi();
+                onClick();
+            }
+        }
 
-        private static readonly Vector4 IntroMouthRatio = new Vector4(.38f, .17f, .24f, .2f);
-        private static readonly Vector4 IntroBackRatio = new Vector4(.58f, .3f, .25f, .34f);
-        private static readonly Vector4 IntroDiaperRatio = new Vector4(.34f, .58f, .33f, .23f);
-        private static readonly Vector4 IntroLimbRatio = new Vector4(.16f, .68f, .68f, .2f);
-        private static readonly Vector4 IntroCribRatio = new Vector4(.08f, .92f, .84f, .17f);
+        /// <summary>
+        /// 인트로 모니터 장면. 아기를 눕히고 방을 나선 상태이므로 아기가 화면에 없다.
+        /// 모니터를 보기 전에는 "확인 불가"만 서 있고, 본 뒤에야 상태가 열린다.
+        /// 본편의 BabyStateVisible 규칙을 그대로 축소해 보여주는 자리다.
+        /// </summary>
+        private void DrawIntroMonitorScene(Rect babyRect)
+        {
+            var card = new Rect(babyRect.x + babyRect.width * .1f,
+                babyRect.y + babyRect.height * .28f,
+                babyRect.width * .8f, babyRect.height * .44f);
+            DrawGlassPanel(card, .78f);
+            GUI.Label(new Rect(card.x, card.y + (_portrait ? 26f : 20f), card.width, _portrait ? 44f : 34f),
+                _introMonitorRead ? "아기방 · 📟 모니터" : "아기방",
+                OverlayLabelStyle(_portrait ? 28 : 21, FontStyle.Bold,
+                    new Color(.74f, .79f, .84f), TextAnchor.MiddleCenter));
+            GUI.Label(new Rect(card.x, card.y + (_portrait ? 82f : 62f), card.width, _portrait ? 62f : 50f),
+                _introMonitorRead ? "기분 74  좋음" : "확인 불가",
+                OverlayLabelStyle(_portrait ? 46 : 36, FontStyle.Bold,
+                    _introMonitorRead ? new Color(.49f, .84f, .61f) : new Color(.55f, .57f, .6f),
+                    TextAnchor.MiddleCenter));
+            GUI.Label(new Rect(card.x + 24f, card.y + (_portrait ? 158f : 124f),
+                    card.width - 48f, _portrait ? 120f : 96f),
+                _introMonitorRead
+                    ? "화면 속 아기가 미동도 없다. 숨소리만 고르게 들린다.\n앞으로 30분은 이대로 상태가 보인다."
+                    : "여기서는 아기가 보이지 않는다.\n진정도도 울음도 알 수 없다.",
+                OverlayLabelStyle(_portrait ? 26 : 20, FontStyle.Normal,
+                    _introMonitorRead ? new Color(.9f, .92f, .94f) : new Color(.94f, .76f, .52f),
+                    TextAnchor.UpperCenter, true));
+        }
+
+        private bool IntroProbeDone(int probe) => (_introProbeMask & probe) != 0;
 
         private string IntroStepLabel() => _introBeat switch
         {
-            IntroAskCause or IntroCauseFound or IntroCauseMissed => "21:00 · 신호 읽기",
-            IntroFindKitchen => "21:05 · 방을 옮겨서",
-            IntroSoothe => "21:10 · 달래기",
-            IntroFellAsleep or IntroLaydownFailed => "21:25 · 잠들었다",
-            IntroDeepSleep => "21:55 · 깊은 잠",
-            _ => "21:58 · 오늘 밤의 첫 성공"
+            IntroProbe or IntroCause => "21:00 · 신호 읽기",
+            IntroCarrier => "21:05 · 두 손 비우기",
+            IntroToKitchen => "21:06 · 방을 옮겨서",
+            IntroPrepMix or IntroPrepCool => "21:10 · 주방에서 순서대로",
+            IntroToNursery => "21:25 · 아기에게 돌아가기",
+            IntroFeed => "21:28 · 수유",
+            IntroSoothe => "21:45 · 달래기",
+            IntroFellAsleep or IntroLaydownFailed => "22:00 · 잠들었다",
+            IntroDeepSleep => "22:30 · 깊은 잠",
+            IntroNoise => "22:35 · 잠을 이어 주기",
+            IntroMonitor => "22:40 · 방을 비우기",
+            _ => "22:45 · 오늘 밤의 첫 성공"
         };
 
         private string IntroHeadline() => _introBeat switch
         {
-            IntroAskCause => "아기는 왜 보채는 걸까?",
-            IntroCauseFound => "맞았다. 배가 고팠다.",
-            IntroCauseMissed => "울음이 한 단계 커졌다.",
-            IntroFindKitchen => "분유는 아기방에 없다.",
-            IntroSoothe => "먹였다. 이제 재울 차례다.",
+            IntroProbe => "아기는 왜 보채는 걸까?",
+            IntroCause => "남은 건 배고픔 하나.",
+            IntroCarrier => "분유는 주방에 있다.",
+            IntroToKitchen => "아기를 안은 채로 움직인다.",
+            IntroPrepMix => "분유는 순서가 있다.",
+            IntroPrepCool => "뜨거운 분유는 먹일 수 없다.",
+            IntroToNursery => "젖병이 준비됐다.",
+            IntroFeed => "이제 먹일 수 있다.",
+            IntroSoothe => "먹였다. 그래도 바로 잠들지는 않는다.",
             IntroFellAsleep => "잠들었다. 하지만 아직 얕은 잠이다.",
             IntroLaydownFailed => "등이 닿자 눈이 번쩍.",
             IntroDeepSleep => "팔다리 힘이 풀렸다. 지금이다.",
+            IntroNoise => "이제 이 잠을 지켜야 한다.",
+            IntroMonitor => _introMonitorRead ? "이제 아기가 보인다." : "여기서는 아기가 보이지 않는다.",
             _ => "숨이 그대로 이어진다."
         };
 
         private string IntroBody() => _introBeat switch
         {
-            IntroAskCause =>
-                "아직 울지는 않는다. 입을 오물거리고 손을 입으로 가져간다.\n" +
-                "궁금한 곳을 직접 눌러 확인해 보자.",
-            IntroCauseFound =>
-                "울기 전에 신호를 알아차리자 몸의 힘이 조금 풀렸다.\n" +
-                "이렇게 아기 몸을 눌러 확인하면 된다.",
-            IntroCauseMissed =>
-                "오늘 밤은 배고픔이었다. 원인을 못 찾은 채 달래면\n" +
-                "아기는 절반만 진정하고, 결국 잠들지 못한다.",
-            IntroFindKitchen =>
-                "돌봄은 방마다 할 수 있는 일이 다르다. 분유는 주방에서 준비하고\n" +
-                "아기에게 돌아와 먹인다. 아래에서 주방을 눌러 보자.",
+            IntroProbe =>
+                "정답을 맞히는 게 아니다. 아닌 것부터 지워 나가면 된다.\n" +
+                "세 곳을 모두 눌러 확인해 보자.\n" +
+                IntroProbeChecklist(),
+            IntroCause =>
+                "기저귀는 보송했고, 토닥임으로는 잠깐만 조용해졌다.\n" +
+                "남은 신호는 입과 손. 이 아기는 배가 고프다.\n" +
+                "원인을 모른 채 달래면 진정 효과가 절반으로 줄어든다.",
+            IntroCarrier =>
+                "분유는 아기방에 없다. 주방에서 만들어 와야 한다.\n" +
+                "그런데 우는 아기를 침대에 두고 가면 울음이 더 커진다.\n" +
+                "가슴을 눌러 아기띠를 매자. 안은 채로 두 손이 빈다.",
+            IntroToKitchen =>
+                "아기띠 덕분에 안고 준비해도 체력이 깎이지 않고,\n" +
+                "옮기는 동안 울음도 덜 오른다.\n" +
+                "아래에서 주방을 눌러 보자.",
+            IntroPrepMix =>
+                "분유가루를 물에 섞는 게 먼저다. 식힘대야는 아직 소용없다.\n" +
+                "순서를 건너뛰면 본편에서도 그 행동은 거절된다.\n" +
+                "분유통을 눌러 섞어 보자.",
+            IntroPrepCool =>
+                "갓 탄 분유는 뜨겁다. 식혀서 온도를 확인해야 먹일 수 있다.\n" +
+                "식힘대야를 눌러 담가 두자.",
+            IntroToNursery =>
+                "준비가 끝났다. 준비물은 주방에 두고 갈 수 없다.\n" +
+                "아기방을 눌러 돌아가자.",
+            IntroFeed =>
+                "입가를 눌러 준비한 분유를 먹인다.\n" +
+                "여기서 비로소 이번 각성의 원인이 사라진다.",
             IntroSoothe =>
-                "안거나 토닥이면 진정도가 오른다.\n" +
-                "등을 눌러 같은 리듬으로 토닥여 보자.",
+                "배는 채웠지만 진정도가 아직 낮다.\n" +
+                "등을 토닥이거나 쪽쪽이를 물려 마저 진정시키자.\n" +
+                "쪽쪽이는 즉시 진정 +12지만 밤에 세 번뿐이다.",
             IntroFellAsleep =>
                 "눈꺼풀과 손끝이 아직 움직인다. 여기서 내려놓으면 대개 깬다.\n" +
                 "팔다리 힘이 빠졌는지 먼저 살펴보자.",
@@ -722,57 +988,91 @@ namespace NotANap.App
             IntroDeepSleep =>
                 "숨이 고르고 팔다리가 늘어졌다. 깊은 잠에 들어섰다.\n" +
                 "이제 침대를 눌러 천천히 내려놓자.",
+            IntroNoise =>
+                "백색소음기는 아기를 달래는 물건이 아니다. 켜 둬도 진정도는\n" +
+                "오르지 않는다. 대신 초인종 같은 바깥 소리를 덮어 든 잠을\n" +
+                "이어 준다. 매일 켜면 익숙해져 효과가 줄어든다.",
+            IntroMonitor => _introMonitorRead
+                ? "이게 베이비 모니터의 전부다. 아기 곁을 떠난 동안 상태를 여는\n" +
+                  "유일한 창이고, 한 번 보면 30분 동안 열려 있다.\n" +
+                  "챙겨 오지 않으면 주방·욕실에서는 아무것도 알 수 없다."
+                : "젖병을 씻으러 주방에 나왔다. 여기서는 아기가 보이지 않는다.\n" +
+                  "기분도 울음도 '확인 불가'다.\n" +
+                  "베이비 모니터를 눌러 보자. 아기 곁에서는 켜지지 않는 물건이다.",
             _ =>
-                "얕은 잠에서 기다렸다가 깊은 잠에 내려놓는 것.\n" +
+                "아닌 것부터 지우고, 순서대로 준비하고,\n" +
+                "깊은 잠을 확인한 뒤 내려놓는 것.\n" +
                 "오늘 밤 아홉 시간을 이 리듬으로 건너면 된다."
         };
+
+        private string IntroProbeChecklist()
+        {
+            string list = $"  {(IntroProbeDone(ProbeMouth) ? "✔" : "□")} 입과 손" +
+                          $"   {(IntroProbeDone(ProbeBack) ? "✔" : "□")} 등" +
+                          $"   {(IntroProbeDone(ProbeDiaper) ? "✔" : "□")} 기저귀";
+            return string.IsNullOrEmpty(_introProbeNote) ? list : list + "\n" + _introProbeNote;
+        }
 
         /// <summary>
         /// 인트로용 신체 히트존. ratio는 아기 rect 대비 (x, y, width, height) 비율이며
         /// 플레이 화면의 DrawLinkedBodyActions와 같은 값을 쓴다.
+        /// probe가 0이 아니면 1단계 배제 검사이고, 아니면 nextBeat로 넘어가는 행동이다.
         /// </summary>
-        private void DrawIntroBodyProbe(Rect babyRect, Vector4 ratio, string label, int choice)
+        private void DrawIntroBodyProbe(Rect babyRect, Vector4 ratio, string label,
+            int probe, int nextBeat = -1)
         {
+            bool done = probe != 0 && IntroProbeDone(probe);
             var hotspot = new Rect(
                 babyRect.x + babyRect.width * ratio.x,
                 babyRect.y + babyRect.height * ratio.y,
                 babyRect.width * ratio.z,
                 babyRect.height * ratio.w);
             bool hovered = hotspot.Contains(Event.current.mousePosition);
-            float pulse = (Mathf.Sin(Time.unscaledTime * 3.1f + choice) + 1f) * .5f;
-            Color accent = hovered
-                ? new Color(.45f, .9f, .86f)
-                : new Color(1f, .72f, .3f);
+            float pulse = (Mathf.Sin(Time.unscaledTime * 3.1f + probe + nextBeat) + 1f) * .5f;
+            Color accent = done
+                ? new Color(.55f, .92f, .67f)
+                : hovered ? new Color(.45f, .9f, .86f) : new Color(1f, .72f, .3f);
 
             Color previous = GUI.color;
             GUI.color = new Color(accent.r, accent.g, accent.b,
-                hovered ? .5f : .26f + pulse * .14f);
+                done ? .18f : hovered ? .5f : .26f + pulse * .14f);
             GUI.DrawTexture(hotspot, _itemGlow, ScaleMode.StretchToFill, true);
             GUI.color = previous;
-            if (hovered) DrawCareSparkles(hotspot.center, .42f, 2);
+            if (hovered && !done) DrawCareSparkles(hotspot.center, .42f, 2);
 
             float labelWidth = _portrait ? 420f : 340f;
             float labelHeight = _portrait ? 46f : 36f;
             var labelRect = new Rect(hotspot.center.x - labelWidth * .5f,
                 hotspot.yMax + 6f, labelWidth, labelHeight);
-            DrawGlassPanel(labelRect, hovered ? .9f : .62f);
+            // 인트로 라벨은 아기 위에 겹친다. 배경을 불투명하게 깔면 정작 눌러야 할
+            // 몸이 가려지므로 옅은 판만 깔고 글자 대비로 읽히게 한다.
+            Fill(labelRect, new Color(0.02f, 0.03f, 0.05f, hovered ? .62f : .46f));
             GUI.Label(labelRect, label, OverlayLabelStyle(_portrait ? 21 : 17,
-                FontStyle.Bold, hovered ? accent : new Color(.93f, .93f, .9f),
+                FontStyle.Bold, done ? accent : new Color(.96f, .95f, .92f),
                 TextAnchor.MiddleCenter));
 
-            if (GUI.Button(hotspot, GUIContent.none, GUIStyle.none) ||
-                GUI.Button(labelRect, GUIContent.none, GUIStyle.none))
-                ResolveIntroProbe(choice);
-        }
-
-        private void ResolveIntroProbe(int choice)
-        {
-            _introBeat = choice;
+            if (done) return;
+            if (!GUI.Button(hotspot, GUIContent.none, GUIStyle.none) &&
+                !GUI.Button(labelRect, GUIContent.none, GUIStyle.none)) return;
             _audio?.PlayUi();
-            TriggerImpact(choice == 1
-                    ? new Color(.45f, .88f, .62f, .5f)
-                    : new Color(.95f, .36f, .28f, .5f),
-                choice == 1 ? 2f : 7f, .3f);
+            if (probe != 0)
+            {
+                // 배제 검사에는 오답이 없다. 눌러 본 곳은 결과만 남기고 체크된다.
+                _introProbeMask |= probe;
+                _introProbeNote = probe switch
+                {
+                    ProbeDiaper => "기저귀는 보송하다. 이건 원인이 아니다.",
+                    ProbeBack => "안고 토닥이자 잠깐 조용해졌다가 다시 보챈다.",
+                    _ => "입을 오물거리고 주먹을 빤다. 배고픔 신호다."
+                };
+                TriggerImpact(new Color(.45f, .88f, .62f, .4f), 2f, .24f);
+                return;
+            }
+            _introBeat = nextBeat;
+            TriggerImpact(nextBeat == IntroLaydownFailed
+                    ? new Color(.95f, .36f, .28f, .5f)
+                    : new Color(.45f, .88f, .62f, .5f),
+                nextBeat == IntroLaydownFailed ? 7f : 2f, .3f);
         }
 
         private void DrawFamilySetup()
@@ -807,14 +1107,14 @@ namespace NotANap.App
                     _familyRolled && HasBabyName()))
                 {
                     _flow.SetBabyName(_babyNameInput);
-                    _introBeat = 0;
+                    ResetIntro();
                     _flow.BeginIntro();
                 }
                 if (DrawPrimaryButton(new Rect(90f, 1780f, 900f, 124f), "바로 시작"))
                 {
                     if (!_familyRolled) RollFamilyBaby();
                     _flow.SetBabyName(HasBabyName() ? _babyNameInput : "아용이");
-                    _introBeat = 0;
+                    ResetIntro();
                     _flow.BeginIntro();
                 }
             }
@@ -837,14 +1137,14 @@ namespace NotANap.App
                     _familyRolled && HasBabyName()))
                 {
                     _flow.SetBabyName(_babyNameInput);
-                    _introBeat = 0;
+                    ResetIntro();
                     _flow.BeginIntro();
                 }
                 if (DrawPrimaryButton(new Rect(610f, 820f, 470f, 82f), "바로 시작"))
                 {
                     if (!_familyRolled) RollFamilyBaby();
                     _flow.SetBabyName(HasBabyName() ? _babyNameInput : "아용이");
-                    _introBeat = 0;
+                    ResetIntro();
                     _flow.BeginIntro();
                 }
             }
@@ -1266,9 +1566,7 @@ namespace NotANap.App
 
             var focused = FocusedSetupCard(vm);
             if (focused != null)
-                DrawSetupItemDetail(new Rect(130, 758, 1120, 184), focused, false);
-            GUI.Label(new Rect(130, 952, 940, 42), $"오늘 밤 쓸 물건 {vm.Slots}개를 고르세요.",
-                OverlayLabelStyle(20, FontStyle.Bold, new Color(0.74f, 0.79f, 0.84f)));
+                DrawSetupItemDetail(new Rect(130, 752, 1120, 236), focused, false);
 
             string next = vm.CanStart ? "이 물건으로 밤 시작  →" : $"물건 {vm.Slots}개 선택";
             if (DrawPrimaryButton(new Rect(1300, 900, 520, 82), next, vm.CanStart))
@@ -1373,23 +1671,47 @@ namespace NotANap.App
                 ? new Color(1f, 0.72f, 0.32f)
                 : new Color(0.48f, 0.57f, 0.66f));
             float inset = portrait ? 34f : 42f;
-            GUI.Label(new Rect(rect.x + inset, rect.y + 12, rect.width - inset * 2f, portrait ? 58 : 52),
+            float textWidth = rect.width - inset * 2f;
+            // 아이템 설명은 "더 빨리 진정시킵니다" 같은 형용사가 아니라 엔진이 실제로
+            // 적용하는 수치를 그대로 보여준다. 정체성 한 줄 → 수치 효과 → 비용 → 대가.
+            GUI.Label(new Rect(rect.x + inset, rect.y + 10, textWidth, portrait ? 54 : 46),
                 card.Selected ? $"{card.Name} · 선택 완료" : card.Name,
                 OverlayLabelStyle(portrait ? 42 : 34, FontStyle.Bold, new Color(0.96f, 0.93f, 0.86f)));
-            GUI.Label(new Rect(rect.x + inset, rect.y + (portrait ? 70 : 62), rect.width - inset * 2f,
-                    portrait ? 66 : 58),
-                card.Desc,
-                OverlayLabelStyle(portrait ? 34 : 26, FontStyle.Normal, new Color(0.88f, 0.9f, 0.92f),
-                    TextAnchor.MiddleLeft, true));
+            GUI.Label(new Rect(rect.x + inset, rect.y + (portrait ? 64 : 54), textWidth,
+                    portrait ? 44 : 34),
+                card.Role,
+                OverlayLabelStyle(portrait ? 30 : 23, FontStyle.Normal, new Color(0.74f, 0.79f, 0.84f),
+                    TextAnchor.MiddleLeft));
+
+            float effectY = rect.y + (portrait ? 112 : 92);
+            string[] effects = card.Effects ?? System.Array.Empty<string>();
+            // 효과 줄 수는 아이템마다 다르다(1~3줄). 남은 높이에 비용·대가 두 줄을
+            // 더 넣을 자리를 남기고 나눠 어떤 아이템에서도 패널 밖으로 새지 않게 한다.
+            float available = rect.yMax - effectY - (portrait ? 108f : 82f);
+            float effectStep = Mathf.Clamp(available / Mathf.Max(1, effects.Length),
+                portrait ? 32f : 25f, portrait ? 44f : 34f);
+            for (int i = 0; i < effects.Length; i++)
+                GUI.Label(new Rect(rect.x + inset, effectY + i * effectStep, textWidth, effectStep),
+                    "▸ " + effects[i],
+                    OverlayLabelStyle(portrait ? 32 : 25, FontStyle.Bold, new Color(0.62f, 0.9f, 0.78f),
+                        TextAnchor.MiddleLeft));
+
+            float tailY = effectY + effects.Length * effectStep + (portrait ? 6f : 4f);
+            if (!string.IsNullOrEmpty(card.Cost))
+                GUI.Label(new Rect(rect.x + inset, tailY, textWidth, effectStep),
+                    "비용 · " + card.Cost,
+                    OverlayLabelStyle(portrait ? 28 : 22, FontStyle.Normal, new Color(0.78f, 0.82f, 0.86f),
+                        TextAnchor.MiddleLeft));
+
             var warning = new GUIStyle(_caption)
             {
                 normal = { textColor = new Color(0.94f, 0.76f, 0.52f) }
             };
-            warning.alignment = TextAnchor.MiddleLeft;
+            warning.alignment = TextAnchor.UpperLeft;
+            warning.wordWrap = true;
             warning.clipping = TextClipping.Overflow;
-            GUI.Label(new Rect(rect.x + inset, rect.y + (portrait ? 140 : 120), rect.width - inset * 2f,
-                    portrait ? 72 : 54),
-                $"주의 · {card.Side}", warning);
+            GUI.Label(new Rect(rect.x + inset, tailY + effectStep, textWidth, portrait ? 72 : 54),
+                $"대가 · {card.Side}", warning);
         }
 
         private void LoadItemArt(ItemId id, string resourceName)
@@ -1717,12 +2039,39 @@ namespace NotANap.App
             }
 
             DrawGlassPanel(new Rect(72f, 820f, 936f, 150f), .78f);
-            GUI.Label(new Rect(104f, 830f, 872f, 44f),
-                BabyStateHeadline(vm),
-                OverlayLabelStyle(34, FontStyle.Bold, new Color(1f, .87f, .66f)));
-            GUI.Label(new Rect(104f, 876f, 872f, 82f), vm.CurrentSignal,
-                OverlayLabelStyle(31, FontStyle.Normal, new Color(.9f, .92f, .94f),
-                    TextAnchor.MiddleLeft, true));
+            if (!vm.BabyStateVisible)
+            {
+                // 아기 곁을 떠나 있으면 이 시트도 아기 상태를 말해서는 안 된다.
+                GUI.Label(new Rect(104f, 830f, 872f, 44f), "아기 상태 · 확인 불가",
+                    OverlayLabelStyle(34, FontStyle.Bold, new Color(.94f, .76f, .52f)));
+                GUI.Label(new Rect(104f, 876f, 872f, 82f), vm.BabyStateBlockedReason,
+                    OverlayLabelStyle(29, FontStyle.Normal, new Color(.9f, .92f, .94f),
+                        TextAnchor.MiddleLeft, true));
+            }
+            else
+            {
+                GUI.Label(new Rect(104f, 828f, 872f, 42f),
+                    vm.BabyStateViaMonitor ? BabyStateHeadline(vm) + "  · 📟" : BabyStateHeadline(vm),
+                    OverlayLabelStyle(34, FontStyle.Bold, new Color(1f, .87f, .66f)));
+                GUI.Label(new Rect(104f, 872f, 872f, 36f), vm.CurrentSignal,
+                    OverlayLabelStyle(27, FontStyle.Normal, new Color(.9f, .92f, .94f),
+                        TextAnchor.MiddleLeft));
+                // 밤 돌봄의 판단 근거는 절대 수치보다 "얼마나 지났는지"다.
+                // 행동 목록을 아래로 밀지 않도록 두 줄로 압축해 넣는다.
+                GUI.Label(new Rect(104f, 908f, 872f, 30f),
+                    $"졸림 {vm.FatigueLabel} · {FormatDuration(vm.AwakeMinutes)} 깨어 있음" +
+                    $"    배고픔 {vm.HungerLabel} {vm.Hunger:0}    울음 {vm.CryIntensity:0}",
+                    OverlayLabelStyle(23, FontStyle.Bold,
+                        vm.FatigueStage == FatigueSignalStage.Overtired ||
+                        vm.HungerStage == HungerSignalStage.Late
+                            ? new Color(.96f, .72f, .5f) : new Color(.74f, .82f, .88f),
+                        TextAnchor.MiddleLeft));
+                GUI.Label(new Rect(104f, 938f, 872f, 30f),
+                    $"마지막 수유 {FormatDuration(vm.MinutesSinceFeed)} 전" +
+                    $"    마지막 기저귀 {FormatDuration(vm.MinutesSinceDiaperChange)} 전",
+                    OverlayLabelStyle(23, FontStyle.Normal, new Color(.74f, .82f, .88f),
+                        TextAnchor.MiddleLeft));
+            }
 
             if (CanChooseSleepInterval(vm))
             {
@@ -2205,6 +2554,10 @@ namespace NotANap.App
             float x = placeRight
                 ? link.Hotspot.xMax + (portrait ? 18f : 14f)
                 : link.Hotspot.x - width - (portrait ? 18f : 14f);
+            // 아기 몸 위로 파고들지 않도록 히트존 바깥으로 한 번 더 밀어낸다.
+            x = placeRight
+                ? Mathf.Max(x, link.Hotspot.xMax + (portrait ? 18f : 14f))
+                : Mathf.Min(x, link.Hotspot.x - width - (portrait ? 18f : 14f));
             x = Mathf.Clamp(x, portrait ? 32f : 24f, canvasWidth - width - (portrait ? 32f : 24f));
             float minY = portrait ? PortraitSceneContentY + 8f : 80f;
             // 가로 화면 하단은 되돌아온 습관(y 548)·장면 피드백(y 686)·수면 선택(y 785)
@@ -2214,13 +2567,16 @@ namespace NotANap.App
                 : _landscapeCalloutBottom - height;
             float y = Mathf.Clamp(link.Hotspot.center.y - height * .5f, minY, maxY);
             var callout = new Rect(x, y, width, height);
-            DrawGlassPanel(callout, .9f, true);
-            Fill(new Rect(placeRight ? callout.x : callout.xMax - 5f,
-                callout.y + 8f, 5f, callout.height - 16f), new Color(1f, .72f, .3f));
+            // 추천 문구는 읽히기만 하면 된다. 예전처럼 90% 불투명 패널에 사면 테두리를
+            // 두르면 아기 그림을 그대로 덮어 정작 눌러야 할 대상이 보이지 않는다.
+            // 배경은 옅게, 강조는 아기 쪽을 가리키는 세로 막대 하나로만 한다.
+            Fill(callout, new Color(0.02f, 0.03f, 0.05f, 0.5f));
+            Fill(new Rect(placeRight ? callout.x : callout.xMax - 4f,
+                callout.y + 6f, 4f, callout.height - 12f), new Color(1f, .72f, .3f, .9f));
             GUI.Label(new Rect(callout.x + 14f, callout.y, callout.width - 28f, callout.height),
                 link.Prompt,
                 OverlayLabelStyle(portrait ? 21 : 16, FontStyle.Bold,
-                    new Color(1f, .9f, .7f), TextAnchor.MiddleCenter));
+                    new Color(1f, .92f, .76f), TextAnchor.MiddleCenter));
         }
 
         private void DrawPortraitActionLauncher(V2PlayViewModel vm)
@@ -2309,6 +2665,21 @@ namespace NotANap.App
                 "할머니에게\n전화하기",
                 OverlayLabelStyle(portrait ? 22 : 18, FontStyle.Bold,
                     Color.white, TextAnchor.MiddleCenter, true));
+            // 런당 한 번뿐인 카드다. 무엇이 얼마나 바뀌는지 눌러 보기 전에 알아야 한다.
+            if (!string.IsNullOrEmpty(action.CostLabel) &&
+                rect.Contains(Event.current.mousePosition))
+            {
+                float width = portrait ? 470f : 400f;
+                var tip = new Rect(Mathf.Min(rect.xMax + 12f,
+                        (portrait ? PortraitWidth : LandscapeWidth) - width - 20f),
+                    rect.y, width, portrait ? 132f : 108f);
+                Fill(tip, new Color(0.02f, 0.03f, 0.05f, 0.72f));
+                Fill(new Rect(tip.x, tip.y, 4f, tip.height), new Color(1f, .72f, .3f, .9f));
+                GUI.Label(new Rect(tip.x + 14f, tip.y + 8f, tip.width - 28f, tip.height - 16f),
+                    "아기 상태가 이렇게 바뀝니다\n" + action.CostLabel.Replace(" · ", "\n· "),
+                    OverlayLabelStyle(portrait ? 22 : 17, FontStyle.Bold,
+                        new Color(1f, .92f, .76f), TextAnchor.UpperLeft, true));
+            }
             if (GUI.Button(rect, GUIContent.none, GUIStyle.none))
             {
                 PerformV2Action(V2ActionId.Grandma);
@@ -2868,11 +3239,9 @@ namespace NotANap.App
                 $"{vm.ParentStamina:0}",
                 Mathf.Clamp01((float)vm.ParentStamina / 100f),
                 vm.ParentStamina >= 30 ? new Color(0.49f, 0.84f, 0.61f) : new Color(0.94f, 0.39f, 0.34f), false);
-            DrawStatusOrnament(new Rect(38, 412, 286, 82), "집중력",
-                $"{vm.CaregiverComposure:0}",
-                Mathf.Clamp01((float)vm.CaregiverComposure / 100f),
-                new Color(0.72f, 0.56f, 0.94f), false);
-            DrawPreparedItems(new Rect(44, 516, 270, 58), true, vm);
+            DrawMoodOrnament(new Rect(38, 412, 286, 82), vm, false);
+            DrawBabyStackPanel(vm, new Rect(38, 508, 286, 236), false);
+            DrawPreparedItems(new Rect(44, 780, 270, 58), true, vm);
             DrawCaregiverBreathHotspot(vm, new Rect(38, 316, 286, 82), false);
         }
 
@@ -2887,18 +3256,76 @@ namespace NotANap.App
                 $"{vm.ParentStamina:0}",
                 Mathf.Clamp01((float)vm.ParentStamina / 100f),
                 vm.ParentStamina >= 30 ? new Color(0.49f, 0.84f, 0.61f) : new Color(0.94f, 0.39f, 0.34f), true);
-            DrawStatusOrnament(new Rect(558, y + 112, 476, 96), "집중력",
-                $"{vm.CaregiverComposure:0}",
-                Mathf.Clamp01((float)vm.CaregiverComposure / 100f),
-                new Color(0.72f, 0.56f, 0.94f), true);
+            DrawMoodOrnament(new Rect(558, y + 112, 476, 96), vm, true);
             DrawCaregiverBreathHotspot(vm, new Rect(46, y + 112, 476, 96), true);
+        }
+
+        /// <summary>
+        /// 아기 상태 스택. 밤 돌봄의 판단은 진정도 같은 절대 수치가 아니라
+        /// "마지막으로 먹인 지 얼마나 됐나 / 얼마나 깨어 있었나"로 이루어진다.
+        /// 아기를 볼 수 없는 동안에는 이 값들도 함께 닫힌다.
+        /// </summary>
+        private void DrawBabyStackPanel(V2PlayViewModel vm, Rect rect, bool portrait)
+        {
+            DrawGlassPanel(rect, .62f);
+            float inset = portrait ? 22f : 16f;
+            GUI.Label(new Rect(rect.x + inset, rect.y + 8f, rect.width - inset * 2f, portrait ? 34f : 26f),
+                "아기 상태",
+                OverlayLabelStyle(portrait ? 24 : 17, FontStyle.Bold,
+                    new Color(.74f, .79f, .84f)));
+
+            if (!vm.BabyStateVisible)
+            {
+                GUI.Label(new Rect(rect.x + inset, rect.y + (portrait ? 52f : 42f),
+                        rect.width - inset * 2f, rect.height - (portrait ? 64f : 52f)),
+                    vm.BabyStateBlockedReason,
+                    OverlayLabelStyle(portrait ? 22 : 16, FontStyle.Bold,
+                        new Color(.94f, .76f, .52f), TextAnchor.UpperLeft, true));
+                return;
+            }
+
+            float rowHeight = portrait ? 46f : 36f;
+            float y = rect.y + (portrait ? 50f : 40f);
+            DrawStackRow(rect, y, inset, portrait, "졸림",
+                $"{vm.FatigueLabel} · {FormatDuration(vm.AwakeMinutes)}",
+                vm.FatigueStage == FatigueSignalStage.Overtired
+                    ? new Color(.94f, .39f, .34f)
+                    : vm.FatigueStage >= FatigueSignalStage.Active
+                        ? new Color(.95f, .79f, .39f) : new Color(.62f, .9f, .78f));
+            DrawStackRow(rect, y + rowHeight, inset, portrait, "배고픔",
+                $"{vm.HungerLabel} · {vm.Hunger:0}",
+                vm.HungerStage == HungerSignalStage.Late
+                    ? new Color(.94f, .39f, .34f)
+                    : vm.HungerStage == HungerSignalStage.Active
+                        ? new Color(.95f, .79f, .39f) : new Color(.62f, .9f, .78f));
+            DrawStackRow(rect, y + rowHeight * 2f, inset, portrait, "울음",
+                $"{vm.CryIntensity:0}",
+                vm.CryIntensity > 35 ? new Color(.94f, .39f, .34f) : new Color(.78f, .82f, .86f));
+            DrawStackRow(rect, y + rowHeight * 3f, inset, portrait, "마지막 수유",
+                $"{FormatDuration(vm.MinutesSinceFeed)} 전", new Color(.78f, .82f, .86f));
+            DrawStackRow(rect, y + rowHeight * 4f, inset, portrait, "마지막 기저귀",
+                $"{FormatDuration(vm.MinutesSinceDiaperChange)} 전", new Color(.78f, .82f, .86f));
+        }
+
+        /// <summary>왼쪽 항목명, 오른쪽 값. 한 줄짜리 상태 행.</summary>
+        private void DrawStackRow(Rect panel, float y, float inset, bool portrait,
+            string label, string value, Color valueColor)
+        {
+            float width = panel.width - inset * 2f;
+            float height = portrait ? 40f : 32f;
+            GUI.Label(new Rect(panel.x + inset, y, width * .44f, height), label,
+                OverlayLabelStyle(portrait ? 22 : 16, FontStyle.Normal,
+                    new Color(.68f, .72f, .76f), TextAnchor.MiddleLeft));
+            GUI.Label(new Rect(panel.x + inset + width * .44f, y, width * .56f, height), value,
+                OverlayLabelStyle(portrait ? 24 : 17, FontStyle.Bold, valueColor,
+                    TextAnchor.MiddleRight));
         }
 
         private void DrawCaregiverBreathHotspot(V2PlayViewModel vm, Rect rect, bool portrait)
         {
             var action = DirectAction(vm, V2ActionId.CatchBreath);
             if (action == null) return;
-            bool urgent = vm.ParentStamina <= 20 || vm.CaregiverComposure < 50;
+            bool urgent = vm.ParentStamina <= 20;
             float pulse = (Mathf.Sin(Time.unscaledTime * 2.8f) + 1f) * .5f;
             if (urgent || rect.Contains(Event.current.mousePosition))
             {
@@ -3623,61 +4050,6 @@ namespace NotANap.App
             }
         }
 
-        private void DrawStatusPanel(V2PlayViewModel vm)
-        {
-            var panel = new Rect(48, 132, 360, 858);
-            Panel(panel, 0.72f);
-            GUI.Label(new Rect(76, 162, 304, 28), "아기의 지금", _caption);
-            GUI.Label(new Rect(74, 205, 308, 54), PresentationCopyMapper.V2StageLabel(vm.SleepStage), _headline);
-            string signal = vm.CauseResolved ? SleepSignal(vm) : CauseSignal(vm);
-            GUI.Label(new Rect(74, 275, 308, 92), signal, _body);
-
-            GUI.Label(new Rect(74, 400, 280, 28), "연속 수면", _caption);
-            GUI.Label(new Rect(74, 432, 280, 48), FormatDuration(vm.CurrentSleepStretchMinutes), _headline);
-            DrawProgress(new Rect(74, 488, 280, 10), Mathf.Clamp01(vm.CurrentSleepStretchMinutes / 300f), new Color(0.38f, 0.68f, 0.86f));
-
-            GUI.Label(new Rect(74, 548, 280, 28), "보호자 체력", _caption);
-            GUI.Label(new Rect(74, 580, 280, 48), $"{vm.ParentStamina:0}", _headline);
-            DrawProgress(new Rect(74, 636, 280, 10), Mathf.Clamp01((float)vm.ParentStamina / 100f), vm.ParentStamina >= 30 ? new Color(0.49f, 0.82f, 0.6f) : new Color(0.9f, 0.38f, 0.34f));
-            GUI.Label(new Rect(74, 680, 280, 28), "집중력", _caption);
-            GUI.Label(new Rect(74, 712, 280, 48), $"{vm.CaregiverComposure:0}", _headline);
-            DrawProgress(new Rect(74, 768, 280, 10), Mathf.Clamp01((float)vm.CaregiverComposure / 100f), new Color(0.66f, 0.53f, 0.92f));
-
-            if (vm.TemperatureChecked || vm.HumidityChecked)
-                GUI.Label(new Rect(74, 830, 280, 70),
-                    $"방  {vm.TemperatureCelsius:0.#}°C\n습도 {vm.HumidityPercent:0.#}%", _body);
-            DrawPreparedItems(new Rect(74, 920, 280, 54), true, vm);
-        }
-
-        private void DrawActionPanel(V2PlayViewModel vm)
-        {
-            var panel = new Rect(1430, 132, 442, 858);
-            Panel(panel, 0.72f);
-            GUI.Label(new Rect(1460, 162, 380, 36),
-                vm.ParentStamina <= 0 ? "체력이 바닥났다" : "행동 목록", _headline);
-
-            bool exhausted = vm.ParentStamina <= 0;
-            DrawTab(new Rect(1460, 220, 120, 48), "살펴보기", ActionGroup.Diagnose);
-            DrawTab(new Rect(1589, 220, 120, 48), "돌보기", ActionGroup.Care, !exhausted);
-            DrawTab(new Rect(1718, 220, 120, 48), "수유 준비", ActionGroup.Feed, !exhausted);
-
-            var actions = ActionsFor(_actionGroup, vm.ParentStamina <= 0);
-            float y = 292;
-            for (int i = 0; i < actions.Length; i++)
-            {
-                var id = actions[i];
-                var action = vm.Actions.Find(a => a.Action == id);
-                if (action == null || !action.Enabled) continue;
-                var oldEnabled = GUI.enabled;
-                GUI.enabled = oldEnabled && action.Enabled && !_flow.InputLocked;
-                if (DrawActionButton(new Rect(1460, y, 378, 64), action, vm, false))
-                    PerformV2Action(id);
-                GUI.enabled = oldEnabled;
-                y += 74;
-            }
-
-        }
-
         private void DrawSleepIntervalChoices(Rect rect, bool horizontal)
         {
             var oldEnabled = GUI.enabled;
@@ -3720,16 +4092,6 @@ namespace NotANap.App
             }
             GUI.Label(new Rect(478, 856, 840, 42), title, _headline);
             GUI.Label(new Rect(478, 910, 840, 52), detail, _body);
-        }
-
-        private void DrawTab(Rect rect, string label, ActionGroup group, bool enabled = true)
-        {
-            GUIStyle normal = _portrait ? _buttonSmall : _tabButton;
-            GUIStyle selected = _portrait ? _buttonSelected : _tabSelected;
-            var oldEnabled = GUI.enabled;
-            GUI.enabled = oldEnabled && enabled;
-            if (GUI.Button(rect, label, _actionGroup == group ? selected : normal)) _actionGroup = group;
-            GUI.enabled = oldEnabled;
         }
 
         private static V2ActionId[] ActionsFor(ActionGroup group, bool caregiverExhausted)
@@ -4125,7 +4487,7 @@ namespace NotANap.App
                     TextAnchor.UpperLeft, true));
             if (DrawPrimaryButton(new Rect(90, 1420, 900, 132), "오늘 밤 버티기  →"))
             {
-                _introBeat = 0;
+                ResetIntro();
                 _flow.BeginFamilySetup();
             }
         }
@@ -4537,6 +4899,32 @@ namespace NotANap.App
         }
 
         private static string FormatDuration(int minutes) => minutes >= 60 ? $"{minutes / 60}시간 {minutes % 60:00}분" : $"{minutes}분";
+
+        /// <summary>
+        /// 아기 기분 게이지. 아기 곁을 떠나 있고 모니터로도 보지 않았다면 수치를
+        /// 그리지 않는다. 이 공백이 베이비 모니터를 챙길 이유다.
+        /// </summary>
+        private void DrawMoodOrnament(Rect rect, V2PlayViewModel vm, bool portrait)
+        {
+            if (!vm.BabyStateVisible)
+            {
+                DrawStatusOrnament(rect, "아기 기분", "확인 불가", 0f,
+                    new Color(0.55f, 0.57f, 0.6f), portrait);
+                return;
+            }
+            DrawStatusOrnament(rect, vm.BabyStateViaMonitor ? "아기 기분 · 📟" : "아기 기분",
+                $"{vm.BabyMood:0}  {vm.BabyMoodLabel}",
+                Mathf.Clamp01((float)vm.BabyMood / 100f),
+                MoodColor(vm.BabyMood), portrait);
+        }
+
+        /// <summary>아기 기분 게이지 색. 등급 경계는 BabyMoodResolver.Label과 같다.</summary>
+        private static Color MoodColor(double mood)
+        {
+            if (mood >= 60) return new Color(0.49f, 0.84f, 0.61f);
+            if (mood >= 40) return new Color(0.95f, 0.79f, 0.39f);
+            return new Color(0.94f, 0.39f, 0.34f);
+        }
 
         private void Panel(Rect rect, float alpha = 0.94f) => Fill(rect, new Color(0.035f, 0.065f, 0.105f, alpha));
 

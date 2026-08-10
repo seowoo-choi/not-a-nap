@@ -5,6 +5,8 @@ namespace NotANap.Core
     public enum V2SleepStage { Awake, Drowsy, RemActiveSleep, NremDeepSleep }
     public enum WakeCause { Unknown, Diaper, Hunger, Temperature, Humidity, MoroReflex, PainOrCondition, NaturalCycle }
     public enum HungerSignalStage { None, Early, Active, Late }
+    /// <summary>깨어 있는 시간으로 결정되는 피로 단계. Overtired는 과각성이다.</summary>
+    public enum FatigueSignalStage { None, Early, Active, Overtired }
     public enum DiaperCheckResult { None, Clean, Wet, Stool }
     public enum PacifierAffinity { Loves, Neutral, Rejects }
     public enum NightModifierId { None, Vaccination, WonderWeeks, Teething, SleepRegression }

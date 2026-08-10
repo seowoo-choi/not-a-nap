@@ -35,6 +35,29 @@ namespace NotANap.Core
             }
         }
 
+        /// <summary>
+        /// 피로 신호. 열거형에만 있고 아무도 만들지 않던 하품·귀 당김·활 모양 등을
+        /// 실제 단계와 연결한다. 원본: docs/feedback-log.md D3(책 표3).
+        /// </summary>
+        public static void AddFatigueSignals(FatigueSignalStage stage, IList<ObservationSignalId> output)
+        {
+            if (stage >= FatigueSignalStage.Early)
+            {
+                output.Add(ObservationSignalId.Yawning);
+                output.Add(ObservationSignalId.RubbingEyes);
+            }
+            if (stage >= FatigueSignalStage.Active)
+            {
+                output.Add(ObservationSignalId.PullingEar);
+                output.Add(ObservationSignalId.Fussing);
+            }
+            if (stage >= FatigueSignalStage.Overtired)
+            {
+                output.Add(ObservationSignalId.ArchedBack);
+                output.Add(ObservationSignalId.ClenchedFist);
+            }
+        }
+
         public static void AddSleepSignals(SleepCycleState sleep, IList<ObservationSignalId> output)
         {
             if (sleep.Stage == V2SleepStage.RemActiveSleep)
@@ -60,6 +83,7 @@ namespace NotANap.Core
         {
             WakeScheduler.RequireV2(night);
             var outcome = new V2ActionOutcome { Action = action, Accepted = true };
+            outcome.MoodBefore = outcome.MoodAfter = BabyMoodResolver.Evaluate(night, config);
             if (night.Over) return RejectAndAudit(night, outcome);
             // 체력이 바닥난 상태에서는 시간을 흘려 밤을 넘길 수 없다.
             // 숨 고르기만이 다시 돌봄 행동으로 돌아가는 결정론적 회복 경로다.
@@ -115,6 +139,7 @@ namespace NotANap.Core
                         -(stoolDiaper ? config.V2.DiaperStoolDisposeStaminaCost : config.V2.DiaperDisposeStaminaCost));
                     night.V2.Diagnosis.DiaperChangedPendingDisposal = false;
                     night.V2.HandsNeedWashing = stoolDiaper;
+                    night.V2.LastDiaperChangeMinute = night.V2.ElapsedMinutes;
                     ResolveCause(night, outcome);
                     night.V2.Diagnosis.DiaperWetConfirmed = false;
                     night.V2.Diagnosis.DiaperStoolConfirmed = false;
@@ -221,6 +246,9 @@ namespace NotANap.Core
                     // 화면을 들여다보는 짧은 시간. 공짜면 무한 반복으로 관찰이 무의미해진다.
                     Consume(outcome, 2, -1);
                     outcome.MonitorRead = true;
+                    // 본 시점을 남긴다. 이 값이 신선한 동안만 아기 곁을 떠난 채로도
+                    // 아기 상태를 읽을 수 있다. 모니터가 정보 게이트가 되는 지점이다.
+                    night.V2.MonitorReadAtMinute = night.V2.ElapsedMinutes;
                     break;
                 case V2ActionId.CatchBreath:
                     if (night.V2.CatchBreathUses >= 3 && night.Parent.Stamina > 0)
@@ -229,14 +257,12 @@ namespace NotANap.Core
                     {
                         // 탈진 교착만 막는 비상 호흡. 시간을 보내거나 밤의 주력 회복기로 쓸 수 없다.
                         outcome.StaminaDelta = 5;
-                        ChangeComposure(night, outcome, 3);
                         AddAmbientSignals(night, outcome, config);
                         RememberVisibleSignals(night, outcome);
                         break;
                     }
                     Consume(outcome, config.V2.DefaultActionMinutes, 9);
                     night.V2.CryIntensity = CoreMath.Clamp(night.V2.CryIntensity + 3, 0, 100);
-                    ChangeComposure(night, outcome, 15);
                     night.V2.GentleObservationCount++;
                     night.V2.CatchBreathUses++;
                     AddAmbientSignals(night, outcome, config);
@@ -267,7 +293,8 @@ namespace NotANap.Core
                     night.V2.HeadSupported = true;
                     outcome.HeadSupported = true;
                     night.Baby.Calm = CoreMath.Clamp(night.Baby.Calm +
-                        12 * night.V2.Modifier.ComfortActionModifier, 0, 100);
+                        12 * night.V2.Modifier.ComfortActionModifier *
+                        BabyClockResolver.ComfortMultiplier(night, config), 0, 100);
                     night.Baby.Sleep = CoreMath.Clamp(night.Baby.Sleep +
                         config.V2.HoldSleepGain *
                         night.V2.Modifier.SleepGainMultiplier, 0, 100);
@@ -326,7 +353,10 @@ namespace NotANap.Core
                         AddTrace(run, night, outcome, CoreTraceIds.FeedingPreparationCompleted, ActionId.CheckBottleTemperature);
                     break;
                 case V2ActionId.HoldWhilePreparing:
-                    Consume(outcome, config.V2.DefaultActionMinutes, -config.V2.HoldPreparingExtraStaminaCost);
+                    // 아기띠를 매고 있으면 두 손이 비어 안고 준비하는 추가 부담이 사라진다.
+                    // 아기띠가 V2에서 실제로 이득을 주는 지점이다.
+                    Consume(outcome, config.V2.DefaultActionMinutes,
+                        night.Wearing.Carrier ? 0 : -config.V2.HoldPreparingExtraStaminaCost);
                     night.V2.HoldWhilePreparing = true;
                     night.Baby.Held = true;
                     break;
@@ -338,6 +368,7 @@ namespace NotANap.Core
             }
 
             ApplyOutcomeAndTime(run, night, outcome, config, rng);
+            outcome.MoodAfter = BabyMoodResolver.Evaluate(night, config);
             RecordAudit(night, outcome);
             return outcome;
         }
@@ -373,13 +404,6 @@ namespace NotANap.Core
             return V2ActionBlockReason.None;
         }
 
-        private static void ChangeComposure(NightState night, V2ActionOutcome outcome, double delta)
-        {
-            double before = night.V2.CaregiverComposure;
-            night.V2.CaregiverComposure = CoreMath.Clamp(before + delta, 0, 100);
-            outcome.ComposureDelta = night.V2.CaregiverComposure - before;
-        }
-
         private static void AddAmbientSignals(NightState night, V2ActionOutcome outcome,
             GameBalanceConfig config)
         {
@@ -391,11 +415,10 @@ namespace NotANap.Core
             {
                 if (night.Baby.Calm < config.V2.DrowsyCalmThreshold)
                     outcome.ObservedSignals.Add(ObservationSignalId.Squirming);
-                else
-                {
-                    outcome.ObservedSignals.Add(ObservationSignalId.Yawning);
-                    outcome.ObservedSignals.Add(ObservationSignalId.RubbingEyes);
-                }
+                // 하품·눈비빔은 기분이 좋아서가 아니라 피곤해서 나온다.
+                // 깨어 있던 시간이 그 신호를 만든다.
+                ObservationResolver.AddFatigueSignals(
+                    BabyClockResolver.GetFatigueStage(night.V2, config), outcome.ObservedSignals);
             }
         }
 
@@ -414,7 +437,8 @@ namespace NotANap.Core
         /// </summary>
         private static double PatCalmGain(NightState night, GameBalanceConfig config)
         {
-            double gain = 12 * night.V2.Modifier.ComfortActionModifier;
+            double gain = 12 * night.V2.Modifier.ComfortActionModifier *
+                          BabyClockResolver.ComfortMultiplier(night, config);
             var diagnosis = night.V2.Diagnosis;
             if (diagnosis.CauseResolved ||
                 diagnosis.ActiveCause == WakeCause.NaturalCycle ||
@@ -605,6 +629,7 @@ namespace NotANap.Core
                 return;
             }
             Consume(outcome, config.V2.DefaultActionMinutes, -4);
+            night.V2.LastFeedMinute = night.V2.ElapsedMinutes;
             if (night.V2.Diagnosis.ActiveCause == WakeCause.Hunger && !night.V2.Diagnosis.CauseResolved)
             {
                 night.Baby.Hunger = CoreMath.Clamp(night.Baby.Hunger - config.V2.FeedingHungerReduction, 0, 100);

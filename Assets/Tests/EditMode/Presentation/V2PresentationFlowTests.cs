@@ -31,6 +31,43 @@ namespace NotANap.Presentation.Tests
         }
 
         [Test]
+        public void LeavingTheBabyHidesBabyStateUntilTheMonitorIsRead()
+        {
+            var flow = StartV2();
+            Assert.IsTrue(flow.BuildV2Play().BabyStateVisible,
+                "아기방에서는 눈으로 보이므로 상태가 열려 있어야 한다.");
+
+            flow.MoveToHomeLocation(HomeLocation.Kitchen);
+            var away = flow.BuildV2Play();
+            Assert.IsFalse(away.BabyStateVisible,
+                "아기 곁을 떠나면 상태 수치가 닫혀야 베이비 모니터가 의미를 갖는다.");
+            Assert.IsFalse(away.BabyStateViaMonitor);
+            StringAssert.Contains("베이비 모니터", away.BabyStateBlockedReason);
+
+            flow.ActV2(V2ActionId.CheckMonitor);
+            var read = flow.BuildV2Play();
+            Assert.IsTrue(read.BabyStateVisible, "모니터를 보면 상태가 열려야 한다.");
+            Assert.IsTrue(read.BabyStateViaMonitor);
+            Assert.IsNull(read.BabyStateBlockedReason);
+        }
+
+        [Test]
+        public void WithoutTheMonitorLeavingTheBabyIsAOneWayBlackout()
+        {
+            var flow = new GameFlowController(new SystemRandomSource(41));
+            flow.StartGame();
+            flow.ToggleItem(ItemId.Carrier);
+            flow.ToggleItem(ItemId.Noise);
+            flow.ToggleItem(ItemId.Pacifier);
+            flow.ConfirmV2Setup();
+            flow.MoveToHomeLocation(HomeLocation.Kitchen);
+
+            var away = flow.BuildV2Play();
+            Assert.IsFalse(away.BabyStateVisible);
+            StringAssert.Contains("아기방으로 돌아가야", away.BabyStateBlockedReason);
+        }
+
+        [Test]
         public void V2Snapshot_ExposesConfiguredEnvironmentRangesForObservedMeterValues()
         {
             var vm = StartV2().BuildV2Play();

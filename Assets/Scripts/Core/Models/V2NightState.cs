@@ -140,7 +140,24 @@ namespace NotANap.Core
         public double CryIntensity;
         public bool HoldWhilePreparing;
         public bool HeadSupported;
-        public double CaregiverComposure = 50;
+        /// <summary>
+        /// 밤 시작 시점의 백색소음 습관화(0~1) 스냅샷. 밤 도중에는 변하지 않으므로
+        /// 각성 예약처럼 RunState를 받지 않는 계산에서도 결정론적으로 쓸 수 있다.
+        /// </summary>
+        public double NoiseHabituation;
+        /// <summary>
+        /// 마지막으로 베이비 모니터를 본 경과 분. 아기 곁을 떠나 있는 동안
+        /// 아기 상태를 읽을 수 있는지는 이 값의 신선도로 결정한다.
+        /// </summary>
+        public int MonitorReadAtMinute = int.MinValue / 2;
+        /// <summary>
+        /// 마지막 수유·기저귀 교체·각성 시점(경과 분). 0은 밤 시작 직전을 뜻한다.
+        /// 아기를 눕히기 직전에 먹이고 갈아 둔 상태에서 21:00을 시작하기 때문이다.
+        /// 다음에 무엇을 해야 할지는 수치보다 "얼마나 지났는지"로 읽힌다.
+        /// </summary>
+        public int LastFeedMinute;
+        public int LastDiaperChangeMinute;
+        public int AwakeSinceMinute;
         public int GentleObservationCount;
         public int SelfResettleCount;
         public int CatchBreathUses;

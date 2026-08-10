@@ -17,6 +17,12 @@ namespace NotANap.Core.Tests
                 profile ?? new BabyProfile { Temperament = run.Temperament }, config, modifier, capabilities);
         }
 
+        /// <summary>백색소음기를 실제로 챙겨 온 밤. 소지하지 않으면 효과 자체가 꺼진다.</summary>
+        private static NightState NoiseNight(RunState run, GameBalanceConfig config)
+            => NightFactory.CreateV2Night(run,
+                new[] { ItemId.Noise, ItemId.Pacifier, ItemId.Monitor },
+                new BabyProfile { Temperament = run.Temperament }, config);
+
         [Test]
         public void SleepingBabyCanWakeBeforeDawn()
         {
@@ -866,21 +872,151 @@ namespace NotANap.Core.Tests
         }
 
         [Test]
-        public void CatchBreathBuildsComposureAndMakesBodySignalsVisible()
+        public void CatchBreathRecoversStaminaAndMakesBodySignalsVisible()
         {
             var config = GameBalanceConfig.Default();
             var run = RunState.Create(Temperament.Hungry);
             var night = Night(run, config);
             night.Baby.Hunger = 70;
-            double before = night.V2.CaregiverComposure;
+            night.Parent.Stamina = 40;
 
             var result = V2ActionResolver.Apply(run, night, V2ActionId.CatchBreath,
                 config, new SequenceRandomSource(0));
 
-            Assert.Greater(night.V2.CaregiverComposure, before);
+            Assert.Greater(result.StaminaDelta, 0, "숨 고르기는 보호자 체력을 회복시킨다.");
             Assert.AreEqual(1, night.V2.GentleObservationCount);
             CollectionAssert.Contains(result.ObservedSignals, ObservationSignalId.LipSmacking);
             CollectionAssert.Contains(night.V2.VisibleSignals, ObservationSignalId.LipSmacking);
+        }
+
+        [Test]
+        public void NoiseMachineDoesNotCalmTheBabyButExtendsTheNextWake()
+        {
+            var config = GameBalanceConfig.Default();
+            config.V2.WakeDelayMinMinutes = config.V2.WakeDelayMaxMinutes = 60;
+            var run = RunState.Create(Temperament.Soft);
+
+            var quiet = NoiseNight(run, config);
+            var loud = NoiseNight(run, config);
+            loud.Wearing.Noise = true;
+            double calmBefore = loud.Baby.Calm;
+
+            V2TimeResolver.BeginSleep(quiet, V2SleepStage.RemActiveSleep);
+            V2TimeResolver.BeginSleep(loud, V2SleepStage.RemActiveSleep);
+            var quietWake = WakeScheduler.Schedule(quiet, config, new SequenceRandomSource(0));
+            var loudWake = WakeScheduler.Schedule(loud, config, new SequenceRandomSource(0));
+
+            Assert.AreEqual(config.V2.NoiseWakeDelayBonusMinutes,
+                loudWake.AtElapsedMinute - quietWake.AtElapsedMinute,
+                "백색소음기는 다음 각성까지의 간격만 늘린다.");
+
+            V2TimeResolver.Advance(run, loud, 60, config, new SequenceRandomSource(.99));
+            Assert.LessOrEqual(loud.Baby.Calm, calmBefore + 1e-9,
+                "켜 두는 것만으로 진정도가 오르면 '켜 두면 안 달래도 된다'가 된다.");
+            Assert.Greater(loud.Stats.NoiseTurns, 0, "사용 시간은 습관으로 쌓여야 한다.");
+        }
+
+        [Test]
+        public void FeedingAndDiaperChangeResetTheirElapsedClocks()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var night = Night(run, config);
+            var rng = new SequenceRandomSource(0);
+
+            V2TimeResolver.Advance(run, night, 120, config, rng);
+            Assert.AreEqual(120, BabyClockResolver.MinutesSinceFeed(night.V2),
+                "밤 시작 직전에 먹인 것으로 보고 경과를 센다.");
+            Assert.AreEqual(120, BabyClockResolver.MinutesSinceDiaperChange(night.V2));
+
+            night.V2.Diagnosis.Begin(WakeCause.Hunger, config.V2.DecisionSeconds);
+            night.V2.Feeding.WaterReady = night.V2.Feeding.FormulaMeasured =
+                night.V2.Feeding.BottleMixed = night.V2.Feeding.BottleCooled =
+                    night.V2.Feeding.TemperatureChecked = true;
+            V2ActionResolver.Apply(run, night, V2ActionId.FeedPreparedBottle, config, rng);
+
+            Assert.AreEqual(config.V2.DefaultActionMinutes,
+                BabyClockResolver.MinutesSinceFeed(night.V2),
+                "수유하면 '마지막 수유로부터'가 다시 0에서 시작한다.");
+            Assert.Greater(BabyClockResolver.MinutesSinceDiaperChange(night.V2), 120,
+                "기저귀 시계는 수유와 무관하게 계속 흐른다.");
+        }
+
+        [Test]
+        public void StayingAwakeTooLongBecomesOvertiredAndMakesSoothingHarder()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+
+            var fresh = Night(run, config);
+            var overtired = Night(run, config);
+            overtired.V2.ElapsedMinutes = config.V2.FatigueOvertiredMinutes;
+            overtired.V2.AwakeSinceMinute = 0;
+
+            Assert.AreEqual(FatigueSignalStage.None,
+                BabyClockResolver.GetFatigueStage(fresh.V2, config));
+            Assert.AreEqual(FatigueSignalStage.Overtired,
+                BabyClockResolver.GetFatigueStage(overtired.V2, config));
+
+            double freshBefore = fresh.Baby.Calm;
+            double tiredBefore = overtired.Baby.Calm;
+            V2ActionResolver.Apply(run, fresh, V2ActionId.Pat, config, new SequenceRandomSource(0));
+            V2ActionResolver.Apply(run, overtired, V2ActionId.Pat, config, new SequenceRandomSource(0));
+
+            Assert.Greater(fresh.Baby.Calm - freshBefore, overtired.Baby.Calm - tiredBefore,
+                "과각성이면 토닥여도 덜 진정된다. 피곤 신호를 제때 읽을 이유가 된다.");
+        }
+
+        [Test]
+        public void FatigueStageProducesTheSignalsThatWereDefinedButNeverEmitted()
+        {
+            var config = GameBalanceConfig.Default();
+            var signals = new System.Collections.Generic.List<ObservationSignalId>();
+            ObservationResolver.AddFatigueSignals(
+                BabyClockResolver.GetFatigueStage(config.V2.FatigueOvertiredMinutes, config.V2), signals);
+
+            CollectionAssert.Contains(signals, ObservationSignalId.Yawning);
+            CollectionAssert.Contains(signals, ObservationSignalId.PullingEar);
+            CollectionAssert.Contains(signals, ObservationSignalId.ArchedBack);
+        }
+
+        [Test]
+        public void BabyMoodFallsWithCryingAndHunger()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var calm = Night(run, config);
+            calm.Baby.Calm = 80;
+            calm.Baby.Hunger = 10;
+            calm.V2.CryIntensity = 0;
+
+            var upset = Night(run, config);
+            upset.Baby.Calm = 80;
+            upset.Baby.Hunger = 90;
+            upset.V2.CryIntensity = 60;
+
+            Assert.Greater(BabyMoodResolver.Evaluate(calm, config),
+                BabyMoodResolver.Evaluate(upset, config));
+            Assert.AreEqual("아주 좋음", BabyMoodResolver.Label(BabyMoodResolver.Evaluate(calm, config)));
+        }
+
+        [Test]
+        public void CarrierRemovesTheExtraCostOfHoldingWhilePreparing()
+        {
+            var config = GameBalanceConfig.Default();
+            var run = RunState.Create(Temperament.Soft);
+            var bare = Night(run, config);
+            var worn = Night(run, config);
+            worn.Wearing.Carrier = true;
+
+            var bareOutcome = V2ActionResolver.Apply(run, bare, V2ActionId.HoldWhilePreparing,
+                config, new SequenceRandomSource(0));
+            var wornOutcome = V2ActionResolver.Apply(run, worn, V2ActionId.HoldWhilePreparing,
+                config, new SequenceRandomSource(0));
+
+            Assert.Less(bareOutcome.StaminaDelta, 0, "맨손으로 안고 준비하면 체력이 깎인다.");
+            Assert.AreEqual(0, wornOutcome.StaminaDelta, 1e-9,
+                "아기띠는 두 손을 비워 추가 부담을 없앤다.");
         }
 
         [Test]

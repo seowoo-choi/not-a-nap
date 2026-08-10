@@ -44,7 +44,12 @@ namespace NotANap.Presentation
         public ItemId Id;
         public string Emoji;
         public string Name;
-        public string Desc;
+        /// <summary>한 줄 정체성. "이 물건이 무엇을 하는 물건인가".</summary>
+        public string Role;
+        /// <summary>엔진 수치 그대로의 효과 목록. 형용사 금지.</summary>
+        public string[] Effects;
+        /// <summary>사용 비용(시간·체력·횟수).</summary>
+        public string Cost;
         public string Side;
         public bool Selected;
         /// <summary>슬롯이 다 찼고 미선택이면 true (흐리게/입력 차단).</summary>
@@ -189,9 +194,21 @@ namespace NotANap.Presentation
         public double DrowsyCalmThreshold;
         public double SleepStartCalmThreshold;
         public double ParentStamina;
-        public double CaregiverComposure;
+        /// <summary>아기 기분 0~100. 보호자 '집중력'을 대신해 화면에 서는 수치.</summary>
+        public double BabyMood;
+        public string BabyMoodLabel;
         public double CryIntensity;
         public double Hunger;
+        /// <summary>배고픔·졸림은 절대 수치와 단계를 함께 준다. 단계가 곧 행동 신호다.</summary>
+        public HungerSignalStage HungerStage;
+        public string HungerLabel;
+        public FatigueSignalStage FatigueStage;
+        public string FatigueLabel;
+        /// <summary>연속으로 깨어 있는 분. 자는 동안은 0.</summary>
+        public int AwakeMinutes;
+        /// <summary>마지막 수유·기저귀 교체로부터 지난 분. 0은 밤 시작 직전.</summary>
+        public int MinutesSinceFeed;
+        public int MinutesSinceDiaperChange;
         public bool BabyHeld;
         public bool IsLimbRelaxed;
         public bool IsBreathingRegular;
@@ -225,6 +242,15 @@ namespace NotANap.Presentation
         public bool HasNoise;
         public bool NoiseOn;
         public bool HasMonitor;
+        /// <summary>
+        /// 지금 아기 상태 수치를 읽을 수 있는지. 아기 곁에 있으면 눈으로 보이고,
+        /// 떠나 있으면 최근에 베이비 모니터를 본 경우에만 보인다.
+        /// </summary>
+        public bool BabyStateVisible;
+        /// <summary>모니터로 읽고 있는 중인지(직접 보는 게 아니라).</summary>
+        public bool BabyStateViaMonitor;
+        /// <summary>수치를 읽을 수 없을 때 화면에 대신 세울 한 줄.</summary>
+        public string BabyStateBlockedReason;
         public bool HeadSupported;
         public HomeLocation CaregiverLocation;
         public HomeLocation BabyLocation;

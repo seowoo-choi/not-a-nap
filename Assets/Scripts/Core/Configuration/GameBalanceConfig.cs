@@ -97,6 +97,24 @@ namespace NotANap.Core
         public double RemLaydownWakeChance = .45;
         public double PacifierLovesCalmGain = 22;
         public double PacifierNeutralCalmGain = 12;
+        // 백색소음기는 아기를 달래는 물건이 아니다. 켜 두면 진정도가 저절로 오르던
+        // 예전 규칙은 "켜 두면 돌보지 않아도 된다"로 읽혔고 실제 백색소음의 역할과도
+        // 달랐다. 지금은 이미 든 잠을 '이어 주는' 쪽으로만 관여한다.
+        public int NoiseWakeDelayBonusMinutes = 25;
+        public double NoiseSelfResettleBonus = .15;
+        public double NoiseExternalWakeGuard = .6;
+        // 외부 소음 돌발. 둘째 밤 23:30 초인종, 백일째 밤 02:30 윗집 소리.
+        public int SecondNightExternalNoiseMinute = 150;
+        public int FinalNightExternalNoiseMinute = 330;
+        // 아기띠는 두 손을 비워 준다. 안고 준비할 때 붙는 추가 체력 소모를 없애고
+        // 방을 옮기는 동안의 울음 상승도 눌러 준다.
+        public double CarrierCryMultiplier = .55;
+        // 모니터로 본 아기 상태가 유효한 시간. 지나면 화면이 다시 막히고
+        // 아기가 어떤지 알려면 한 번 더 봐야 한다.
+        public int MonitorReadFreshMinutes = 30;
+        // 아기 기분(0~100) 가중치. 울음과 배고픔이 진정도를 깎는 정도.
+        public double MoodCryWeight = .6;
+        public double MoodHungerWeight = .4;
         public double HoldPreparingCryMultiplier = .35;
         public double FeedingHungerReduction = 65;
         public double FeedingCalmGain = 20;
@@ -108,6 +126,12 @@ namespace NotANap.Core
         public int GradeALongestMinutes = 240;
         public int GradeBLongestMinutes = 180;
         public int GradeCLongestMinutes = 120;
+        // 피로는 진정도가 아니라 '깨어 있던 시간'으로 쌓인다. 놓치면 과각성이 되어
+        // 오히려 달래기가 힘들어진다는 육아 도메인 규칙을 그대로 옮겼다.
+        public int FatigueEarlyMinutes = 45;
+        public int FatigueActiveMinutes = 75;
+        public int FatigueOvertiredMinutes = 105;
+        public double OvertiredComfortMultiplier = .7;
         public double HungerEarlyThreshold = 35;
         public double HungerActiveThreshold = 60;
         public double HungerLateThreshold = 82;

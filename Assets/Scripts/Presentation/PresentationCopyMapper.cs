@@ -287,6 +287,24 @@ namespace NotANap.Presentation
             _ => signal.ToString()
         };
 
+        /// <summary>배고픔 단계. "울면 이미 늦었다"가 읽히게 후기 단계를 명시한다.</summary>
+        public static string HungerStageLabel(HungerSignalStage stage) => stage switch
+        {
+            HungerSignalStage.Early => "초기 신호",
+            HungerSignalStage.Active => "배고픔",
+            HungerSignalStage.Late => "늦음 · 울음",
+            _ => "괜찮음"
+        };
+
+        /// <summary>피로 단계. 과각성은 달래기가 오히려 어려워지는 구간이다.</summary>
+        public static string FatigueStageLabel(FatigueSignalStage stage) => stage switch
+        {
+            FatigueSignalStage.Early => "졸린 신호",
+            FatigueSignalStage.Active => "많이 피곤",
+            FatigueSignalStage.Overtired => "과각성",
+            _ => "말똥말똥"
+        };
+
         public static string FeedingStepLabel(FeedingPreparationStep step) => step switch
         {
             FeedingPreparationStep.SanitizeBottle => "젖병 소독",

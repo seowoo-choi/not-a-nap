@@ -19,9 +19,12 @@ namespace NotANap.Core
         public DiaperCheckResult DiaperCheckResult;
         public bool MonitorRead;
         public bool HeadSupported;
-        public double ComposureDelta;
         /// <summary>이 행동으로 줄어든 울음 세기(양수). 원인 해소와 무관한 '달래기'의 결과다.</summary>
         public double CryRelief;
+        /// <summary>이 행동 전후로 아기 기분(0~100)이 얼마나 움직였는지. 표시 전용.</summary>
+        public double MoodBefore;
+        public double MoodAfter;
+        public double MoodDelta => MoodAfter - MoodBefore;
         public string ActivityLocation;
         public readonly List<ObservationSignalId> ObservedSignals = new List<ObservationSignalId>();
         public readonly List<FeedingPreparationStep> MissingPreparationSteps = new List<FeedingPreparationStep>();
