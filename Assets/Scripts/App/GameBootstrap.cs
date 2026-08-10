@@ -38,6 +38,8 @@ namespace NotANap.App
         private V2PresentationActionResult _lastResult;
         private HomeMoveOutcome _lastMove;
         private int _timedEncounterSequence = -1;
+        /// <summary>가로 화면에서 신체 행동 콜아웃이 내려갈 수 있는 하단 한계선.</summary>
+        private float _landscapeCalloutBottom = 674f;
         private float _decisionDeadline;
         private bool _timeoutSent;
         private ActionGroup _actionGroup = ActionGroup.Diagnose;
@@ -540,46 +542,122 @@ namespace NotANap.App
                 : new Rect(110f, 150f, 780f, 470f);
             DrawGlassPanel(copyPanel, 0.82f);
             GUI.Label(new Rect(copyPanel.x + 38f, copyPanel.y + 32f,
-                copyPanel.width - 76f, 54f), "21:00 · 첫 번째 판단",
+                copyPanel.width - 76f, 54f), IntroStepLabel(),
                 OverlayLabelStyle(_portrait ? 40 : 24, FontStyle.Bold,
                     new Color(0.96f, 0.69f, 0.31f)));
             GUI.Label(new Rect(copyPanel.x + 38f, copyPanel.y + 92f,
                 copyPanel.width - 76f, _portrait ? 120f : 110f),
-                _introBeat == 0 ? "아기는 왜 보채는 걸까?" :
-                _introBeat == 1 ? "맞았다. 배가 고팠다." : "울음이 한 단계 커졌다.",
+                IntroHeadline(),
                 OverlayLabelStyle(_portrait ? 50 : 40, FontStyle.Bold,
                     Color.white, TextAnchor.UpperLeft));
-            string body = _introBeat == 0
-                ? "아직 울지는 않는다. 입을 오물거리고 손을 입으로 가져간다.\n" +
-                  "궁금한 곳을 직접 눌러 확인해 보자."
-                : _introBeat == 1
-                    ? "울기 전에 신호를 알아차리자 몸의 힘이 조금 풀렸다.\n" +
-                      "이렇게 아기 몸을 눌러 확인하면 된다."
-                    : "오늘 밤은 배고픔이었다. 다음에는 입과 손을 먼저 보자.";
             GUI.Label(new Rect(copyPanel.x + 38f, copyPanel.y + 220f,
-                copyPanel.width - 76f, 130f), body,
+                copyPanel.width - 76f, 130f), IntroBody(),
                 OverlayLabelStyle(_portrait ? 40 : 27, FontStyle.Normal,
                     new Color(0.9f, 0.92f, 0.94f), TextAnchor.UpperLeft));
 
-            if (_introBeat == 0)
+            // 인트로는 본편과 같은 문법으로 가르친다. 버튼 목록 대신 실제 플레이에서
+            // 쓰는 신체 부위 히트존을 그대로 눌러보게 하고, 한 단계에 하나씩만 가르친다.
+            switch (_introBeat)
             {
-                // 인트로는 본편과 같은 문법으로 가르친다. 3지선다 버튼 대신
-                // 실제 플레이에서 쓰는 신체 부위 히트존을 그대로 눌러보게 한다.
-                DrawIntroBodyProbe(babyRect, new Vector4(.38f, .17f, .24f, .2f),
-                    "입과 손 · 배고픔 신호 살피기", 1);
-                DrawIntroBodyProbe(babyRect, new Vector4(.34f, .58f, .33f, .23f),
-                    "기저귀 · 젖었는지 살피기", 2);
-                DrawIntroBodyProbe(babyRect, new Vector4(.58f, .3f, .25f, .34f),
-                    "등 · 토닥여 달래기", 3);
-                return;
+                case IntroAskCause:
+                    DrawIntroBodyProbe(babyRect, IntroMouthRatio,
+                        "입과 손 · 배고픔 신호 살피기", IntroCauseFound);
+                    DrawIntroBodyProbe(babyRect, IntroDiaperRatio,
+                        "기저귀 · 젖었는지 살피기", IntroCauseMissed);
+                    DrawIntroBodyProbe(babyRect, IntroBackRatio,
+                        "등 · 토닥여 달래기", IntroCauseMissed);
+                    return;
+                case IntroSoothe:
+                    DrawIntroBodyProbe(babyRect, IntroBackRatio,
+                        "등 · 같은 리듬으로 토닥이기", IntroFellAsleep);
+                    return;
+                case IntroFellAsleep:
+                    DrawIntroBodyProbe(babyRect, IntroLimbRatio,
+                        "팔다리 · 힘이 풀렸는지 살피기", IntroDeepSleep);
+                    DrawIntroBodyProbe(babyRect, IntroCribRatio,
+                        "침대 · 지금 내려놓기", IntroLaydownFailed);
+                    return;
+                case IntroDeepSleep:
+                    DrawIntroBodyProbe(babyRect, IntroCribRatio,
+                        "침대 · 천천히 내려놓기", IntroLaydownDone);
+                    return;
             }
 
             var nextRect = _portrait
                 ? new Rect(90f, 1420f, 900f, 128f)
                 : new Rect(110f, 700f, 720f, 92f);
-            if (DrawPrimaryButton(nextRect, "오늘 밤 준비하기  →"))
-                _flow.CompleteIntro();
+            string next = _introBeat == IntroCauseMissed ? "다시 살펴보기" :
+                _introBeat == IntroLaydownFailed ? "다시 해보기" : "오늘 밤 준비하기  →";
+            if (!DrawPrimaryButton(nextRect, next)) return;
+            if (_introBeat == IntroCauseMissed) _introBeat = IntroAskCause;
+            else if (_introBeat == IntroLaydownFailed) _introBeat = IntroFellAsleep;
+            else _flow.CompleteIntro();
         }
+
+        // 인트로 단계. 관찰 → 돌봄 → 얕은 잠 → 깊은 잠 확인 → 눕히기까지
+        // 본편의 한 사이클을 그대로 한 번 밟게 한다.
+        private const int IntroAskCause = 0;
+        private const int IntroCauseFound = 1;
+        private const int IntroCauseMissed = 2;
+        private const int IntroSoothe = 3;
+        private const int IntroFellAsleep = 4;
+        private const int IntroLaydownFailed = 5;
+        private const int IntroDeepSleep = 6;
+        private const int IntroLaydownDone = 7;
+
+        private static readonly Vector4 IntroMouthRatio = new Vector4(.38f, .17f, .24f, .2f);
+        private static readonly Vector4 IntroBackRatio = new Vector4(.58f, .3f, .25f, .34f);
+        private static readonly Vector4 IntroDiaperRatio = new Vector4(.34f, .58f, .33f, .23f);
+        private static readonly Vector4 IntroLimbRatio = new Vector4(.16f, .68f, .68f, .2f);
+        private static readonly Vector4 IntroCribRatio = new Vector4(.08f, .92f, .84f, .17f);
+
+        private string IntroStepLabel() => _introBeat switch
+        {
+            IntroAskCause or IntroCauseFound or IntroCauseMissed => "21:00 · 신호 읽기",
+            IntroSoothe => "21:10 · 달래기",
+            IntroFellAsleep or IntroLaydownFailed => "21:25 · 잠들었다",
+            IntroDeepSleep => "21:55 · 깊은 잠",
+            _ => "21:58 · 오늘 밤의 첫 성공"
+        };
+
+        private string IntroHeadline() => _introBeat switch
+        {
+            IntroAskCause => "아기는 왜 보채는 걸까?",
+            IntroCauseFound => "맞았다. 배가 고팠다.",
+            IntroCauseMissed => "울음이 한 단계 커졌다.",
+            IntroSoothe => "먹였다. 이제 재울 차례다.",
+            IntroFellAsleep => "잠들었다. 하지만 아직 얕은 잠이다.",
+            IntroLaydownFailed => "등이 닿자 눈이 번쩍.",
+            IntroDeepSleep => "팔다리 힘이 풀렸다. 지금이다.",
+            _ => "숨이 그대로 이어진다."
+        };
+
+        private string IntroBody() => _introBeat switch
+        {
+            IntroAskCause =>
+                "아직 울지는 않는다. 입을 오물거리고 손을 입으로 가져간다.\n" +
+                "궁금한 곳을 직접 눌러 확인해 보자.",
+            IntroCauseFound =>
+                "울기 전에 신호를 알아차리자 몸의 힘이 조금 풀렸다.\n" +
+                "이렇게 아기 몸을 눌러 확인하면 된다.",
+            IntroCauseMissed =>
+                "오늘 밤은 배고픔이었다. 다음에는 입과 손을 먼저 보자.",
+            IntroSoothe =>
+                "안거나 토닥이면 진정도가 오른다.\n" +
+                "등을 눌러 같은 리듬으로 토닥여 보자.",
+            IntroFellAsleep =>
+                "눈꺼풀과 손끝이 아직 움직인다. 여기서 내려놓으면 대개 깬다.\n" +
+                "팔다리 힘이 빠졌는지 먼저 살펴보자.",
+            IntroLaydownFailed =>
+                "얕은 잠에서는 등이 닿는 순간 깨어난다.\n" +
+                "깊은 잠이 될 때까지 기다렸다가 내려놓아야 한다.",
+            IntroDeepSleep =>
+                "숨이 고르고 팔다리가 늘어졌다. 깊은 잠에 들어섰다.\n" +
+                "이제 침대를 눌러 천천히 내려놓자.",
+            _ =>
+                "얕은 잠에서 기다렸다가 깊은 잠에 내려놓는 것.\n" +
+                "오늘 밤 아홉 시간을 이 리듬으로 건너면 된다."
+        };
 
         /// <summary>
         /// 인트로용 신체 히트존. ratio는 아기 rect 대비 (x, y, width, height) 비율이며
@@ -1417,6 +1495,8 @@ namespace NotANap.App
                 return;
             }
 
+            // 되돌아온 습관 패널이 있는 밤에는 콜아웃이 더 위에서 멈춰야 한다.
+            _landscapeCalloutBottom = vm.EchoSources.Count > 0 ? 536f : 674f;
             DrawPlayScene(vm, new Rect(0, 0, LandscapeWidth, LandscapeHeight), false);
             DrawTopBar(vm);
             DrawLandscapeStatusOrnaments(vm);
@@ -1523,7 +1603,7 @@ namespace NotANap.App
 
             DrawGlassPanel(new Rect(72f, 820f, 936f, 150f), .78f);
             GUI.Label(new Rect(104f, 830f, 872f, 44f),
-                NextActionHeadline(vm),
+                BabyStateHeadline(vm),
                 OverlayLabelStyle(34, FontStyle.Bold, new Color(1f, .87f, .66f)));
             GUI.Label(new Rect(104f, 876f, 872f, 82f), vm.CurrentSignal,
                 OverlayLabelStyle(31, FontStyle.Normal, new Color(.9f, .92f, .94f),
@@ -1676,8 +1756,11 @@ namespace NotANap.App
             if (!string.IsNullOrEmpty(caption))
             {
                 float captionY = artRect.yMax - (portrait ? 48f : 42f);
-                if (portrait)
-                    captionY = Mathf.Min(captionY, PortraitSceneContentBottom - 58f);
+                // 원화 높이는 행동마다 달라서 가로에서도 자막이 장면 피드백·수면 선택
+                // 패널까지 내려간다. 세로와 같은 하단 클램프를 가로에도 건다.
+                captionY = portrait
+                    ? Mathf.Min(captionY, PortraitSceneContentBottom - 58f)
+                    : Mathf.Min(captionY, _landscapeCalloutBottom - 46f);
                 var captionRect = new Rect(artRect.center.x - (portrait ? 250f : 220f),
                     captionY, portrait ? 500f : 440f,
                     portrait ? 54f : 46f);
@@ -1809,14 +1892,27 @@ namespace NotANap.App
             if (IsSleeping(vm) && !portrait)
                 links.Add(new BodyActionLink(mattress, V2ActionId.Laydown,
                     "침대 · 천천히 내려놓기", "천천히 내려놓아 보세요"));
+            // 챙긴 물건도 같은 목록에 올린다. 방 안에서 눈으로 찾아야만 쓸 수 있으면
+            // 아이템을 골라 온 의미가 플레이 중에 사라진다.
+            links.Add(new BodyActionLink(NoiseObjectRect(portrait), V2ActionId.ToggleNoise,
+                vm.NoiseOn ? "백색소음기 · 끄기" : "백색소음기 · 켜기",
+                vm.NoiseOn ? "백색소음을 꺼보세요" : "백색소음을 켜보세요"));
 
             DrawLinkedBodyActions(vm, links, recommendedAction, pulse, portrait);
         }
 
+        private static Rect NoiseObjectRect(bool portrait)
+            => portrait ? new Rect(40, 620, 175, 165) : new Rect(75, 610, 160, 155);
+
+        // 모니터는 아기방 밖에서만 켜지므로 아기방 좌표가 아니라
+        // 두 방 모두에서 같은 자리에 오는 화면 우하단을 쓴다.
+        private static Rect MonitorObjectRect(bool portrait)
+            => portrait ? new Rect(845, 620, 165, 165) : new Rect(255, 625, 140, 140);
+
         private static V2ActionId? RecommendedBodyAction(V2PlayViewModel vm,
             V2ActionId mouthAction, V2ActionId diaperAction)
         {
-            // 상단의 NextActionHeadline과 같은 상태 우선순위를 사용한다.
+            // 상단 신호 리본과 같은 상태 우선순위를 사용한다.
             // 방 이동·기다리기처럼 신체 접점이 아닌 행동은 억지로 몸 위에 추천하지 않는다.
             if (vm.HandsNeedWashing) return null;
             if (vm.DiaperChangedPendingDisposal || vm.DiaperStoolConfirmed ||
@@ -1959,7 +2055,11 @@ namespace NotANap.App
                 : link.Hotspot.x - width - (portrait ? 18f : 14f);
             x = Mathf.Clamp(x, portrait ? 32f : 24f, canvasWidth - width - (portrait ? 32f : 24f));
             float minY = portrait ? PortraitSceneContentY + 8f : 80f;
-            float maxY = portrait ? PortraitPrimaryActionY - height - 8f : LandscapeHeight - height - 24f;
+            // 가로 화면 하단은 되돌아온 습관(y 548)·장면 피드백(y 686)·수면 선택(y 785)
+            // 패널이 차지한다. 콜아웃을 화면 끝까지 내리면 그 글자들과 겹쳐 읽을 수 없다.
+            float maxY = portrait
+                ? PortraitPrimaryActionY - height - 8f
+                : _landscapeCalloutBottom - height;
             float y = Mathf.Clamp(link.Hotspot.center.y - height * .5f, minY, maxY);
             var callout = new Rect(x, y, width, height);
             DrawGlassPanel(callout, .9f, true);
@@ -1994,6 +2094,11 @@ namespace NotANap.App
         private void DrawDirectRoomObjects(V2PlayViewModel vm, bool portrait, bool babyVisible)
         {
             if (_flow.InputLocked || RoomTransitionActive()) return;
+            // 아기방을 비운 동안 아기를 살피는 물건이므로, 아기 히트존이 없는
+            // 주방·욕실에서도 독립된 진입점이 있어야 한다.
+            if (vm.CaregiverLocation != HomeLocation.Nursery)
+                DrawRoomObject(vm, V2ActionId.CheckMonitor, MonitorObjectRect(portrait),
+                    "베이비 모니터로 아기 살피기", ItemId.Monitor, portrait);
             switch (vm.CaregiverLocation)
             {
                 case HomeLocation.Kitchen:
@@ -2012,19 +2117,17 @@ namespace NotANap.App
                     DrawSceneActionHotspot(vm,
                         portrait ? new Rect(858, 650, 170, 190) : new Rect(1300, 350, 160, 180),
                         V2ActionId.AdjustHumidity, "가습기를 조절해 습도 맞추기", portrait);
+                    // 백색소음기는 세로에서도 방 안에 둔다. 가로에만 두면 모바일에서는
+                    // 챙긴 아이템을 쓸 방법이 아예 없어진다.
+                    DrawRoomObject(vm, V2ActionId.ToggleNoise, NoiseObjectRect(portrait),
+                        vm.NoiseOn ? "백색소음 끄기" : "백색소음기", ItemId.Noise, portrait);
                     if (!portrait)
                     {
-                        DrawRoomObject(vm, V2ActionId.ToggleNoise,
-                            new Rect(75, 610, 160, 155),
-                            vm.NoiseOn ? "백색소음 끄기" : "백색소음기", ItemId.Noise, false);
                         if (vm.HasPacifier)
                             DrawPacifierProp(vm, new Rect(1480, 790, 78, 78), false);
                         if (!vm.CarrierOn)
                             DrawRoomObject(vm, V2ActionId.ToggleCarrier,
                                 new Rect(1280, 515, 105, 175), "아기띠", ItemId.Carrier, false);
-                        DrawRoomObject(vm, V2ActionId.CheckMonitor,
-                            new Rect(255, 625, 140, 140),
-                            "베이비 모니터 살피기", ItemId.Monitor, false);
                     }
                     DrawGrandmaCall(vm,
                         portrait ? new Rect(825, 350, 180, 190) : new Rect(1510, 150, 180, 180),
@@ -2478,7 +2581,7 @@ namespace NotANap.App
             Fill(new Rect(x, y + 12, 4, height - 24),
                 vm.CauseResolved ? new Color(0.45f, 0.8f, 0.61f) : new Color(0.96f, 0.64f, 0.3f));
             GUI.Label(new Rect(x + 24, y + 4, width - 48, portrait ? 48 : 38),
-                NextActionHeadline(vm),
+                BabyStateHeadline(vm),
                 OverlayLabelStyle(portrait ? 34 : 20, FontStyle.Bold,
                     new Color(0.98f, 0.87f, 0.68f)));
             GUI.Label(new Rect(x + 24, y + (portrait ? 50 : 39), width - 48, portrait ? 96 : 42),
@@ -2859,6 +2962,11 @@ namespace NotANap.App
                 Color.Lerp(new Color(0.95f, 0.72f, 0.45f), new Color(0.55f, 0.9f, 0.72f), pulse),
                 TextAnchor.MiddleCenter);
             GUI.Label(cueRect, cue, style);
+
+            // 큐 히트존은 아기 발치(가로 기준 y 669~727)에 있어 "아기가 깼다" 오버레이의
+            // 확인 버튼(760,650,400,66)과 겹친다. IMGUI는 먼저 등록된 컨트롤이 클릭을
+            // 가져가므로, 가드가 없으면 오버레이 버튼이 영원히 눌리지 않는다.
+            if (_flow.InputLocked || RoomTransitionActive() || _animatedAction.HasValue) return;
 
             V2ActionId cueAction = vm.FeedingReady
                 ? V2ActionId.FeedPreparedBottle
@@ -4092,8 +4200,18 @@ namespace NotANap.App
                 return $"습도를 {vm.HumidityPercent:0.#}%로 조절했어요.";
             if (outcome.Action == V2ActionId.SterilizeBottle)
                 return "젖병 소독을 마쳤어요. 이제 평소 수유 준비를 이어가세요.";
+            // 다른 관찰과 마찬가지로 몸의 묘사로 돌려준다. 내부 수치를 그대로 노출하면
+            // 세계 안의 물건이 아니라 디버그 창처럼 읽힌다.
             if (outcome.MonitorRead)
-                return $"울음 {vm.CryIntensity:0} · 진정 {vm.Calm:0} · 허기 {vm.Hunger:0}";
+                return vm.SleepStage == V2SleepStage.NremDeepSleep
+                    ? "화면 속 아기가 미동도 없다. 숨소리만 고르게 들린다."
+                    : vm.SleepStage == V2SleepStage.RemActiveSleep
+                        ? "손끝이 이따금 움찔한다. 아직 얕은 잠이다."
+                        : vm.CryIntensity > 55
+                            ? "스피커 너머로 울음이 점점 커진다. 서둘러야 한다."
+                            : vm.CryIntensity > 20
+                                ? "몸을 뒤척이는 소리가 들린다. 곧 울 것 같다."
+                                : "아기가 조용히 누워 있다. 아직은 괜찮다.";
             if (outcome.Action == V2ActionId.ToggleNoise)
                 return vm.NoiseOn ? "백색소음기를 켰어요." : "백색소음기를 껐어요.";
             if (outcome.ObservedSignals.Count > 0)
@@ -4137,39 +4255,11 @@ namespace NotANap.App
             return $"진정도 {vm.Calm:0} / {vm.SleepStartCalmThreshold:0} · 한 번 더 달래주세요";
         }
 
-        private static string NextActionHeadline(V2PlayViewModel vm)
-        {
-            if (vm.HandsNeedWashing)
-                return vm.CaregiverLocation == HomeLocation.Bathroom
-                    ? "다음 행동 · 비누로 손 씻기"
-                    : "다음 행동 · 욕실로 이동해 손 씻기";
-            if (vm.DiaperChangedPendingDisposal)
-                return "다음 행동 · 사용한 기저귀 싸서 버리기";
-            if (vm.DiaperStoolConfirmed)
-                return "다음 행동 · 대변 기저귀 처리하기";
-            if (vm.DiaperWetConfirmed)
-                return "다음 행동 · 소변 기저귀 갈기";
-            if (!vm.CauseResolved)
-            {
-                if (vm.FeedingReady && vm.RevealedCause == WakeCause.Hunger)
-                    return "다음 행동 · 준비한 분유 수유하기";
-                if (vm.DiaperRecommendationVisible)
-                    return "다음 행동 · 기저귀 상태 확인하기";
-                return "다음 행동 · 아기의 입·손·호흡 살펴보기";
-            }
-            if (vm.SleepStage == V2SleepStage.RemActiveSleep)
-                return "다음 행동 · 잠이 깊어질 때까지 기다리기";
-            if (vm.SleepStage == V2SleepStage.NremDeepSleep && !vm.DeepSleepObserved)
-                return "다음 행동 · 팔다리 이완 확인하기";
-            if (vm.SleepStage == V2SleepStage.NremDeepSleep && vm.BabyHeld)
-                return "다음 행동 · 조심히 침대에 눕히기";
-            if (vm.SleepStage == V2SleepStage.NremDeepSleep)
-                return "다음 행동 · 깨우지 말고 지켜보기";
-            return vm.BabyHeld
-                ? "다음 행동 · 토닥이기 시작"
-                : "다음 행동 · 목을 받치고 안기";
-        }
-
+        /// <summary>
+        /// 신호 리본은 아기 상태만 말한다. 무엇을 할지는 행동 목록의 ★ 추천이,
+        /// 방금 무슨 일이 있었는지는 하단 피드백이 맡는다. 같은 지시를 네 곳에서
+        /// 반복하면 관찰 게임이 지시 수행 게임으로 읽힌다.
+        /// </summary>
         private static string BabyStateHeadline(V2PlayViewModel vm)
         {
             switch (vm.SleepStage)

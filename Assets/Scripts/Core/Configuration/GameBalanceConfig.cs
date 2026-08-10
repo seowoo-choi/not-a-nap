@@ -95,7 +95,7 @@ namespace NotANap.Core
         public double HumidityAdjustment;
         public double EnvironmentAdjustmentStaminaCost = 4;
         public double DeepSleepLaydownBonus = .25;
-        public double RemLaydownWakeChance = .75;
+        public double RemLaydownWakeChance = .45;
         public double PacifierLovesCalmGain = 22;
         public double PacifierNeutralCalmGain = 12;
         public double HoldPreparingCryMultiplier = .35;

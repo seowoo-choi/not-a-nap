@@ -64,7 +64,14 @@ namespace NotANap.Presentation.Tests
 
             var play = flow.BuildV2Play();
             Assert.IsFalse(play.Actions.Any(a => a.Action == V2ActionId.ToggleNoise && a.Enabled));
-            Assert.IsTrue(play.Actions.Any(a => a.Action == V2ActionId.CheckMonitor && a.Enabled));
+            // 베이비 모니터는 아기 곁을 떠나 있을 때 쓰는 물건이다.
+            // 아기방에서는 잠기고, 방을 비운 동안에만 열린다.
+            Assert.IsFalse(play.Actions.Any(a => a.Action == V2ActionId.CheckMonitor && a.Enabled));
+
+            flow.MoveToHomeLocation(HomeLocation.Kitchen);
+            var awayFromBaby = flow.BuildV2Play();
+            Assert.IsTrue(awayFromBaby.Actions.Any(
+                a => a.Action == V2ActionId.CheckMonitor && a.Enabled));
         }
 
         [Test]

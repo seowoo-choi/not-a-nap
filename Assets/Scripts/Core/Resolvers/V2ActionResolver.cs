@@ -211,6 +211,8 @@ namespace NotANap.Core
                 case V2ActionId.CheckMonitor:
                     if (!night.HasItem(ItemId.Monitor))
                         return RejectAndAudit(night, outcome, V2ActionBlockReason.ItemUnavailable);
+                    // 화면을 들여다보는 짧은 시간. 공짜면 무한 반복으로 관찰이 무의미해진다.
+                    Consume(outcome, 2, -1);
                     outcome.MonitorRead = true;
                     break;
                 case V2ActionId.CatchBreath:
@@ -487,6 +489,9 @@ namespace NotANap.Core
             if (deepObserved) chance = CoreMath.Clamp(chance + config.V2.DeepSleepLaydownBonus, 0, 1);
             if (night.V2.SleepCycle.Stage == V2SleepStage.RemActiveSleep)
                 chance *= 1 - config.V2.RemLaydownWakeChance;
+            // REM 감쇠를 곱한 뒤에 다시 하한을 잡는다. 곱하기 전에만 클램프하면
+            // 확률 하한 0.05가 무력화되어 실질 1%대까지 내려간다.
+            chance = CoreMath.Clamp(chance, .05, .95);
             if (rng.NextDouble() < chance)
             {
                 night.Baby.Held = false;

@@ -31,8 +31,8 @@ namespace NotANap.Core
             "자극에 민감한 아기에게는 울음이 커집니다.");
 
         public static readonly ItemDef Monitor = new ItemDef(ItemId.Monitor, "베이비 모니터", "📟",
-            "진정·수면·허기를 정확한 수치로 보여줍니다.",
-            "직접 달래지는 않지만 판단 실수를 줄여 줍니다.");
+            "부엌·욕실에서도 아기 상태를 말로 읽어 줍니다.",
+            "아기 곁을 떠나 있을 때만 쓸 수 있고, 볼 때마다 2분이 갑니다.");
 
         public static readonly ItemDef[] All = { Carrier, Pacifier, Noise, Bouncer, Monitor };
 

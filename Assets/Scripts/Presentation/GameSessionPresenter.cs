@@ -443,8 +443,10 @@ namespace NotANap.Presentation
                     Night.V2.BathThermometerRetrieved;
             if (action == V2ActionId.ToggleNoise)
                 return location == HomeLocation.Nursery && Night.HasItem(ItemId.Noise) && !Night.NoiseDisabled;
+            // 베이비 모니터는 아기 곁을 떠나 있을 때 쓰는 물건이다. 아기방에서만 켜지면
+            // 눈앞의 아기를 화면으로 보는 셈이라 물건의 존재 이유가 사라진다.
             if (action == V2ActionId.CheckMonitor)
-                return location == HomeLocation.Nursery && Night.HasItem(ItemId.Monitor);
+                return location != HomeLocation.Nursery && Night.HasItem(ItemId.Monitor);
             if (action == V2ActionId.CatchBreath)
                 return Night.Parent.Stamina <= 0 || Night.V2.CatchBreathUses < 3;
             if (action == V2ActionId.Grandma)
@@ -456,10 +458,11 @@ namespace NotANap.Presentation
             if (action == V2ActionId.ToggleCarrier)
                 return Night.HasItem(ItemId.Carrier) &&
                     !(Night.CarrierDisabledTurns > 0 && !Night.Wearing.Carrier);
+            // 얕은 잠(REM)에 눕히면 성공률이 한 자리수까지 떨어진다. 그 확률을
+            // 선택지로 내놓으면 플레이어는 "무조건 깬다"고 읽는다. 깊은 잠에서만 연다.
             if (action == V2ActionId.Laydown)
                 return location == HomeLocation.Nursery && Night.Baby.Held &&
-                    (Night.V2.SleepCycle.Stage == V2SleepStage.RemActiveSleep ||
-                     Night.V2.SleepCycle.Stage == V2SleepStage.NremDeepSleep);
+                    Night.V2.SleepCycle.Stage == V2SleepStage.NremDeepSleep;
             // 욕실까지 이동해 탕온계를 챙긴 플레이어가 울음 수치 때문에 아무것도 못 하는
             // 상황을 만들지 않는다. 위치·아기 동행·탕온계 조건은 위에서 이미 검증된다.
             if (action == V2ActionId.CheckBodyTemperature) return true;
