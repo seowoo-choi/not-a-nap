@@ -30,5 +30,4 @@ NHN NAN 2026 해커톤 사전 과제. Unity 2D → WebGL 빌드 → GitHub Pages
 - 세 밤 Memory/Ending 연결, 상태 기반 각성, 기저귀 우선 규칙, 피로 신호, V2 아이템 게이트,
   인게임 LLM 서술 호출은 완료됐다. 새 작업은 이 위에 얹되 EditMode 테스트로 회귀를 막는다.
 - 온습도 조절은 고정 증감이 아니라 권장 밴드(20~22℃ / 40~60%)로 클램프하는 방식이다.
-  GameBalanceConfig.TemperatureAdjustment·HumidityAdjustment는 미사용 잔여 필드다.
 - Bouncer는 LEGACY 역직렬화만 유지하고 V2 신규 선택 UI에는 노출하지 않는다.

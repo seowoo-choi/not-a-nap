@@ -91,8 +91,7 @@ namespace NotANap.Core
         public double WinterScenarioTemperature = 17;
         public double RecommendedHumidityMin = 40;
         public double RecommendedHumidityMax = 60;
-        public double TemperatureAdjustment;
-        public double HumidityAdjustment;
+        // 온습도 조절은 고정 증감이 아니라 위 권장 밴드로 클램프한다(V2ActionResolver).
         public double EnvironmentAdjustmentStaminaCost = 4;
         public double DeepSleepLaydownBonus = .25;
         public double RemLaydownWakeChance = .45;

@@ -18,15 +18,14 @@
 | 기저귀 우선 확인 규칙 충돌 | 해소 | `V2ActionResolver`가 첫 `CheckDiaper`를 안전한 배제 검사로 처리하고 오판에서 제외 |
 | Carrier/Noise/Monitor의 V2 효과 없음, Pacifier 소지 검사 없음 | 해소 | `V2ActionResolver`가 아이템별 소지·비활성 조건을 검사하고 `V2NightResolvers`가 백색소음 효과를 반영 |
 | 피로 신호 미연결 | 해소 | 관찰 행동이 `Yawning`, `RubbingEyes` 등 신호를 `ObservedSignals`로 산출 |
-| 온습도 기본값·조절량 0 | 설계 변경 | 조절은 고정 증감이 아니라 권장 밴드(20~22℃ / 40~60%)로 클램프하는 방식으로 구현. `GameBalanceConfig.TemperatureAdjustment`·`HumidityAdjustment`는 더 이상 쓰이지 않는 잔여 필드로 정리 대상 |
+| 온습도 기본값·조절량 0 | 설계 변경 | 조절은 고정 증감이 아니라 권장 밴드(20~22℃ / 40~60%)로 클램프하는 방식으로 구현(`V2ActionResolver`). 설계 변경으로 쓰이지 않게 된 `GameBalanceConfig.TemperatureAdjustment`·`HumidityAdjustment`는 제거했다 |
 | 인게임 LLM 서술이 폴백만 존재 | 해소 | `NarrativeRequest`(요청) + `NarrativeProxyClient`(전송) + `NarrativeBoundary`(응답 검증) + `GameSessionPresenter.ApplyNarrative`(문구 교체). 계약은 [`narrative-proxy.md`](narrative-proxy.md) |
 
-따라서 현재 상태는 `세 밤 제품 루프 + 엔딩 연결 완료`다. 자동 테스트는 EditMode 180건 전부 통과한다
-(Core 168건 + 서술 경계 12건). 남은 확인 사항은 다음과 같다.
+따라서 현재 상태는 `세 밤 제품 루프 + 엔딩 연결 완료`다. 자동 테스트는 EditMode 186건 전부 통과한다
+(Core 168건 + 서술 경계 18건). 남은 확인 사항은 다음과 같다.
 
 - 서술 프록시는 저장소 변수 `NARRATIVE_PROXY_URL`이 설정된 빌드에서만 실제 호출한다.
   변수가 없으면 규칙 기반 폴백 서술로 동작하며, 이는 의도된 기본값이다.
-- `TemperatureAdjustment`/`HumidityAdjustment` 미사용 필드 정리.
 
 ## 2026-07-21 결론 (당시 기록, 현재 상태 아님)
 
