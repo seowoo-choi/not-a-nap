@@ -61,6 +61,12 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           unityVersion: auto
+          # 위 단계가 추적 중인 narrative-proxy.json을 덮어써 작업 트리가 항상 더럽다.
+          # unity-builder의 Semantic 전략은 커밋되지 않은 변경 위에서 버전을 만들기를
+          # 거부하므로(Branch is dirty), 의도된 이 주입을 허용한다. 버전은 그대로
+          # 커밋에서 나온다. 이 설정이 없으면 NARRATIVE_PROXY_URL을 설정한 순간부터
+          # 모든 빌드가 실패한다.
+          allowDirtyBuild: true
           targetPlatform: WebGL
           buildMethod: NotANap.Editor.WebBuildCommand.Build
           customParameters: -outputPath Builds/WebGL
