@@ -2059,7 +2059,7 @@ namespace NotANap.App
                 // 밤 돌봄의 판단 근거는 절대 수치보다 "얼마나 지났는지"다.
                 // 행동 목록을 아래로 밀지 않도록 두 줄로 압축해 넣는다.
                 GUI.Label(new Rect(104f, 908f, 872f, 30f),
-                    $"졸림 {vm.FatigueLabel} · {FormatDuration(vm.AwakeMinutes)} 깨어 있음" +
+                    FatigueSheetLine(vm) +
                     $"    배고픔 {vm.HungerLabel} {vm.Hunger:0}    울음 {vm.CryIntensity:0}",
                     OverlayLabelStyle(23, FontStyle.Bold,
                         vm.FatigueStage == FatigueSignalStage.Overtired ||
@@ -3286,8 +3286,8 @@ namespace NotANap.App
 
             float rowHeight = portrait ? 46f : 36f;
             float y = rect.y + (portrait ? 50f : 40f);
-            DrawStackRow(rect, y, inset, portrait, "졸림",
-                $"{vm.FatigueLabel} · {FormatDuration(vm.AwakeMinutes)}",
+            DrawStackRow(rect, y, inset, portrait, FatigueRowLabel(vm),
+                FatigueRowValue(vm),
                 vm.FatigueStage == FatigueSignalStage.Overtired
                     ? new Color(.94f, .39f, .34f)
                     : vm.FatigueStage >= FatigueSignalStage.Active
@@ -4897,6 +4897,27 @@ namespace NotANap.App
                     return "울지 않고 아빠를 빤히 바라본다";
             }
         }
+
+        private static bool IsAsleepStage(V2SleepStage stage)
+            => stage == V2SleepStage.RemActiveSleep || stage == V2SleepStage.NremDeepSleep;
+
+        /// <summary>
+        /// 졸림 행은 "깨어 있던 시간"으로 계산되므로 아기가 잠들면 0분·None으로
+        /// 돌아가고, 그대로 그리면 잠든 아기 옆에 "말똥말똥"이 뜬다. 자는 동안은
+        /// 피로 대신 수면 단계와 이어진 시간을 말한다.
+        /// </summary>
+        private static string FatigueRowLabel(V2PlayViewModel vm)
+            => IsAsleepStage(vm.SleepStage) ? "수면" : "졸림";
+
+        private static string FatigueRowValue(V2PlayViewModel vm)
+            => IsAsleepStage(vm.SleepStage)
+                ? $"{PresentationCopyMapper.V2StageLabel(vm.SleepStage)} · {FormatDuration(vm.CurrentSleepStretchMinutes)}"
+                : $"{vm.FatigueLabel} · {FormatDuration(vm.AwakeMinutes)}";
+
+        private static string FatigueSheetLine(V2PlayViewModel vm)
+            => IsAsleepStage(vm.SleepStage)
+                ? $"수면 {PresentationCopyMapper.V2StageLabel(vm.SleepStage)} · {FormatDuration(vm.CurrentSleepStretchMinutes)} 이어짐"
+                : $"졸림 {vm.FatigueLabel} · {FormatDuration(vm.AwakeMinutes)} 깨어 있음";
 
         private static string FormatDuration(int minutes) => minutes >= 60 ? $"{minutes / 60}시간 {minutes % 60:00}분" : $"{minutes}분";
 
