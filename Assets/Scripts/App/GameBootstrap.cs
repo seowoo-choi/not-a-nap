@@ -61,6 +61,19 @@ namespace NotANap.App
         private V2ActionId? _roomObjectAction;
         private float _roomObjectAnimationStarted = -10f;
 
+        /// <summary>
+        /// 게임 시계는 행동이 분을 쓸 때만 움직이는 턴제 시계라, 값만 바꿔 그리면
+        /// 22:23이 22:49로 순간이동해 아무도 시간이 지난 걸 눈치채지 못한다.
+        /// 굴러가는 위치를 따로 들고 있다가 상단 바 두 곳에 함께 먹인다.
+        /// </summary>
+        private int _clockTargetMinutes = -1;
+        private float _clockRollFrom;
+        private float _clockRollStart = -10f;
+        private int _clockDeltaMinutes;
+        private float _clockBadgeUntil = -10f;
+        private const float ClockRollSeconds = .55f;
+        private const float ClockBadgeSeconds = 2.2f;
+
         private Font _font;
         private Texture2D _room;
         private Texture2D _kitchenRoom;
@@ -1890,6 +1903,8 @@ namespace NotANap.App
             // 만료되면 주저함이 조용히 발동했다.
             _decisionSecondsShown = vm.CauseResolved ? -1 : UpdateDecisionTimer(vm);
             vm = _flow.BuildV2Play();
+            // 결정 타이머가 주저함을 발동시켰을 수도 있으니 갱신된 vm으로 시계를 읽는다.
+            UpdateClockRoll(vm);
             HandleRoomMovementKeys(vm);
             int encounterSequence = _flow.Session.Night.V2.Diagnosis.EncounterSequence;
             if (!vm.CauseResolved && _actionEncounterSequence != encounterSequence)
@@ -1922,19 +1937,78 @@ namespace NotANap.App
             if (_flow.PendingOverlay != null) DrawOverlay(_flow.PendingOverlay);
         }
 
+        /// <summary>
+        /// 행동이 시간을 쓰면 그 자리에서 값을 갈아끼우지 않고 목표까지 굴린다.
+        /// 되감김(새 밤 시작)은 굴릴 대상이 아니므로 즉시 맞춘다.
+        /// </summary>
+        private void UpdateClockRoll(V2PlayViewModel vm)
+        {
+            if (_clockTargetMinutes == vm.ElapsedMinutes) return;
+            bool advanced = _clockTargetMinutes >= 0 && vm.ElapsedMinutes > _clockTargetMinutes;
+            _clockRollFrom = advanced ? ShownElapsedMinutes() : vm.ElapsedMinutes;
+            _clockRollStart = Time.unscaledTime;
+            if (advanced)
+            {
+                _clockDeltaMinutes = vm.ElapsedMinutes - _clockTargetMinutes;
+                _clockBadgeUntil = Time.unscaledTime + ClockBadgeSeconds;
+            }
+            _clockTargetMinutes = vm.ElapsedMinutes;
+        }
+
+        private float ShownElapsedMinutes()
+        {
+            if (_clockTargetMinutes < 0) return 0f;
+            float t = Mathf.Clamp01((Time.unscaledTime - _clockRollStart) / ClockRollSeconds);
+            return Mathf.Lerp(_clockRollFrom, _clockTargetMinutes, Mathf.SmoothStep(0f, 1f, t));
+        }
+
+        /// <summary>목표 시각까지 아직 굴러가지 못한 분. 두 시계를 같은 순간에 묶어 둔다.</summary>
+        private int ClockMinutesBehind()
+            => _clockTargetMinutes < 0 ? 0 : Mathf.Max(0, _clockTargetMinutes - Mathf.FloorToInt(ShownElapsedMinutes()));
+
+        /// <summary>
+        /// 벽시계 문자열의 원본은 프리젠터다(시작 시각도 거기 있다). 뷰는 그 값을
+        /// 아직 도달하지 못한 분만큼 되돌려 그리기만 한다.
+        /// </summary>
+        private static string ShiftClockBack(string clock, int minutesBack)
+        {
+            if (minutesBack <= 0 || string.IsNullOrEmpty(clock)) return clock;
+            int colon = clock.IndexOf(':');
+            if (colon <= 0 ||
+                !int.TryParse(clock.Substring(0, colon), out int hour) ||
+                !int.TryParse(clock.Substring(colon + 1), out int minute)) return clock;
+            int total = ((hour * 60 + minute - minutesBack) % 1440 + 1440) % 1440;
+            return $"{total / 60:00}:{total % 60:00}";
+        }
+
+        /// <summary>
+        /// 남은 시간 옆에 방금 쓴 분을 붙인다. 플레이어가 예산으로 읽는 쪽은 올라가는
+        /// 벽시계가 아니라 줄어드는 "새벽까지"라 부호는 마이너스다.
+        /// </summary>
+        private string RemainingClockText(int remainingMinutes)
+            => Time.unscaledTime < _clockBadgeUntil && _clockDeltaMinutes > 0
+                ? $"새벽까지 {FormatDuration(remainingMinutes)}   -{_clockDeltaMinutes}분"
+                : $"새벽까지 {FormatDuration(remainingMinutes)}";
+
+        private Color RemainingClockColor()
+            => Time.unscaledTime < _clockBadgeUntil && _clockDeltaMinutes > 0
+                ? new Color(0.98f, 0.73f, 0.36f) : new Color(0.94f, 0.9f, 0.82f);
+
         private void DrawTopBar(V2PlayViewModel vm)
         {
-            GUI.Label(new Rect(48, 26, 250, 76), vm.Clock, OverlayLabelStyle(46, FontStyle.Bold,
-                new Color(0.98f, 0.91f, 0.76f)));
+            int behind = ClockMinutesBehind();
+            int remaining = vm.RemainingMinutes + behind;
+            GUI.Label(new Rect(48, 26, 250, 76), ShiftClockBack(vm.Clock, behind),
+                OverlayLabelStyle(46, FontStyle.Bold, new Color(0.98f, 0.91f, 0.76f)));
             Fill(new Rect(48, 96, 170, 3), new Color(0.96f, 0.67f, 0.28f, 0.84f));
             GUI.Label(new Rect(650, 28, 620, 58), $"{_flow.BabyName} · {vm.NightRoleTitle}",
                 OverlayLabelStyle(24, FontStyle.Bold, new Color(.94f, .88f, .76f),
                     TextAnchor.MiddleCenter));
-            GUI.Label(new Rect(1448, 27, 420, 68), $"새벽까지 {FormatDuration(vm.RemainingMinutes)}",
-                OverlayLabelStyle(24, FontStyle.Bold, new Color(0.94f, 0.9f, 0.82f),
+            GUI.Label(new Rect(1448, 27, 420, 68), RemainingClockText(remaining),
+                OverlayLabelStyle(24, FontStyle.Bold, RemainingClockColor(),
                     TextAnchor.MiddleRight));
             DrawProgress(new Rect(1606, 91, 262, 4),
-                1f - vm.RemainingMinutes / 540f, new Color(0.94f, 0.67f, 0.3f));
+                1f - remaining / 540f, new Color(0.94f, 0.67f, 0.3f));
             DrawDecisionTimer(new Rect(1348, 104, 520, 38), false);
         }
 
@@ -1966,16 +2040,18 @@ namespace NotANap.App
             bool previousEnabled = GUI.enabled;
             if (_observationSheetOpen) GUI.enabled = false;
             DrawPlayScene(vm, new Rect(0, 0, PortraitWidth, PortraitPrimaryActionY), true);
-            GUI.Label(new Rect(54, 65, 250, 88), vm.Clock, OverlayLabelStyle(51, FontStyle.Bold,
-                new Color(0.98f, 0.91f, 0.76f)));
+            int behind = ClockMinutesBehind();
+            int remaining = vm.RemainingMinutes + behind;
+            GUI.Label(new Rect(54, 65, 250, 88), ShiftClockBack(vm.Clock, behind),
+                OverlayLabelStyle(51, FontStyle.Bold, new Color(0.98f, 0.91f, 0.76f)));
             Fill(new Rect(54, 148, 172, 4), new Color(0.96f, 0.67f, 0.28f, 0.84f));
-            GUI.Label(new Rect(610, 72, 414, 72), $"새벽까지 {FormatDuration(vm.RemainingMinutes)}",
-                OverlayLabelStyle(29, FontStyle.Bold, new Color(0.94f, 0.9f, 0.82f),
+            GUI.Label(new Rect(610, 72, 414, 72), RemainingClockText(remaining),
+                OverlayLabelStyle(29, FontStyle.Bold, RemainingClockColor(),
                     TextAnchor.MiddleRight));
             GUI.Label(new Rect(300, 76, 360, 58), vm.NightRoleTitle,
                 OverlayLabelStyle(23, FontStyle.Bold, new Color(.94f, .88f, .76f),
                     TextAnchor.MiddleCenter));
-            DrawProgress(new Rect(735, 145, 289, 5), 1f - vm.RemainingMinutes / 540f,
+            DrawProgress(new Rect(735, 145, 289, 5), 1f - remaining / 540f,
                 new Color(0.94f, 0.67f, 0.3f));
             DrawDecisionTimer(new Rect(300, 18, 724, 46), true);
             DrawPortraitItemDock(vm);
