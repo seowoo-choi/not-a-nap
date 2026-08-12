@@ -24,7 +24,7 @@ namespace NotANap.Core
                 notes.Add(new MemoryNote
                 {
                     Positive = false,
-                    Text = "습관 획득 · 아기띠에서 잠들기",
+                    Text = "오늘 밤, 아기띠 안에서 잠드는 걸 배웠다",
                     Sub = "아기띠 진정 ↑ · 맨손 눕히기 난이도 ↑"
                 });
             }
@@ -36,8 +36,8 @@ namespace NotANap.Core
                 {
                     Positive = false,
                     Text = s.Grandma
-                        ? "습관 획득 · 할머니 품에서 잠들기"
-                        : "습관 획득 · 품에서 잠들기",
+                        ? "오늘 밤, 할머니 품에서 잠드는 걸 배웠다"
+                        : "오늘 밤, 내 품에서 잠드는 걸 배웠다",
                     Sub = "안기 진정 ↑ · 혼자 두면 쉽게 깸"
                 });
             }
@@ -48,7 +48,7 @@ namespace NotANap.Core
                 notes.Add(new MemoryNote
                 {
                     Positive = false,
-                    Text = "습관 획득 · 백색소음",
+                    Text = "오늘 밤, 소리가 깔린 방에 익숙해졌다",
                     Sub = "백색소음기 진정 효과 ↓"
                 });
             }
@@ -59,7 +59,7 @@ namespace NotANap.Core
                 notes.Add(new MemoryNote
                 {
                     Positive = true,
-                    Text = "습관 획득 · 스스로 진정하기",
+                    Text = "오늘 밤, 혼자 가라앉는 법을 배웠다",
                     Sub = "혼자 잠들 확률 ↑ · 다른 수면 습관 완화"
                 });
             }
@@ -68,8 +68,8 @@ namespace NotANap.Core
                 notes.Add(new MemoryNote
                 {
                     Positive = true,
-                    Text = "새로 생긴 습관 없음",
-                    Sub = "다음 밤에도 자유롭게 방법을 바꿀 수 있습니다"
+                    Text = "오늘은 새로 밴 습관이 없다",
+                    Sub = "내일 밤에도 방법은 얼마든지 바꿀 수 있다"
                 });
             }
 

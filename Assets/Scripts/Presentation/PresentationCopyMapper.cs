@@ -18,25 +18,25 @@ namespace NotANap.Presentation
 
         public static string NightGradeLabel(NightGrade grade) => grade switch
         {
-            NightGrade.S => "새벽을 지배한 밤 (S)",
-            NightGrade.A => "긴 잠을 지킨 밤 (A)",
-            NightGrade.B => "위기를 넘긴 밤 (B)",
-            NightGrade.C => "간신히 버틴 밤 (C)",
-            _ => "아침이 먼저 온 밤 (D)"
+            NightGrade.S => "네가 가장 길게 자준 밤 (S)",
+            NightGrade.A => "긴 잠을 끝까지 지킨 밤 (A)",
+            NightGrade.B => "몇 번 흔들렸지만 아침까지 온 밤 (B)",
+            NightGrade.C => "겨우겨우 버틴 밤 (C)",
+            _ => "아침이 먼저 와버린 밤 (D)"
         };
 
         public static string NightRoleTitle(NightId id) => id switch
         {
-            NightId.FirstNight => "울기 전에 찾아내는 밤",
-            NightId.SecondNight => "어젯밤의 습관이 돌아온다",
-            _ => "백일의 밤 · 마지막 시험"
+            NightId.FirstNight => "울기 전에, 너는 먼저 몸으로 말한다",
+            NightId.SecondNight => "어젯밤의 내 손이 오늘의 규칙이 된다",
+            _ => "백일. 그 모든 밤이 돌아온다"
         };
 
         public static string NightRoleSummary(NightId id) => id switch
         {
-            NightId.FirstNight => "입·손·호흡을 살펴 첫 깨어남을 넘기세요.",
-            NightId.SecondNight => "익숙한 방법은 더 잘 듣지만, 준비가 늦으면 더 크게 깹니다.",
-            _ => "지난 선택이 두 번 되돌아옵니다. 세 조건 중 둘을 지키세요."
+            NightId.FirstNight => "입과 손, 그리고 숨. 우는 이유는 늘 그 전에 먼저 보인다.",
+            NightId.SecondNight => "익숙한 방법은 더 잘 듣는다. 대신 준비가 늦으면 더 크게 운다.",
+            _ => "지난 선택이 두 번 돌아온다. 세 가지 중 둘만 지키면 된다."
         };
 
         public static RhythmCardViewModel RhythmCard(RhythmFact fact)
@@ -46,28 +46,28 @@ namespace NotANap.Presentation
                 case RhythmId.Carrier:
                     return new RhythmCardViewModel { Id = fact.Id,
                         PreviousChoice = "생긴 습관 · 아기띠",
-                        Help = "아기띠를 매면 더 빨리 진정합니다.",
-                        Burden = "아기띠가 없을 때는 맨손 안기나 토닥이기가 필요합니다." };
+                        Help = "아기띠 안에서는 금방 잠잠해진다.",
+                        Burden = "아기띠가 없는 밤엔 맨손으로 안거나 토닥여야 한다." };
                 case RhythmId.HeldSleep:
                     return new RhythmCardViewModel { Id = fact.Id,
                         PreviousChoice = "생긴 습관 · 품에서 잠들기",
-                        Help = "안아 주면 더 빨리 잠듭니다.",
-                        Burden = "깊은 잠을 확인하지 않고 눕히면 더 쉽게 깹니다." };
+                        Help = "안아 주면 더 빨리 잠든다.",
+                        Burden = "깊이 잠든 걸 확인하지 않고 내려놓으면 그대로 깬다." };
                 case RhythmId.Noise:
                     return new RhythmCardViewModel { Id = fact.Id,
                         PreviousChoice = "생긴 습관 · 백색소음",
-                        Help = "익숙한 소리가 주변 소음을 막아 줍니다.",
-                        Burden = "계속 쓰면 효과가 줄어 다른 달래기도 필요합니다." };
+                        Help = "익숙한 소리가 바깥 소리를 덮어 준다.",
+                        Burden = "매일 켜면 익숙해져서, 언젠가는 다른 손이 필요해진다." };
                 case RhythmId.SelfSoothe:
                     return new RhythmCardViewModel { Id = fact.Id,
                         PreviousChoice = "생긴 습관 · 스스로 진정하기",
-                        Help = "잠깐 기다리면 스스로 진정할 수 있습니다.",
-                        Burden = "울음이 커지면 기다리지 말고 원인을 다시 찾으세요." };
+                        Help = "조금 기다리면 혼자 가라앉기도 한다.",
+                        Burden = "울음이 커지면 기다리지 말 것. 이유가 따로 있다는 뜻이다." };
                 default:
                     return new RhythmCardViewModel { Id = fact.Id,
-                        PreviousChoice = "아직 생긴 습관이 없습니다",
-                        Help = "어떤 방법으로든 첫 돌봄을 시작할 수 있습니다.",
-                        Burden = "오늘 반복한 행동이 다음 밤의 규칙이 됩니다." };
+                        PreviousChoice = "아직 굳어진 습관은 없다",
+                        Help = "오늘은 어떤 방법으로 시작해도 된다.",
+                        Burden = "오늘 반복한 손이 내일 밤의 규칙이 된다." };
             }
         }
 
@@ -81,37 +81,37 @@ namespace NotANap.Presentation
         public static EchoSourceViewModel EchoSource(TargetedEventId id) => id switch
         {
             TargetedEventId.CarrierBuckle => new EchoSourceViewModel { EventId = id,
-                Cause = "아기는 아기띠에서 잠드는 데 익숙합니다.",
-                Change = "버클이 고장 났습니다. 오늘은 아기띠를 쓸 수 없습니다.",
-                ResponseHint = "맨손으로 안고 같은 박자로 토닥이세요." },
+                Cause = "이 아이는 아기띠 안에서 잠드는 법을 배웠다.",
+                Change = "하필 오늘, 버클이 나갔다.",
+                ResponseHint = "맨손으로 안고, 늘 하던 그 박자로 토닥일 것." },
             TargetedEventId.NoiseBattery => new EchoSourceViewModel { EventId = id,
-                Cause = "아기는 백색소음이 켜진 밤에 익숙합니다.",
-                Change = "배터리가 방전됐습니다. 오늘은 소음기를 쓸 수 없습니다.",
-                ResponseHint = "호흡과 몸의 힘을 살피며 다른 방법으로 달래세요." },
+                Cause = "이 아이는 소리가 깔린 밤에 익숙하다.",
+                Change = "하필 오늘, 배터리가 다 됐다.",
+                ResponseHint = "숨과 팔다리의 힘을 보면서 다른 손으로 달랠 것." },
             _ => new EchoSourceViewModel { EventId = id,
-                Cause = "아기는 품에서 잠드는 데 익숙합니다.",
-                Change = "오늘은 잠이 얕아 침대에 내려놓기가 더 어렵습니다.",
-                ResponseHint = "고른 숨과 풀린 팔다리를 확인한 뒤 눕히세요." }
+                Cause = "이 아이는 품에서 잠드는 법을 배웠다.",
+                Change = "오늘은 잠이 얕아 내려놓기가 더 어렵다.",
+                ResponseHint = "숨이 고르고 팔다리가 늘어진 걸 확인한 뒤에 눕힐 것." }
         };
 
         public static string EndingTitle(EndingId id) => id switch
         {
-            EndingId.MorningWon => "아침까지 버텼다",
-            EndingId.FamilyRoutine => "우리 집의 루틴",
+            EndingId.MorningWon => "아침까지, 같이",
+            EndingId.FamilyRoutine => "우리 집의 밤이 생겼다",
             EndingId.UniverseInArms => "품에서 맞은 아침",
-            EndingId.GrandmaBest => "할머니가 최고야",
-            EndingId.GearMaster => "장비의 지배자",
-            _ => "새벽 생존자"
+            EndingId.GrandmaBest => "혼자가 아니었다",
+            EndingId.GearMaster => "손이 둘뿐이라서",
+            _ => "그래도 아침은 왔다"
         };
 
         public static string EndingSubtitle(EndingId id) => id switch
         {
-            EndingId.MorningWon => "세 가지 조건 중 둘을 지키고 새벽을 넘겼다.",
-            EndingId.FamilyRoutine => "아기와 보호자 모두 버틸 수 있는 밤의 순서를 완성했다.",
-            EndingId.UniverseInArms => "끝까지 품을 내어 주고 백일의 아침을 맞았다.",
-            EndingId.GrandmaBest => "혼자 버티지 않았다. 가족의 손이 밤을 지켰다.",
-            EndingId.GearMaster => "필요한 순간에 필요한 도구를 꺼내 밤을 통과했다.",
-            _ => "흔들리는 새벽을 버티고 끝내 아침에 도착했다."
+            EndingId.MorningWon => "세 가지 중 둘을 지켰다. 새벽은 길었지만, 우리는 건넜다.",
+            EndingId.FamilyRoutine => "너도 나도 버틸 수 있는 순서를 찾았다. 내일 밤에도 이대로 하면 된다.",
+            EndingId.UniverseInArms => "끝까지 품을 내어 줬다. 백일의 아침을 팔 안에서 맞았다.",
+            EndingId.GrandmaBest => "혼자 버티지 않았다. 이 밤을 지킨 건 여러 개의 손이었다.",
+            EndingId.GearMaster => "필요할 때 필요한 걸 꺼냈다. 요령도 사랑의 한 종류였다.",
+            _ => "흔들리는 새벽을 버텼다. 잘한 건 하나, 끝까지 곁에 있었다는 것."
         };
 
         public static string EndingSubtitle(EndingId id, bool isSuccess)
@@ -154,9 +154,9 @@ namespace NotANap.Presentation
 
         public static string OutcomePhrase(NightOutcome outcome) => outcome switch
         {
-            NightOutcome.Crib => "침대에서 아침을 맞았다.",
-            NightOutcome.Arms => "품에 안긴 채 아침을 맞았다.",
-            NightOutcome.Awake => "끝내 잠들지 못한 채 아침이 왔다.",
+            NightOutcome.Crib => "제 침대에서 아침을 맞았다.",
+            NightOutcome.Arms => "내 팔 위에서 아침이 왔다.",
+            NightOutcome.Awake => "끝내 잠들지 못한 채로 창이 밝았다.",
             _ => outcome.ToString()
         };
 
@@ -217,32 +217,32 @@ namespace NotANap.Presentation
 
         public static string CaregiverStyleDescription(CaregiverStyle style) => style switch
         {
-            CaregiverStyle.Responsive => "신호가 보이면 바로 움직입니다.",
-            CaregiverStyle.Methodical => "가능한 원인을 하나씩 확인합니다.",
-            _ => "한 박자 기다리며 다음 신호를 봅니다."
+            CaregiverStyle.Responsive => "신호가 보이면 일단 움직이고 본다.",
+            CaregiverStyle.Methodical => "짚이는 이유를 하나씩 지워 나간다.",
+            _ => "한 박자 기다리며 다음 신호를 본다."
         };
 
         public static string ObservationSignal(ObservationSignalId signal) => signal switch
         {
-            ObservationSignalId.LipSmacking => "입맛을 다시고 있어요",
-            ObservationSignalId.MouthOpening => "입을 벌려 무언가를 찾고 있어요",
-            ObservationSignalId.HandSucking => "손을 입으로 가져가 빨고 있어요",
-            ObservationSignalId.Rooting => "볼이 닿는 쪽으로 고개를 돌려요",
-            ObservationSignalId.LeaningToCaregiver => "보호자 쪽으로 몸을 기울여요",
-            ObservationSignalId.Squirming => "몸을 꼼지락거리며 불편함을 알려요",
-            ObservationSignalId.RapidBreathing => "숨이 빠르고 울음이 커지고 있어요",
-            ObservationSignalId.HeadTurning => "고개를 좌우로 돌리며 찾아요",
-            ObservationSignalId.HungerCry => "배고픔 울음이 강해졌어요",
-            ObservationSignalId.Yawning => "하품하며 졸린 신호를 보내요",
-            ObservationSignalId.RubbingEyes => "눈을 비비며 쉬고 싶다고 알려요",
-            ObservationSignalId.EyelidFlutter => "눈꺼풀이 가볍게 움직여요",
-            ObservationSignalId.IrregularBreathing => "숨의 간격이 아직 고르지 않아요",
-            ObservationSignalId.FacialMovement => "잠든 얼굴이 조금씩 움직여요",
-            ObservationSignalId.LimbMovement => "팔다리에 작은 움직임이 남아 있어요",
-            ObservationSignalId.RegularBreathing => "숨이 천천히 고르게 이어져요",
-            ObservationSignalId.CalmFace => "얼굴의 힘이 편안하게 풀렸어요",
-            ObservationSignalId.RelaxedLimbs => "팔다리가 묵직하게 이완됐어요",
-            _ => "아기가 몸으로 신호를 보내고 있어요"
+            ObservationSignalId.LipSmacking => "쩝, 쩝. 입맛을 다신다",
+            ObservationSignalId.MouthOpening => "입을 벌린 채 뭔가를 찾는다",
+            ObservationSignalId.HandSucking => "제 손을 입에 넣고 빨고 있다",
+            ObservationSignalId.Rooting => "볼이 닿는 쪽으로 고개를 돌린다",
+            ObservationSignalId.LeaningToCaregiver => "내 쪽으로 몸을 기울인다",
+            ObservationSignalId.Squirming => "꼼지락거린다. 어딘가 불편하다는 뜻이다",
+            ObservationSignalId.RapidBreathing => "숨이 가빠지고 울음이 올라온다",
+            ObservationSignalId.HeadTurning => "고개를 좌우로 돌리며 찾는다",
+            ObservationSignalId.HungerCry => "배고픔 울음. 이미 한발 늦었다",
+            ObservationSignalId.Yawning => "하—암. 졸리다는 신호다",
+            ObservationSignalId.RubbingEyes => "눈을 비빈다. 이제 쉬고 싶다는 뜻이다",
+            ObservationSignalId.EyelidFlutter => "눈꺼풀이 가볍게 떨린다",
+            ObservationSignalId.IrregularBreathing => "숨의 간격이 아직 고르지 않다",
+            ObservationSignalId.FacialMovement => "잠든 얼굴이 조금씩 움직인다",
+            ObservationSignalId.LimbMovement => "팔다리에 아직 힘이 남아 있다",
+            ObservationSignalId.RegularBreathing => "숨이 천천히, 고르게 이어진다",
+            ObservationSignalId.CalmFace => "얼굴의 힘이 편안하게 풀렸다",
+            ObservationSignalId.RelaxedLimbs => "팔다리가 묵직하게 늘어졌다",
+            _ => "말은 못 해도, 몸으로는 계속 말하고 있다"
         };
 
         public static string V2StageLabel(V2SleepStage stage) => stage switch
@@ -272,7 +272,7 @@ namespace NotANap.Presentation
             ObservationSignalId.MouthOpening => "입을 벌린다",
             ObservationSignalId.HandSucking => "손을 빤다",
             ObservationSignalId.Rooting => "젖을 찾는 듯 고개를 움직인다",
-            ObservationSignalId.LeaningToCaregiver => "보호자 쪽으로 몸을 기댄다",
+            ObservationSignalId.LeaningToCaregiver => "내 쪽으로 몸을 기댄다",
             ObservationSignalId.Squirming => "몸을 꼼지락거린다",
             ObservationSignalId.RapidBreathing => "호흡이 빨라졌다",
             ObservationSignalId.HeadTurning => "머리를 좌우로 돌린다",
@@ -294,6 +294,20 @@ namespace NotANap.Presentation
             HungerSignalStage.Active => "배고픔",
             HungerSignalStage.Late => "늦음 · 울음",
             _ => "괜찮음"
+        };
+
+        /// <summary>
+        /// 울음 세기. 생 숫자만 보여 주면 35가 큰 값인지 작은 값인지 알 수 없다.
+        /// 배고픔·피로와 같은 "라벨 · 수치" 형식으로 읽히도록 단계를 붙인다.
+        /// 경계값은 판정이 이미 쓰고 있는 35(경고 색)와 45(자극 줄이기 안내)에 맞춘다.
+        /// </summary>
+        public static string CryStageLabel(double cryIntensity) => cryIntensity switch
+        {
+            <= 0 => "조용함",
+            < 15 => "칭얼거림",
+            < 35 => "우는 중",
+            < 60 => "크게 움",
+            _ => "자지러짐"
         };
 
         /// <summary>피로 단계. 과각성은 달래기가 오히려 어려워지는 구간이다.</summary>
@@ -331,25 +345,25 @@ namespace NotANap.Presentation
 
         public static string OverlayTitle(GameEventId id) => id switch
         {
-            GameEventId.LaydownSucceeded => "눕히기 성공",
-            GameEventId.LaydownFailed => "등이 닿자 움찔",
-            GameEventId.BabyFullyWoke => "아기가 깼다",
+            GameEventId.LaydownSucceeded => "손을 뗐는데, 계속 잔다",
+            GameEventId.LaydownFailed => "등이 닿자마자 움찔",
+            GameEventId.BabyFullyWoke => "완전히 깼다",
             GameEventId.HungerCueAppeared => "배꼽시계",
             GameEventId.BottleFoundUnsanitized => "준비해 둔 젖병이 없다",
-            GameEventId.ParentExhausted => "체력이 바닥났다",
-            GameEventId.NightCompleted => "아침이 밝았다",
+            GameEventId.ParentExhausted => "내 다리에 힘이 없다",
+            GameEventId.NightCompleted => "창이 밝았다",
             _ => "…"
         };
 
         public static string OverlayLine(GameEventId id) => id switch
         {
-            GameEventId.LaydownSucceeded => "침대에서도 고른 숨이 이어진다.",
-            GameEventId.LaydownFailed => "등이 닿자 몸이 움찔하며 눈을 떴다.",
-            GameEventId.BabyFullyWoke => "호흡이 빨라지고 눈이 다시 떠졌다.",
-            GameEventId.HungerCueAppeared => "입을 찾고 손을 빠는 움직임이 커진다.",
-            GameEventId.BottleFoundUnsanitized => "쓸 수 있는 젖병이 없다. 먼저 소독해야 한다.",
-            GameEventId.ParentExhausted => "손에 힘이 빠진다. 먼저 숨을 고르자.",
-            GameEventId.NightCompleted => "창밖이 밝아온다.",
+            GameEventId.LaydownSucceeded => "숨이 그대로 이어진다. 이불만 덮고 물러난다.",
+            GameEventId.LaydownFailed => "등이 닿자 몸이 움찔하고, 눈이 떠졌다. 다시 안는다.",
+            GameEventId.BabyFullyWoke => "숨이 빨라지고 눈이 완전히 떠졌다. 처음부터 다시다.",
+            GameEventId.HungerCueAppeared => "입을 찾고 손을 빤다. 배가 고프다는 말이다.",
+            GameEventId.BottleFoundUnsanitized => "쓸 수 있는 젖병이 없다. 소독부터 해야 한다.",
+            GameEventId.ParentExhausted => "손에 힘이 빠진다. 여기서 무리하면 둘 다 힘들어진다.",
+            GameEventId.NightCompleted => "창밖이 밝아온다. 아홉 시간을 건넜다.",
             _ => string.Empty
         };
     }
