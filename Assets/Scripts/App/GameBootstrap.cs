@@ -535,8 +535,8 @@ namespace NotANap.App
             if (_introBabyArt != null)
                 DrawBabyTexture(new Rect(1050, 120, 680, 680), _introBabyArt);
             GUI.Label(new Rect(120, 120, 820, 105), "NOT A NAP", new GUIStyle(_title) { fontSize = 88 });
-            GUI.Label(new Rect(120, 235, 820, 70), "등이 닿으면 또 눈이 번쩍", _display);
-            GUI.Label(new Rect(120, 340, 820, 70), "그래도 다시 안아 올리는 밤",
+            GUI.Label(new Rect(120, 235, 820, 70), "눕히면 깬다", _display);
+            GUI.Label(new Rect(120, 340, 820, 70), "그래도 아침까지 가야 한다",
                 OverlayLabelStyle(40, FontStyle.Bold, new Color(1f, .68f, .42f)));
             DrawGlassPanel(new Rect(120, 455, 790, 210), .8f);
             GUI.Label(new Rect(160, 480, 710, 56), "오늘 밤 할 일", _headline);
@@ -4642,10 +4642,10 @@ namespace NotANap.App
             }
 
             GUI.Label(new Rect(70, 120, 940, 120), "NOT A NAP", new GUIStyle(_title) { fontSize = 92 });
-            GUI.Label(new Rect(70, 245, 940, 84), "등이 닿으면 또 눈이 번쩍", Centered(_display));
+            GUI.Label(new Rect(70, 245, 940, 84), "눕히면 깬다", Centered(_display));
             if (_introBabyArt != null)
                 DrawBabyTexture(new Rect(190, 315, 700, 700), _introBabyArt);
-            GUI.Label(new Rect(90, 935, 900, 80), "그래도 다시 안아 올리는 밤",
+            GUI.Label(new Rect(90, 935, 900, 80), "그래도 아침까지 가야 한다",
                 OverlayLabelStyle(46, FontStyle.Bold, new Color(1f, .68f, .42f),
                     TextAnchor.MiddleCenter));
             DrawGlassPanel(new Rect(58, 1040, 964, 310), .86f);

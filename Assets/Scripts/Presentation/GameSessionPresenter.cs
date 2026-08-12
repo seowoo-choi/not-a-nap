@@ -781,7 +781,7 @@ namespace NotANap.Presentation
         private static string BuildHabitReflection(NarrativeFacts facts)
         {
             if (facts.Rhythms.Count == 0 || facts.Rhythms[0].Id == RhythmId.Neutral)
-                return "아직 굳어진 습관은 없다. 오늘 반복한 손이 내일 밤의 규칙이 된다.";
+                return "아직 굳어진 습관은 없다. 오늘 반복한 방식이 내일 밤의 규칙이 된다.";
             var card = PresentationCopyMapper.RhythmCard(facts.Rhythms[0]);
             return $"{card.Help} {card.Burden}";
         }
@@ -804,7 +804,7 @@ namespace NotANap.Presentation
                 return $"오늘 가장 많이 한 것 · {PresentationCopyMapper.V2ActionLabel(facts.MostRepeatedAction.Value)}";
             if (facts.SleepIntervalChoice == SleepIntervalChoice.PrepareNextFeed)
                 return "잠든 사이 다음 수유를 미리 준비해 뒀다. 깨어났을 때 허둥대지 않았다.";
-            return "신호를 보고 손을 바꿨다. 울음이 커지기 전에 움직였다.";
+            return "신호를 보고 방법을 바꿨다. 울음이 커지기 전에 움직였다.";
         }
 
         private static string BuildCaregiverFactReflection(NarrativeFacts facts)
@@ -868,7 +868,7 @@ namespace NotANap.Presentation
                 return style == CaregiverStyle.Observant
                     ? "입과 손의 첫 신호만 잡아도 울음까지 가지 않는다."
                     : "크게 울기 전에 나오는 입맛 다시기와 손 빨기를 기억해 둘 것.";
-            return "조용한 것도 대답이다. 반응이 작다고 서둘러 손을 바꾸지 않아도 된다.";
+            return "조용한 것도 대답이다. 반응이 작다고 서둘러 방법을 바꾸지 않아도 된다.";
         }
 
         // ── 아기 상태를 읽을 수 있는가 ──────────────────────────
@@ -945,9 +945,9 @@ namespace NotANap.Presentation
             if (night.NightId == NightId.SecondNight)
                 return v2.Feeding.SanitationIncident
                     ? "오늘 밤 나는 허둥대는 대신 수유 순서를 처음부터 다시 세웠다."
-                    : $"오늘 밤 {v2.Metrics.WakeCount}번을 깨고도, 나는 매번 다른 손을 시험했다.";
+                    : $"오늘 밤 {v2.Metrics.WakeCount}번을 깨고도, 나는 매번 다른 방법을 시험했다.";
             return night.FiredEventIds.Count > 0
-                ? $"돌아온 습관 {night.FiredEventIds.Count}번을, 오늘 밤 나는 새로운 손으로 받아 냈다."
+                ? $"돌아온 습관 {night.FiredEventIds.Count}번을, 오늘 밤 나는 새로운 방법으로 받아 냈다."
                 : "백일 동안 밴 습관을, 오늘 밤 우리 가족이 버틸 리듬으로 바꿨다.";
         }
 
@@ -965,7 +965,7 @@ namespace NotANap.Presentation
         private static string CompanionMessageFor(NightId night) => night switch
         {
             NightId.FirstNight => "첫째 밤 완료 · 이제 네가 울기 전에 뭘 하는지 안다.",
-            NightId.SecondNight => "둘째 밤 완료 · 내가 반복한 손이 네 습관이 됐다.",
+            NightId.SecondNight => "둘째 밤 완료 · 내가 반복한 방식이 그대로 습관이 됐다.",
             _ => "백일의 밤 완료 · 우리 집의 밤을 끝까지 지켰다."
         };
 

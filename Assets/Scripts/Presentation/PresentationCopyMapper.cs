@@ -27,16 +27,16 @@ namespace NotANap.Presentation
 
         public static string NightRoleTitle(NightId id) => id switch
         {
-            NightId.FirstNight => "울기 전에, 너는 먼저 몸으로 말한다",
-            NightId.SecondNight => "어젯밤의 내 손이 오늘의 규칙이 된다",
+            NightId.FirstNight => "울기 전에 먼저 오는 신호가 있다",
+            NightId.SecondNight => "어제 한 방식이 오늘의 규칙이 된다",
             _ => "백일. 그 모든 밤이 돌아온다"
         };
 
         public static string NightRoleSummary(NightId id) => id switch
         {
-            NightId.FirstNight => "입과 손, 그리고 숨. 우는 이유는 늘 그 전에 먼저 보인다.",
-            NightId.SecondNight => "익숙한 방법은 더 잘 듣는다. 대신 준비가 늦으면 더 크게 운다.",
-            _ => "지난 선택이 두 번 돌아온다. 세 가지 중 둘만 지키면 된다."
+            NightId.FirstNight => "입·손·호흡을 살펴 첫 깨어남을 넘기세요.",
+            NightId.SecondNight => "익숙한 방법은 더 잘 듣지만, 준비가 늦으면 더 크게 깹니다.",
+            _ => "지난 선택이 두 번 되돌아옵니다. 세 조건 중 둘을 지키세요."
         };
 
         public static RhythmCardViewModel RhythmCard(RhythmFact fact)
@@ -57,7 +57,7 @@ namespace NotANap.Presentation
                     return new RhythmCardViewModel { Id = fact.Id,
                         PreviousChoice = "생긴 습관 · 백색소음",
                         Help = "익숙한 소리가 바깥 소리를 덮어 준다.",
-                        Burden = "매일 켜면 익숙해져서, 언젠가는 다른 손이 필요해진다." };
+                        Burden = "매일 켜면 익숙해져서, 언젠가는 다른 방법이 필요해진다." };
                 case RhythmId.SelfSoothe:
                     return new RhythmCardViewModel { Id = fact.Id,
                         PreviousChoice = "생긴 습관 · 스스로 진정하기",
@@ -67,7 +67,7 @@ namespace NotANap.Presentation
                     return new RhythmCardViewModel { Id = fact.Id,
                         PreviousChoice = "아직 굳어진 습관은 없다",
                         Help = "오늘은 어떤 방법으로 시작해도 된다.",
-                        Burden = "오늘 반복한 손이 내일 밤의 규칙이 된다." };
+                        Burden = "오늘 반복한 방식이 내일 밤의 규칙이 된다." };
             }
         }
 
@@ -87,7 +87,7 @@ namespace NotANap.Presentation
             TargetedEventId.NoiseBattery => new EchoSourceViewModel { EventId = id,
                 Cause = "이 아이는 소리가 깔린 밤에 익숙하다.",
                 Change = "하필 오늘, 배터리가 다 됐다.",
-                ResponseHint = "숨과 팔다리의 힘을 보면서 다른 손으로 달랠 것." },
+                ResponseHint = "숨과 팔다리의 힘을 보면서 다른 방법으로 달랠 것." },
             _ => new EchoSourceViewModel { EventId = id,
                 Cause = "이 아이는 품에서 잠드는 법을 배웠다.",
                 Change = "오늘은 잠이 얕아 내려놓기가 더 어렵다.",
@@ -242,7 +242,7 @@ namespace NotANap.Presentation
             ObservationSignalId.RegularBreathing => "숨이 천천히, 고르게 이어진다",
             ObservationSignalId.CalmFace => "얼굴의 힘이 편안하게 풀렸다",
             ObservationSignalId.RelaxedLimbs => "팔다리가 묵직하게 늘어졌다",
-            _ => "말은 못 해도, 몸으로는 계속 말하고 있다"
+            _ => "말은 못 해도, 계속 신호를 보내고 있다"
         };
 
         public static string V2StageLabel(V2SleepStage stage) => stage switch
