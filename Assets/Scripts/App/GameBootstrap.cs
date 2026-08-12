@@ -522,8 +522,8 @@ namespace NotANap.App
                 }
                 DrawGlassPanel(new Rect(125, 600, 620, 230), .86f);
                 GUI.Label(new Rect(165, 625, 540, 66), "드디어 잠들었다.", _headline);
-                GUI.Label(new Rect(165, 700, 540, 62), "이제 침대에 내려놓기만 하면 된다.", _body);
-                if (DrawPrimaryButton(new Rect(1220, 760, 560, 104), "조심히 내려놓기"))
+                GUI.Label(new Rect(165, 700, 540, 62), "이제 내려놓기만 하면 된다. 그 한 번이 제일 어렵다.", _body);
+                if (DrawPrimaryButton(new Rect(1220, 760, 560, 104), "숨죽이고 내려놓기"))
                 {
                     _titleDropAttempted = true;
                     _audio?.PlayAction(new V2ActionOutcome { Action = V2ActionId.Laydown, Accepted = true });
@@ -535,14 +535,14 @@ namespace NotANap.App
             if (_introBabyArt != null)
                 DrawBabyTexture(new Rect(1050, 120, 680, 680), _introBabyArt);
             GUI.Label(new Rect(120, 120, 820, 105), "NOT A NAP", new GUIStyle(_title) { fontSize = 88 });
-            GUI.Label(new Rect(120, 235, 820, 70), "눕히면 깬다", _display);
-            GUI.Label(new Rect(120, 340, 820, 70), "등이 닿았다. 눈이 번쩍.",
+            GUI.Label(new Rect(120, 235, 820, 70), "등이 닿으면 또 눈이 번쩍", _display);
+            GUI.Label(new Rect(120, 340, 820, 70), "그래도 다시 안아 올리는 밤",
                 OverlayLabelStyle(40, FontStyle.Bold, new Color(1f, .68f, .42f)));
             DrawGlassPanel(new Rect(120, 455, 790, 210), .8f);
-            GUI.Label(new Rect(160, 480, 710, 56), "오늘 밤 목표", _headline);
+            GUI.Label(new Rect(160, 480, 710, 56), "오늘 밤 할 일", _headline);
             GUI.Label(new Rect(160, 545, 710, 88),
-                "아침 6시까지 함께 버텨라.\n깊은 잠 · 체력 · 맨손 눕히기 중 둘을 지켜라.", _body);
-            if (DrawPrimaryButton(new Rect(120, 735, 790, 110), "오늘 밤 버티기  →"))
+                "아침 6시까지, 같이 버틴다.\n깊은 잠 · 내 체력 · 맨손 눕히기 — 셋 중 둘만 지키면 된다.", _body);
+            if (DrawPrimaryButton(new Rect(120, 735, 790, 110), "오늘 밤도 버텨보기  →"))
             {
                 ResetIntro();
                 _flow.BeginFamilySetup();
@@ -940,81 +940,81 @@ namespace NotANap.App
 
         private string IntroHeadline() => _introBeat switch
         {
-            IntroProbe => "아기는 왜 보채는 걸까?",
+            IntroProbe => "왜 이렇게 보채는 걸까.",
             IntroCause => "남은 건 배고픔 하나.",
             IntroCarrier => "분유는 주방에 있다.",
-            IntroToKitchen => "아기를 안은 채로 움직인다.",
-            IntroPrepMix => "분유는 순서가 있다.",
-            IntroPrepCool => "뜨거운 분유는 먹일 수 없다.",
+            IntroToKitchen => "안은 채로 간다.",
+            IntroPrepMix => "분유에도 순서가 있다.",
+            IntroPrepCool => "뜨거운 걸 먹일 순 없다.",
             IntroToNursery => "젖병이 준비됐다.",
             IntroFeed => "이제 먹일 수 있다.",
-            IntroSoothe => "먹였다. 그래도 바로 잠들지는 않는다.",
-            IntroFellAsleep => "잠들었다. 하지만 아직 얕은 잠이다.",
-            IntroLaydownFailed => "등이 닿자 눈이 번쩍.",
+            IntroSoothe => "먹였다고 바로 자지는 않는다.",
+            IntroFellAsleep => "잠들었다. 아직 얕은 잠이지만.",
+            IntroLaydownFailed => "등이 닿자마자 눈이 번쩍.",
             IntroDeepSleep => "팔다리 힘이 풀렸다. 지금이다.",
             IntroNoise => "이제 이 잠을 지켜야 한다.",
-            IntroMonitor => _introMonitorRead ? "이제 아기가 보인다." : "여기서는 아기가 보이지 않는다.",
+            IntroMonitor => _introMonitorRead ? "이제 보인다." : "여기선 아무것도 안 보인다.",
             _ => "숨이 그대로 이어진다."
         };
 
         private string IntroBody() => _introBeat switch
         {
             IntroProbe =>
-                "정답을 맞히는 게 아니다. 아닌 것부터 지워 나가면 된다.\n" +
-                "세 곳을 모두 눌러 확인해 보자.\n" +
+                "정답을 맞히는 게 아니다. 아닌 것부터 하나씩 지워 나가면 된다.\n" +
+                "세 곳을 다 눌러 보자.\n" +
                 IntroProbeChecklist(),
             IntroCause =>
-                "기저귀는 보송했고, 토닥임으로는 잠깐만 조용해졌다.\n" +
-                "남은 신호는 입과 손. 이 아기는 배가 고프다.\n" +
-                "원인을 모른 채 달래면 진정 효과가 절반으로 줄어든다.",
+                "기저귀는 보송했고, 토닥이니 잠깐 조용했다가 다시 보챈다.\n" +
+                "남은 건 입과 손. 이 녀석, 배가 고프다.\n" +
+                "이유를 모른 채 달래면 진정 효과가 절반으로 줄어든다.",
             IntroCarrier =>
-                "분유는 아기방에 없다. 주방에서 만들어 와야 한다.\n" +
-                "그런데 우는 아기를 침대에 두고 가면 울음이 더 커진다.\n" +
+                "분유는 아기방에 없다. 주방까지 가서 타 와야 한다.\n" +
+                "그렇다고 우는 애를 눕혀 두고 가면 울음만 더 커진다.\n" +
                 "가슴을 눌러 아기띠를 매자. 안은 채로 두 손이 빈다.",
             IntroToKitchen =>
-                "아기띠 덕분에 안고 준비해도 체력이 깎이지 않고,\n" +
+                "아기띠 덕에 안고 준비해도 체력이 깎이지 않고,\n" +
                 "옮기는 동안 울음도 덜 오른다.\n" +
                 "아래에서 주방을 눌러 보자.",
             IntroPrepMix =>
                 "분유가루를 물에 섞는 게 먼저다. 식힘대야는 아직 소용없다.\n" +
-                "순서를 건너뛰면 본편에서도 그 행동은 거절된다.\n" +
+                "순서를 건너뛰면 본편에서도 그대로 거절당한다.\n" +
                 "분유통을 눌러 섞어 보자.",
             IntroPrepCool =>
                 "갓 탄 분유는 뜨겁다. 식혀서 온도를 확인해야 먹일 수 있다.\n" +
-                "식힘대야를 눌러 담가 두자.",
+                "식힘대야에 담가 두자.",
             IntroToNursery =>
-                "준비가 끝났다. 준비물은 주방에 두고 갈 수 없다.\n" +
+                "준비 끝. 준비물은 주방에 두고 갈 수 없다.\n" +
                 "아기방을 눌러 돌아가자.",
             IntroFeed =>
                 "입가를 눌러 준비한 분유를 먹인다.\n" +
-                "여기서 비로소 이번 각성의 원인이 사라진다.",
+                "이번에 깬 이유가 여기서 사라진다.",
             IntroSoothe =>
-                "배는 채웠지만 진정도가 아직 낮다.\n" +
-                "등을 토닥이거나 쪽쪽이를 물려 마저 진정시키자.\n" +
-                "쪽쪽이는 즉시 진정 +12지만 밤에 세 번뿐이다.",
+                "배는 채웠는데 아직 진정도가 낮다.\n" +
+                "등을 토닥이거나 쪽쪽이를 물려 마저 재우자.\n" +
+                "쪽쪽이는 즉시 진정 +12. 대신 밤에 세 번뿐이다.",
             IntroFellAsleep =>
-                "눈꺼풀과 손끝이 아직 움직인다. 여기서 내려놓으면 대개 깬다.\n" +
+                "눈꺼풀과 손끝이 아직 움직인다. 여기서 내려놓으면 십중팔구 깬다.\n" +
                 "팔다리 힘이 빠졌는지 먼저 살펴보자.",
             IntroLaydownFailed =>
-                "얕은 잠에서는 등이 닿는 순간 깨어난다.\n" +
+                "얕은 잠에서는 등이 닿는 순간 깬다.\n" +
                 "깊은 잠이 될 때까지 기다렸다가 내려놓아야 한다.",
             IntroDeepSleep =>
-                "숨이 고르고 팔다리가 늘어졌다. 깊은 잠에 들어섰다.\n" +
+                "숨이 고르고 팔다리가 축 늘어졌다. 깊은 잠이다.\n" +
                 "이제 침대를 눌러 천천히 내려놓자.",
             IntroNoise =>
-                "백색소음기는 아기를 달래는 물건이 아니다. 켜 둬도 진정도는\n" +
-                "오르지 않는다. 대신 초인종 같은 바깥 소리를 덮어 든 잠을\n" +
-                "이어 준다. 매일 켜면 익숙해져 효과가 줄어든다.",
+                "백색소음기는 달래는 물건이 아니다. 켜 둬도 진정도는 안 오른다.\n" +
+                "대신 초인종 같은 바깥 소리를 덮어서, 들어간 잠을 이어 준다.\n" +
+                "매일 켜면 익숙해져 효과가 줄어든다.",
             IntroMonitor => _introMonitorRead
-                ? "이게 베이비 모니터의 전부다. 아기 곁을 떠난 동안 상태를 여는\n" +
+                ? "이게 베이비 모니터의 전부다. 곁을 떠나 있는 동안 아기 상태를 여는\n" +
                   "유일한 창이고, 한 번 보면 30분 동안 열려 있다.\n" +
-                  "챙겨 오지 않으면 주방·욕실에서는 아무것도 알 수 없다."
+                  "안 챙겨 오면 주방·욕실에서는 아무것도 알 수 없다."
                 : "젖병을 씻으러 주방에 나왔다. 여기서는 아기가 보이지 않는다.\n" +
                   "기분도 울음도 '확인 불가'다.\n" +
                   "베이비 모니터를 눌러 보자. 아기 곁에서는 켜지지 않는 물건이다.",
             _ =>
                 "아닌 것부터 지우고, 순서대로 준비하고,\n" +
-                "깊은 잠을 확인한 뒤 내려놓는 것.\n" +
+                "깊이 잠든 걸 확인한 뒤에 내려놓는 것.\n" +
                 "오늘 밤 아홉 시간을 이 리듬으로 건너면 된다."
         };
 
@@ -1074,9 +1074,9 @@ namespace NotANap.App
                 _introProbeMask |= probe;
                 _introProbeNote = probe switch
                 {
-                    ProbeDiaper => "기저귀는 보송하다. 이건 원인이 아니다.",
-                    ProbeBack => "안고 토닥이자 잠깐 조용해졌다가 다시 보챈다.",
-                    _ => "입을 오물거리고 주먹을 빤다. 배고픔 신호다."
+                    ProbeDiaper => "기저귀는 보송하다. 이건 아니다.",
+                    ProbeBack => "안고 토닥이니 잠깐 조용, 그리고 다시 보챈다. 이것도 아니다.",
+                    _ => "입을 오물거리고 주먹을 빤다. 배가 고픈 거였다."
                 };
                 TriggerImpact(new Color(.45f, .88f, .62f, .4f), 2f, .24f);
                 return;
@@ -4499,57 +4499,57 @@ namespace NotANap.App
         private static string ActionFeedbackTitle(V2ActionOutcome outcome)
         {
             if (outcome.WasMisdiagnosis && outcome.Action == V2ActionId.FeedPreparedBottle)
-                return "삼키는 리듬이 급하지 않다. 배고픔이 먼저인 밤은 아니었나 보다.";
+                return "삼키는 게 급하지 않다. 배가 고픈 밤은 아니었나 보다.";
             if (outcome.WasMisdiagnosis)
-                return "이 돌봄보다 먼저 살펴야 할 다른 불편이 남아 있다.";
+                return "이것 말고, 먼저 봐줘야 할 게 남아 있다.";
             // 확인 계열은 "무엇을 확인했고 결론이 무엇인지"를 헤드라인에 담는다.
             // 묘사만 남기면 아래 상세 줄을 읽기 전까지 무슨 검사였는지 알 수 없다.
             if (outcome.Action == V2ActionId.CheckHungerSignals)
                 return !outcome.HungerSignalsMatchCause ||
                        outcome.HungerSignalStage == HungerSignalStage.None
-                    ? "배고픔 확인 · 지금은 아니에요"
+                    ? "배고픔 확인 · 지금은 아니다"
                     : outcome.HungerSignalStage == HungerSignalStage.Late
-                        ? "배고픔 확인 · 지금 수유가 필요해요"
+                        ? "배고픔 확인 · 지금 당장 먹여야 한다"
                         : outcome.HungerSignalStage == HungerSignalStage.Active
-                            ? "배고픔 확인 · 배고픔 신호예요"
-                            : "배고픔 확인 · 초기 신호가 보여요";
+                            ? "배고픔 확인 · 배가 고픈 게 맞다"
+                            : "배고픔 확인 · 슬슬 배가 고파진다";
             if (outcome.Action == V2ActionId.CheckDiaper)
                 return outcome.DiaperCheckResult switch
                 {
-                    DiaperCheckResult.Stool => "기저귀 확인 · 대변이에요",
-                    DiaperCheckResult.Wet => "기저귀 확인 · 젖었어요",
-                    _ => "기저귀 확인 · 깨끗해요"
+                    DiaperCheckResult.Stool => "기저귀 확인 · 대변이다",
+                    DiaperCheckResult.Wet => "기저귀 확인 · 젖었다",
+                    _ => "기저귀 확인 · 보송하다"
                 };
             if (outcome.EventIds.Contains(GameEventId.LaydownSucceeded))
-                return "숨이 그대로 이어진다.";
+                return "손을 뗐는데도 숨이 그대로 이어진다.";
             if (outcome.EventIds.Contains(GameEventId.LaydownFailed) ||
                 outcome.EventIds.Contains(GameEventId.BabyFullyWoke))
                 return "등이 닿자 몸이 움찔했다.";
             return outcome.Action switch
             {
-                V2ActionId.Hold => "품 안에서 어깨의 힘이 조금 풀린다.",
-                V2ActionId.Pat => "토닥임에 호흡이 천천히 맞춰진다.",
-                V2ActionId.CatchBreath => "한 번 길게 숨을 내쉰다.",
-                V2ActionId.Grandma => "도움을 건네받자 아기의 몸이 포근한 품으로 기대온다.",
-                V2ActionId.ChangeDiaper => "깨끗한 기저귀로 갈아주었다.",
-                V2ActionId.DisposeDiaper => "사용한 기저귀를 싸서 버렸다.",
+                V2ActionId.Hold => "품에 들자 어깨의 힘이 조금 풀린다.",
+                V2ActionId.Pat => "토닥이는 박자에 숨이 천천히 맞춰진다.",
+                V2ActionId.CatchBreath => "나도 한 번, 길게 숨을 내쉰다.",
+                V2ActionId.Grandma => "손이 바뀌자 몸이 그 품으로 기대 온다.",
+                V2ActionId.ChangeDiaper => "깨끗한 기저귀로 갈아 줬다.",
+                V2ActionId.DisposeDiaper => "쓴 기저귀를 싸서 버렸다.",
                 V2ActionId.WashHands => "비누로 손을 씻었다.",
-                V2ActionId.CheckEnvironment => "방 안의 공기를 살폈다.",
-                V2ActionId.PrepareWater => "젖병에 따뜻한 물을 준비했다.",
-                V2ActionId.CoolBottle => "손목에 닿는 온도를 확인했다.",
-                V2ActionId.FeedPreparedBottle => "아기의 삼키는 리듬을 기다렸다.",
-                _ => "아기가 작은 움직임으로 답한다."
+                V2ActionId.CheckEnvironment => "방 안 공기를 살폈다.",
+                V2ActionId.PrepareWater => "젖병에 따뜻한 물을 받았다.",
+                V2ActionId.CoolBottle => "손목에 한 방울 떨어뜨려 봤다.",
+                V2ActionId.FeedPreparedBottle => "삼키는 박자를 기다려 준다.",
+                _ => "작은 움직임으로 대답이 돌아온다."
             };
         }
 
         private static string ActionFeedbackHeading(V2ActionOutcome outcome)
         {
             if (outcome.Accepted) return ActionFeedbackTitle(outcome);
-            if (outcome.BlockReason != V2ActionBlockReason.None) return "먼저 필요한 돌봄이 있어요.";
+            if (outcome.BlockReason != V2ActionBlockReason.None) return "그 전에 해줘야 할 게 있다.";
             if (outcome.EventIds.Contains(GameEventId.LaydownFailed) ||
                 outcome.EventIds.Contains(GameEventId.BabyFullyWoke))
-                return "아기가 몸으로 ‘조금 더 기다려줘’라고 답했다.";
-            return "이 방법은 지금 아기의 답과 달랐다.";
+                return "‘조금만 더 기다려줘.’ 몸으로 그렇게 말했다.";
+            return "지금 이 아이가 원한 건 이게 아니었다.";
         }
 
         private void DrawOverlay(OverlayViewModel overlay)
@@ -4632,7 +4632,7 @@ namespace NotANap.App
                 GUI.Label(new Rect(104, 302, 872, 96),
                     "이제 침대에 내려놓기만 하면 된다.",
                     OverlayLabelStyle(40, FontStyle.Normal, new Color(.9f, .92f, .94f)));
-                if (DrawPrimaryButton(new Rect(90, 1420, 900, 132), "조심히 내려놓기"))
+                if (DrawPrimaryButton(new Rect(90, 1420, 900, 132), "숨죽이고 내려놓기"))
                 {
                     _titleDropAttempted = true;
                     _audio?.PlayAction(new V2ActionOutcome { Action = V2ActionId.Laydown, Accepted = true });
@@ -4642,20 +4642,20 @@ namespace NotANap.App
             }
 
             GUI.Label(new Rect(70, 120, 940, 120), "NOT A NAP", new GUIStyle(_title) { fontSize = 92 });
-            GUI.Label(new Rect(70, 245, 940, 84), "눕히면 깬다", Centered(_display));
+            GUI.Label(new Rect(70, 245, 940, 84), "등이 닿으면 또 눈이 번쩍", Centered(_display));
             if (_introBabyArt != null)
                 DrawBabyTexture(new Rect(190, 315, 700, 700), _introBabyArt);
-            GUI.Label(new Rect(90, 935, 900, 80), "등이 닿았다. 눈이 번쩍.",
+            GUI.Label(new Rect(90, 935, 900, 80), "그래도 다시 안아 올리는 밤",
                 OverlayLabelStyle(46, FontStyle.Bold, new Color(1f, .68f, .42f),
                     TextAnchor.MiddleCenter));
             DrawGlassPanel(new Rect(58, 1040, 964, 310), .86f);
-            GUI.Label(new Rect(104, 1070, 872, 64), "오늘 밤 목표",
+            GUI.Label(new Rect(104, 1070, 872, 64), "오늘 밤 할 일",
                 OverlayLabelStyle(46, FontStyle.Bold, Color.white));
             GUI.Label(new Rect(104, 1150, 872, 145),
-                "아침 6시까지 함께 버텨라.\n깊은 잠 · 체력 · 맨손 눕히기 중 둘을 지켜라.",
+                "아침 6시까지, 같이 버틴다.\n깊은 잠 · 내 체력 · 맨손 눕히기 — 셋 중 둘만 지키면 된다.",
                 OverlayLabelStyle(40, FontStyle.Normal, new Color(.9f, .92f, .94f),
                     TextAnchor.UpperLeft, true));
-            if (DrawPrimaryButton(new Rect(90, 1420, 900, 132), "오늘 밤 버티기  →"))
+            if (DrawPrimaryButton(new Rect(90, 1420, 900, 132), "오늘 밤도 버텨보기  →"))
             {
                 ResetIntro();
                 _flow.BeginFamilySetup();
@@ -4904,79 +4904,79 @@ namespace NotANap.App
         {
             if (outcome.EventIds.Contains(GameEventId.LaydownFailed) ||
                 outcome.EventIds.Contains(GameEventId.BabyFullyWoke))
-                return "실패가 아니에요. 눈꺼풀·호흡·팔다리 힘이 더 편안해진 뒤 다시 시도해보세요.";
+                return "실패가 아니다. 눈꺼풀·숨·팔다리 힘이 더 편안해진 뒤에 다시 해보자.";
             if (outcome.Action == V2ActionId.Pacifier && !outcome.Accepted &&
                 outcome.BlockReason == V2ActionBlockReason.None)
-                return "쪽쪽이를 밀어냈어요. 억지로 반복하지 말고 입·손·몸의 방향을 다시 살펴보세요.";
+                return "쪽쪽이를 밀어냈다. 억지로 물리지 말고 입·손·몸이 향한 쪽을 다시 보자.";
             if (outcome.BlockReason == V2ActionBlockReason.BabyNotHeld)
-                return "아기는 이미 침대에 있어요. 먼저 품에 안아주세요.";
+                return "이미 침대에 있다. 먼저 품에 안아 올려야 한다.";
             if (outcome.BlockReason == V2ActionBlockReason.BabyNotAsleep)
-                return "아직 잠들지 않았어요. 먼저 충분히 달래주세요.";
+                return "아직 잠들지 않았다. 조금 더 달래 주자.";
             if (outcome.BlockReason == V2ActionBlockReason.ItemUnavailable)
-                return "이 물건을 가져오지 않아 사용할 수 없어요.";
+                return "오늘 밤 안 챙겨 온 물건이다.";
             if (outcome.BlockReason == V2ActionBlockReason.CarrierAlreadyWorn)
-                return "아기띠를 먼저 벗으면 맨손으로 안을 수 있어요.";
+                return "아기띠를 먼저 벗어야 맨손으로 안을 수 있다.";
             if (outcome.BlockReason == V2ActionBlockReason.WrongLocation)
-                return "집 지도를 보고 이 행동에 필요한 방으로 이동해주세요.";
+                return "이건 여기서 할 수 없다. 집 지도를 보고 방을 옮기자.";
             if (outcome.BlockReason == V2ActionBlockReason.HandsDirty)
-                return "대변 기저귀를 처리했어요. 수유 전에 욕실에서 비누로 손을 씻어주세요.";
+                return "대변 기저귀를 만진 손이다. 먹이기 전에 욕실에서 비누로 씻자.";
             if (outcome.BlockReason == V2ActionBlockReason.ToolRequired)
             {
                 if (outcome.Action == V2ActionId.ChangeDiaper)
-                    return "먼저 기저귀 상태를 확인해주세요.";
+                    return "기저귀 상태부터 확인해야 한다.";
                 if (outcome.Action == V2ActionId.DisposeDiaper)
-                    return "먼저 젖은 기저귀를 새것으로 갈아주세요.";
+                    return "젖은 기저귀를 새것으로 갈아 준 다음이다.";
                 if (outcome.Action == V2ActionId.WashHands)
-                    return "지금은 손 씻기가 필요한 상태가 아니에요.";
-                return "욕실에서 탕온계를 먼저 챙겨주세요.";
+                    return "지금은 손을 씻지 않아도 된다.";
+                return "욕실에서 탕온계부터 챙겨 와야 한다.";
             }
             if (outcome.BlockReason == V2ActionBlockReason.CaregiverExhausted)
-                return "보호자 체력이 바닥났어요. 먼저 숨을 고르고 다시 돌봐주세요.";
+                return "내 체력이 바닥났다. 여기서 무리하면 둘 다 힘들어진다. 먼저 숨을 고르자.";
             if (outcome.BlockReason == V2ActionBlockReason.ActionLimitReached)
-                return "숨을 고르는 시간도 충분히 가졌어요. 이제 확인한 신호에 맞는 돌봄으로 돌아가세요.";
+                return "숨은 충분히 골랐다. 이제 확인한 신호에 맞는 손으로 돌아갈 차례다.";
             if (outcome.ActivityLocation == "주방")
                 return $"주방에서 준비하는 동안 {outcome.TimeDeltaMinutes}분이 흘렀다.";
             if (outcome.HeadSupported)
-                return "목과 머리를 받치자 몸이 품 안으로 기대온다.";
+                return "목과 머리를 받치자 몸이 품 안으로 기대 온다.";
             if (outcome.Action == V2ActionId.CatchBreath)
                 return outcome.ObservedSignals.Count > 0
-                    ? $"숨을 고르자 보이지 않던 신호가 들어온다. {PresentationCopyMapper.ObservationSignal(outcome.ObservedSignals[0])}"
-                    : "숨을 길게 내쉬고 아기의 다음 움직임을 기다린다.";
+                    ? $"숨을 고르자 안 보이던 게 보인다. {PresentationCopyMapper.ObservationSignal(outcome.ObservedSignals[0])}"
+                    : "길게 한 번 내쉬고, 다음 움직임을 기다린다.";
             if (outcome.Action == V2ActionId.CheckDiaper &&
                 outcome.DiaperCheckResult == DiaperCheckResult.Stool)
-                return "대변 기저귀예요. 처리 시간이 더 들고 울음이 조금 커집니다.";
+                return "대변이다. 처리에 시간이 더 들고, 그동안 울음도 조금 커진다.";
             if (outcome.Action == V2ActionId.CheckDiaper &&
                 outcome.DiaperCheckResult == DiaperCheckResult.Wet)
-                return "기저귀가 젖어 있어요. 기저귀를 갈아주세요.";
+                return "젖었다. 갈아 주면 된다.";
             if (outcome.Action == V2ActionId.CheckDiaper &&
                 outcome.DiaperCheckResult == DiaperCheckResult.Clean)
-                return "기저귀는 깨끗해요. 75분 동안 다시 확인하지 않아도 돼요.";
+                return "보송하다. 75분 동안은 다시 안 봐도 된다.";
             if (outcome.Action == V2ActionId.ChangeDiaper)
-                return "새 기저귀를 채웠어요. 이제 사용한 기저귀를 싸서 버려주세요.";
+                return "새 기저귀를 채웠다. 쓴 기저귀는 싸서 버리자.";
             if (outcome.Action == V2ActionId.DisposeDiaper)
                 return outcome.DiaperCheckResult == DiaperCheckResult.Stool
-                    ? "기저귀 처리는 끝났어요. 수유 전에 욕실에서 비누로 손을 씻어주세요."
-                    : "기저귀를 싸서 버렸어요. 불편함이 해결됐어요.";
+                    ? "기저귀는 끝. 먹이기 전에 욕실에서 손부터 씻자."
+                    : "싸서 버렸다. 불편했던 건 이걸로 해결됐다.";
             if (outcome.Action == V2ActionId.WashHands)
-                return "손 씻기 완료. 이제 다시 아기에게 돌아가도 좋아요.";
+                return "손 씻기 끝. 이제 아기에게 돌아가도 된다.";
             if (outcome.Action == V2ActionId.CheckHungerSignals)
             {
                 switch (outcome.HungerSignalStage)
                 {
-                    case HungerSignalStage.Late: return "입을 찾고 빠르게 숨 쉬며 배고픈 울음을 내요. 수유가 필요해요.";
-                    case HungerSignalStage.Active: return "입가를 건드린 쪽으로 고개를 돌리고 입을 벌려요. 배고픔 신호예요.";
-                    case HungerSignalStage.Early: return "입맛을 다시고 손을 빨아요. 초기 배고픔 신호예요.";
-                    default: return "지금은 배고픔 신호가 보이지 않아요.";
+                    case HungerSignalStage.Late: return "입을 찾고 숨이 가빠지며 운다. 지금 먹여야 한다.";
+                    case HungerSignalStage.Active: return "손이 닿는 쪽으로 고개를 돌리고 입을 벌린다. 배가 고픈 게 맞다.";
+                    case HungerSignalStage.Early: return "입맛을 다시고 손을 빤다. 아직 초기 신호다.";
+                    default: return "지금은 배고픈 기색이 없다.";
                 }
             }
             // 안기·토닥임·달래는 물건은 원인을 해소하진 않지만 울음을 실제로 낮춘다.
             // 그 사실을 말해주지 않으면 플레이어에게는 아무 일도 없었던 것으로 보인다.
             if (outcome.CryRelief > 0)
                 return outcome.Action == V2ActionId.ToggleNoise
-                    ? "백색소음이 방을 채우자 울음이 한풀 꺾였어요."
+                    ? "소리가 방을 채우자 울음이 한풀 꺾였다."
                     : vm.RevealedCause == WakeCause.Hunger
-                        ? "울음이 잦아들었어요. 배고픔은 수유로만 해결돼요."
-                        : "울음이 잦아들었어요. 아직 깬 원인은 그대로예요.";
+                        ? "울음은 잦아들었다. 그래도 배고픔은 먹여야만 해결된다."
+                        : "울음은 잦아들었다. 깬 이유는 아직 그대로다.";
             if (outcome.ObservedSignals.Count > 0)
                 return PresentationCopyMapper.ObservationSignal(outcome.ObservedSignals[0]);
             if (outcome.Action == V2ActionId.CheckEnvironment)
@@ -4984,64 +4984,64 @@ namespace NotANap.App
             if (outcome.Action == V2ActionId.CheckBodyTemperature)
                 return $"아기 체온 {vm.BabyTemperatureCelsius:0.0}°C";
             if (outcome.Action == V2ActionId.AdjustTemperature)
-                return $"온도를 {vm.TemperatureCelsius:0.#}°C로 조절했어요.";
+                return $"창을 조절해 온도를 {vm.TemperatureCelsius:0.#}°C로 맞췄다.";
             if (outcome.Action == V2ActionId.AdjustHumidity)
-                return $"습도를 {vm.HumidityPercent:0.#}%로 조절했어요.";
+                return $"가습기를 만져 습도를 {vm.HumidityPercent:0.#}%로 맞췄다.";
             if (outcome.Action == V2ActionId.SterilizeBottle)
-                return "젖병 소독을 마쳤어요. 이제 평소 수유 준비를 이어가세요.";
+                return "젖병 소독 완료. 이제 평소 순서대로 준비하면 된다.";
             // 다른 관찰과 마찬가지로 몸의 묘사로 돌려준다. 내부 수치를 그대로 노출하면
             // 세계 안의 물건이 아니라 디버그 창처럼 읽힌다.
             if (outcome.MonitorRead)
                 return vm.SleepStage == V2SleepStage.NremDeepSleep
-                    ? "화면 속 아기가 미동도 없다. 숨소리만 고르게 들린다."
+                    ? "화면 속에서 미동도 없다. 고른 숨소리만 넘어온다."
                     : vm.SleepStage == V2SleepStage.RemActiveSleep
                         ? "손끝이 이따금 움찔한다. 아직 얕은 잠이다."
                         : vm.CryIntensity > 55
                             ? "스피커 너머로 울음이 점점 커진다. 서둘러야 한다."
                             : vm.CryIntensity > 20
-                                ? "몸을 뒤척이는 소리가 들린다. 곧 울 것 같다."
-                                : "아기가 조용히 누워 있다. 아직은 괜찮다.";
+                                ? "뒤척이는 소리가 들린다. 곧 울 것 같다."
+                                : "조용히 누워 있다. 아직은 괜찮다.";
             if (outcome.Action == V2ActionId.ToggleNoise)
-                return vm.NoiseOn ? "백색소음기를 켰어요." : "백색소음기를 껐어요.";
+                return vm.NoiseOn ? "백색소음기를 켰다. 쏴아—" : "백색소음기를 껐다.";
             if (outcome.ObservedSignals.Count > 0)
                 return "관찰 · " + PresentationCopyMapper.ObservationLabel(outcome.ObservedSignals[0]);
             if (outcome.MissingPreparationSteps.Count > 0)
                 return "먼저 필요함 · " + PresentationCopyMapper.FeedingStepLabel(outcome.MissingPreparationSteps[0]);
             if (outcome.ConsumedTime)
-                return $"{outcome.TimeDeltaMinutes}분이 흘렀고, 체력이 {outcome.StaminaDelta:+0;-0;0} 변했어요.";
+                return $"{outcome.TimeDeltaMinutes}분이 흘렀고, 내 체력이 {outcome.StaminaDelta:+0;-0;0} 변했다.";
             return fallback;
         }
 
         private static string CauseSignal(V2PlayViewModel vm)
-            => vm.RevealedCause.HasValue ? $"확인된 원인\n{PresentationCopyMapper.WakeCauseLabel(vm.RevealedCause.Value)}" : "왜 깼는지 아직 몰라요.\n먼저 작은 신호부터 살펴보세요.";
+            => vm.RevealedCause.HasValue ? $"확인된 원인\n{PresentationCopyMapper.WakeCauseLabel(vm.RevealedCause.Value)}" : "왜 깼는지 아직 모른다.\n작은 신호부터 하나씩 짚어 보자.";
 
         private static string SleepSignal(V2PlayViewModel vm)
         {
             if (!vm.CauseResolved) return CauseSignal(vm);
             if (vm.SleepStage == V2SleepStage.RemActiveSleep)
-                return "활동 수면이에요.\n아직 눕히기보다 기다려주세요.";
+                return "활동 수면이다.\n내려놓기엔 이르다. 조금 더 기다리자.";
             if (vm.SleepStage == V2SleepStage.NremDeepSleep && !vm.DeepSleepObserved)
-                return "깊은 수면이에요.\n팔다리 이완을 확인해보세요.";
+                return "깊은 수면이다.\n팔다리가 늘어졌는지 확인해 보자.";
             if (vm.SleepStage == V2SleepStage.NremDeepSleep)
                 return vm.BabyHeld
-                    ? "팔다리 힘이 빠졌어요.\n이제 눕히기를 시도할 수 있어요."
-                    : "침대에서 깊이 잠들었어요.\n그대로 지켜봐주세요.";
-            if (vm.CryIntensity > 45) return "울음이 커지고 있어요.\n자극을 줄이고 천천히 반응하세요.";
+                    ? "팔다리 힘이 빠졌다.\n지금이라면 내려놓을 수 있다."
+                    : "침대에서 깊이 잠들었다.\n건드리지 말고 그대로 두자.";
+            if (vm.CryIntensity > 45) return "울음이 커지고 있다.\n자극을 줄이고 천천히 움직이자.";
             if (vm.Calm < vm.DrowsyCalmThreshold)
-                return $"진정도 {vm.Calm:0} / {vm.SleepStartCalmThreshold:0}\n안기나 토닥이기로 달래주세요.";
-            return $"진정도 {vm.Calm:0} / {vm.SleepStartCalmThreshold:0}\n한 번만 더 차분히 달래주세요.";
+                return $"진정도 {vm.Calm:0} / {vm.SleepStartCalmThreshold:0}\n안거나 토닥여서 가라앉히자.";
+            return $"진정도 {vm.Calm:0} / {vm.SleepStartCalmThreshold:0}\n한 번만 더 차분히 달래면 된다.";
         }
 
         private static string BabyStepHint(V2PlayViewModel vm)
         {
-            if (!vm.CauseResolved) return "먼저 깨어난 원인을 확인해주세요";
-            if (vm.SleepStage == V2SleepStage.RemActiveSleep) return "활동 수면 · 아직 눕히기엔 일러요";
-            if (vm.SleepStage == V2SleepStage.NremDeepSleep && !vm.DeepSleepObserved) return "깊은 수면 · 팔다리 이완을 확인하세요";
+            if (!vm.CauseResolved) return "깬 이유부터 찾을 것";
+            if (vm.SleepStage == V2SleepStage.RemActiveSleep) return "활동 수면 · 내려놓기엔 이르다";
+            if (vm.SleepStage == V2SleepStage.NremDeepSleep && !vm.DeepSleepObserved) return "깊은 수면 · 팔다리가 늘어졌는지 확인";
             if (vm.SleepStage == V2SleepStage.NremDeepSleep)
-                return vm.BabyHeld ? "깊은 수면 확인 · 이제 눕혀도 좋아요" : "침대에서 깊이 잠듦 · 그대로 지켜봐요";
+                return vm.BabyHeld ? "깊은 수면 확인 · 지금이면 내려놔도 된다" : "침대에서 깊이 잠듦 · 그대로 두자";
             if (vm.Calm < vm.DrowsyCalmThreshold)
-                return $"진정도 {vm.Calm:0} / {vm.SleepStartCalmThreshold:0} · 안기 또는 토닥이기";
-            return $"진정도 {vm.Calm:0} / {vm.SleepStartCalmThreshold:0} · 한 번 더 달래주세요";
+                return $"진정도 {vm.Calm:0} / {vm.SleepStartCalmThreshold:0} · 안거나 토닥이기";
+            return $"진정도 {vm.Calm:0} / {vm.SleepStartCalmThreshold:0} · 한 번만 더";
         }
 
         /// <summary>
@@ -5054,17 +5054,17 @@ namespace NotANap.App
             switch (vm.SleepStage)
             {
                 case V2SleepStage.Drowsy:
-                    return "눈이 반쯤 감기고 움직임이 줄었다";
+                    return "눈이 반쯤 감기고 움직임이 잦아든다";
                 case V2SleepStage.RemActiveSleep:
                     return "눈꺼풀이 떨리고 손끝이 가끔 움직인다";
                 case V2SleepStage.NremDeepSleep:
                     return vm.DeepSleepObserved
-                        ? "팔다리 힘이 빠지고 깊이 잠들었다"
-                        : "호흡이 고르고 몸의 긴장이 풀린다";
+                        ? "팔다리가 축 늘어지고 깊이 잠들었다"
+                        : "숨이 고르고 몸에서 힘이 빠진다";
                 default:
-                    if (vm.CryIntensity > 35) return "얼굴이 붉어지고 울음이 커졌다";
-                    if (vm.CryIntensity > 0) return "조금 불편한 듯 몸을 꼼지락거린다";
-                    return "울지 않고 아빠를 빤히 바라본다";
+                    if (vm.CryIntensity > 35) return "얼굴이 새빨개지고 울음이 터졌다";
+                    if (vm.CryIntensity > 0) return "어딘가 불편한 듯 몸을 꼼지락거린다";
+                    return "울지도 않고 아빠를 빤히 쳐다본다";
             }
         }
 

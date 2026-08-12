@@ -677,13 +677,13 @@ namespace NotANap.Presentation
                 HasNextNight = Run.CurrentNightId != NightId.HundredthNight,
                 LearnedSignal = facts.FirstNoticedSignal.HasValue
                     ? $"오늘 처음 알아챈 신호 · {PresentationCopyMapper.ObservationSignal(facts.FirstNoticedSignal.Value)}"
-                    : "오늘의 신호 · 울음 전에 몸이 먼저 말한다.",
+                    : "오늘의 신호 · 울기 전에 몸이 먼저 말한다.",
                 NextNightNote = m.MisdiagnosisCount > 0
-                    ? "다음 밤 목표 · 기저귀, 배고픔, 방 상태를 먼저 확인하기"
+                    ? "다음 밤 목표 · 달래기 전에 기저귀·배고픔·방부터 짚어 보기"
                     : "다음 밤 목표 · 첫 신호를 놓치지 않기",
                 Encouragement = m.ParentStaminaAtDawn >= 30
-                    ? "아기도 재우고 체력도 남겼다. 이 방식은 다음 밤에도 쓸 수 있다."
-                    : "아침까지 왔지만 체력을 너무 썼다. 다음 밤에는 숨 고르기를 챙기자.",
+                    ? "너도 자고 나도 남았다. 이 방식은 내일 밤에도 통한다."
+                    : "아침까지 오긴 왔다. 다음엔 나부터 숨 고르는 걸 잊지 말자.",
                 CaregiverGrowth = BuildCaregiverGrowth(Run.CaregiverStyle, Night),
                 MotherInsight = BuildFamilyUnderstanding(facts),
                 FamilyUnderstanding = BuildFamilyUnderstanding(facts),
@@ -824,14 +824,14 @@ namespace NotANap.Presentation
         {
             if (facts.RejectedAction.HasValue && facts.FollowupAction.HasValue)
                 return $"{PresentationCopyMapper.V2ActionLabel(facts.RejectedAction.Value)}에는 보채고, " +
-                    $"{PresentationCopyMapper.V2ActionLabel(facts.FollowupAction.Value)}에는 숨을 골랐다.";
+                    $"{PresentationCopyMapper.V2ActionLabel(facts.FollowupAction.Value)}에는 숨을 골랐다. 그게 이 아기의 대답이었다.";
             if (facts.FirstNoticedSignal.HasValue)
-                return $"첫 신호는 ‘{PresentationCopyMapper.ObservationLabel(facts.FirstNoticedSignal.Value)}’였다.";
+                return $"첫 신호는 ‘{PresentationCopyMapper.ObservationLabel(facts.FirstNoticedSignal.Value)}’. 아기는 그걸로 먼저 말을 걸었다.";
             if (facts.BareHandsLaydownAttempts > 0)
                 return facts.BareHandsLaydownSucceeded
-                    ? "품에서 침대로 옮겨진 뒤에도 아기의 숨은 고르게 이어졌다."
-                    : "등이 닿자 몸이 움찔했다. 아직 깊어진 숨을 조금 더 기다려 달라는 답이었다.";
-            return "울음만이 아니라 호흡과 몸의 힘도 아기가 건네는 대답이었다.";
+                    ? "품에서 침대로 옮겨졌는데도, 아기의 숨은 그대로 이어졌다."
+                    : "등이 닿자 움찔했다. 조금만 더 기다려 달라는 아기의 대답이었다.";
+            return "울음만 말이 아니었다. 숨과 몸의 힘도 아기가 건네는 대답이었다.";
         }
 
         private static CaregiverStyle NextStyle(CaregiverStyle style)
@@ -862,13 +862,13 @@ namespace NotANap.Presentation
         {
             if (temperament == Temperament.Sensitive)
                 return style == CaregiverStyle.Responsive
-                    ? "빠르게 다가가되 한 번에 한 가지 자극만 건네보세요."
-                    : "작은 소리와 자세 변화 뒤에 적응할 시간을 주세요.";
+                    ? "빨리 다가가되, 자극은 한 번에 하나씩만 건넬 것."
+                    : "소리를 낮추고 자세를 바꾼 뒤에는 적응할 시간을 줄 것.";
             if (temperament == Temperament.Hungry)
                 return style == CaregiverStyle.Observant
-                    ? "입과 손의 초기 신호를 보면 울음이 커지기 전에 반응할 수 있어요."
-                    : "강한 울음 전의 입맛 다시기와 손 빨기를 기억해보세요.";
-            return "조용한 반응도 하나의 신호예요. 반응이 작다고 서둘러 행동을 바꾸지 않아도 괜찮아요.";
+                    ? "입과 손의 첫 신호만 잡아도 울음까지 가지 않는다."
+                    : "크게 울기 전에 나오는 입맛 다시기와 손 빨기를 기억해 둘 것.";
+            return "조용한 것도 대답이다. 반응이 작다고 서둘러 손을 바꾸지 않아도 된다.";
         }
 
         // ── 아기 상태를 읽을 수 있는가 ──────────────────────────
@@ -890,8 +890,8 @@ namespace NotANap.Presentation
         {
             if (IsBabyStateVisible(night, v2, config)) return null;
             return night.HasItem(ItemId.Monitor)
-                ? "아기가 보이지 않아요. 베이비 모니터로 확인하세요."
-                : "아기가 보이지 않아요. 아기방으로 돌아가야 알 수 있어요.";
+                ? "여기서는 아기가 보이지 않는다. 베이비 모니터로 확인하자."
+                : "여기서는 아기가 보이지 않는다. 아기방으로 돌아가야 알 수 있다.";
         }
 
         private static bool IsAsleep(V2NightState v2)
@@ -906,34 +906,34 @@ namespace NotANap.Presentation
         {
             if (IsAsleep(v2))
                 return v2.SleepCycle.Stage == V2SleepStage.NremDeepSleep
-                    ? "깊이 잠들어 기분이 안정적이다."
-                    : "얕은 잠이라 작은 자극에도 기분이 흔들린다.";
+                    ? "깊이 잠들었다. 웬만한 일에는 흔들리지 않는다."
+                    : "얕은 잠이다. 작은 소리 하나에도 기분이 출렁인다.";
             double cryDrop = v2.CryIntensity * config.V2.MoodCryWeight;
             double hungerDrop = System.Math.Max(0, night.Baby.Hunger - config.V2.HungerEarlyThreshold)
                                 * config.V2.MoodHungerWeight;
             if (cryDrop <= 0 && hungerDrop <= 0)
                 return night.Baby.Calm >= config.V2.DrowsyCalmThreshold
-                    ? "기분이 좋다. 이대로 잠들 수 있는 상태다."
-                    : "기분은 나쁘지 않지만 아직 잠들 만큼 진정되지는 않았다.";
+                    ? "기분이 좋다. 이대로면 잠든다."
+                    : "나쁘진 않은데, 아직 잠들 만큼 가라앉지는 않았다.";
             return cryDrop >= hungerDrop
-                ? $"울음이 기분을 {cryDrop:0} 깎고 있다. 원인을 찾아 없애야 한다."
-                : $"배고픔이 기분을 {hungerDrop:0} 깎고 있다. 분유를 준비해야 한다.";
+                ? $"울음이 기분을 {cryDrop:0}만큼 깎고 있다. 달래기 전에 이유부터 찾아야 한다."
+                : $"배고픔이 기분을 {hungerDrop:0}만큼 깎고 있다. 분유를 타 와야 한다.";
         }
 
         private static string DefaultSignal(V2NightState v2, double hunger)
         {
             if (v2.SleepCycle.Stage == V2SleepStage.NremDeepSleep)
-                return "숨이 고르고 팔다리의 힘이 편안하게 풀려 있어요.";
+                return "숨이 고르고 팔다리가 편안하게 늘어져 있다.";
             if (v2.SleepCycle.Stage == V2SleepStage.RemActiveSleep)
-                return "눈꺼풀과 손끝이 움직여요. 아직 깊은 잠은 아니에요.";
-            if (hunger >= 35) return "입을 오물거리거나 손을 입으로 가져가는지 살펴보세요.";
-            return "표정만 보지 말고 입·손·호흡·몸의 방향을 함께 살펴보세요.";
+                return "눈꺼풀과 손끝이 아직 움직인다. 깊은 잠은 아니다.";
+            if (hunger >= 35) return "입을 오물거리는지, 손을 입으로 가져가는지 보자.";
+            return "얼굴만 보면 놓친다. 입·손·숨·몸이 향하는 쪽을 같이 볼 것.";
         }
 
         private static string PrimaryLearnedSignal(V2NightState v2)
             => v2.VisibleSignals.Count > 0
                 ? PresentationCopyMapper.ObservationSignal(v2.VisibleSignals[0])
-                : "아기의 호흡과 몸의 긴장";
+                : "아기의 숨과 몸에 남은 힘";
 
         private static string BuildCaregiverGrowth(CaregiverStyle style, NightState night)
         {
@@ -964,9 +964,9 @@ namespace NotANap.Presentation
 
         private static string CompanionMessageFor(NightId night) => night switch
         {
-            NightId.FirstNight => "첫째 밤 완료 · 이제 아기의 첫 신호를 안다.",
-            NightId.SecondNight => "둘째 밤 완료 · 반복한 행동이 습관이 됐다.",
-            _ => "백일의 밤 완료 · 우리 가족의 밤을 끝까지 지켰다."
+            NightId.FirstNight => "첫째 밤 완료 · 이제 네가 울기 전에 뭘 하는지 안다.",
+            NightId.SecondNight => "둘째 밤 완료 · 내가 반복한 손이 네 습관이 됐다.",
+            _ => "백일의 밤 완료 · 우리 집의 밤을 끝까지 지켰다."
         };
 
         private void BuildActions(PlayViewModel vm)
@@ -1048,9 +1048,9 @@ namespace NotANap.Presentation
             var s = Night.Stats;
             string head = outcome switch
             {
-                NightOutcome.Crib => "오늘 밤은 결국 아기를 침대에 눕히는 데 성공했다.",
-                NightOutcome.Arms => "품에 안긴 아기의 숨소리를 들으며 아침을 맞았다.",
-                _ => "밤새 뒤척였지만 아기는 끝내 깊이 잠들지 못했다."
+                NightOutcome.Crib => "오늘 밤은 결국 제 침대에 눕히는 데 성공했다.",
+                NightOutcome.Arms => "품에서 나는 숨소리를 들으며 아침을 맞았다.",
+                _ => "밤새 뒤척였지만 끝내 깊이 잠들지는 못했다."
             };
             return $"{head} (수유 {s.Feeds}회 · 깸 {s.Wakes}회 · 눕히기 성공 {s.LaydownOk}회, 실패 {s.LaydownFail}회, 남은 체력 {s.StaminaLeft:0})";
         }

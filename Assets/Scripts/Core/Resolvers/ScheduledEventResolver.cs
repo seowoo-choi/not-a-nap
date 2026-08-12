@@ -15,7 +15,7 @@ namespace NotANap.Core
             if (night.NightId == NightId.FirstNight && night.Hour == 0
                 && night.FiredEventIds.Add("first-night-diaper"))
             {
-                night.AddLog("기저귀가 젖었다. 갈아 주기 전까지 계속 보챈다.", LogClass.Warn);
+                night.AddLog("기저귀가 젖었다. 갈아 주기 전까진 계속 보챌 것이다.", LogClass.Warn);
                 b.Calm = CoreMath.Clamp(b.Calm - 20, 0, 100);
                 if (b.Sleep >= 50 && rng.NextDouble() < 0.8 - noiseGuard * 0.3)
                     TurnResolver.WakeBaby(run, night, "기저귀 불쾌감", rng);
@@ -29,7 +29,7 @@ namespace NotANap.Core
                 if (b.Sleep >= 50 && rng.NextDouble() < t.Sens + 0.25 - noiseGuard)
                     TurnResolver.WakeBaby(run, night, "초인종 소리", rng);
                 else if (b.Sleep >= 50)
-                    night.AddLog("아기가 뒤척이다 다시 잠들었다.", LogClass.Good);
+                    night.AddLog("뒤척이다가 다시 잠들었다.", LogClass.Good);
             }
         }
     }

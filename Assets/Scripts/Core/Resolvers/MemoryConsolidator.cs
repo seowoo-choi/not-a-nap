@@ -48,7 +48,7 @@ namespace NotANap.Core
                 notes.Add(new MemoryNote
                 {
                     Positive = false,
-                    Text = "오늘 밤, 소리가 깔린 방에 익숙해졌다",
+                    Text = "오늘 밤, 백색소음이 깔린 방에 익숙해졌다",
                     Sub = "백색소음기 진정 효과 ↓"
                 });
             }

@@ -284,10 +284,10 @@ namespace NotANap.Core
             }
             if (rng.NextDouble() < NoiseMachine.ExternalWakeGuard(night, config))
             {
-                night.AddLog($"{source} 백색소음이 소리를 덮었다. 아기는 그대로 잔다.", LogClass.Good);
+                night.AddLog($"{source} 백색소음이 그 소리를 덮었다. 아기는 그대로 잔다.", LogClass.Good);
                 return;
             }
-            night.AddLog($"{source} 아기가 놀라 깼다.", LogClass.Warn);
+            night.AddLog($"{source} 그 소리에 놀라 깼다.", LogClass.Warn);
             TriggerWake(night, WakeCause.MoroReflex, config);
             if (night.V2.NextWake != null) night.V2.NextWake.Triggered = true;
         }

@@ -62,8 +62,8 @@ namespace NotANap.Core
                 night.CarrierDisabledTurns = GameConfig.CarrierBuckleDisabledTurns;
                 bool wasWearing = night.Wearing.Carrier;
                 night.Wearing.Carrier = false;
-                night.AddLog("🚨 아기띠 버클이 고장 났다! 2시간 동안 아기띠를 쓸 수 없다.", LogClass.Warn);
-                if (wasWearing) night.AddLog("아기를 급히 품으로 옮겨 안았다.");
+                night.AddLog("🚨 툭. 아기띠 버클이 나갔다. 2시간 동안은 못 쓴다.", LogClass.Warn);
+                if (wasWearing) night.AddLog("떨어질 뻔한 몸을 급히 품으로 받았다.");
             }
 
             if (noiseTime
@@ -72,7 +72,7 @@ namespace NotANap.Core
             {
                 night.NoiseDisabled = true;
                 night.Wearing.Noise = false;
-                night.AddLog("🚨 백색소음기 배터리가 방전됐다. 오늘 밤은 다시 켤 수 없다.", LogClass.Warn);
+                night.AddLog("🚨 소리가 뚝 끊겼다. 배터리다. 오늘 밤은 다시 못 켠다.", LogClass.Warn);
             }
 
             if (dawnTime
@@ -81,7 +81,7 @@ namespace NotANap.Core
             {
                 b.Sleep = CoreMath.Clamp(b.Sleep - GameConfig.DawnWakingSleepPenalty, 0, 100);
                 night.LaydownExtraPenalty += GameConfig.DawnWakingLaydownPenalty;
-                night.AddLog("🚨 새벽 각성 — 아기가 얕은 숨을 쉬며 뒤척인다. 눕히기가 더 어려워졌다.", LogClass.Warn);
+                night.AddLog("🚨 새벽 세 시. 숨이 얕아지고 자꾸 뒤척인다. 이제부터 내려놓기가 더 어렵다.", LogClass.Warn);
             }
         }
 
@@ -99,7 +99,7 @@ namespace NotANap.Core
                 b.Crying = false;
                 b.Sleep = Math.Max(b.Sleep, 50);
                 b.Calm = CoreMath.Clamp(b.Calm + 10, 0, 100);
-                night.AddLog("👶 아기가 칭얼대다… 스스로 다시 잠들었다.", LogClass.Good);
+                night.AddLog("👶 칭얼대다가… 혼자 다시 잠들었다.", LogClass.Good);
             }
         }
     }
