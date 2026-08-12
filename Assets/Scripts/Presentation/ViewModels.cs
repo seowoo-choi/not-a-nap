@@ -202,6 +202,14 @@ namespace NotANap.Presentation
         /// <summary>배고픔·졸림은 절대 수치와 단계를 함께 준다. 단계가 곧 행동 신호다.</summary>
         public HungerSignalStage HungerStage;
         public string HungerLabel;
+        /// <summary>
+        /// 배고픔 게이지에 찍는 눈금. 수치 자체보다 "어디를 넘으면 늦은 것인지"가
+        /// 판단 근거이므로 판정이 쓰는 경계를 그대로 화면에 넘긴다.
+        /// </summary>
+        public double HungerActiveThreshold;
+        public double HungerLateThreshold;
+        /// <summary>울음 게이지 경고 눈금. 이 위로는 자극을 줄여야 하는 구간이다.</summary>
+        public double CryWarningThreshold;
         public FatigueSignalStage FatigueStage;
         public string FatigueLabel;
         /// <summary>연속으로 깨어 있는 분. 자는 동안은 0.</summary>

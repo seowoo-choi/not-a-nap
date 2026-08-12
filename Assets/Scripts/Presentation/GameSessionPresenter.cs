@@ -352,6 +352,9 @@ namespace NotANap.Presentation
                 HungerStage = ObservationResolver.GetHungerStage(Night.Baby.Hunger, _config.V2),
                 HungerLabel = PresentationCopyMapper.HungerStageLabel(
                     ObservationResolver.GetHungerStage(Night.Baby.Hunger, _config.V2)),
+                HungerActiveThreshold = _config.V2.HungerActiveThreshold,
+                HungerLateThreshold = _config.V2.HungerLateThreshold,
+                CryWarningThreshold = _config.V2.CryWarningThreshold,
                 FatigueStage = BabyClockResolver.GetFatigueStage(v2, _config),
                 FatigueLabel = PresentationCopyMapper.FatigueStageLabel(
                     BabyClockResolver.GetFatigueStage(v2, _config)),
@@ -628,9 +631,12 @@ namespace NotANap.Presentation
                 return $"{_config.V2.WashHandsMinutes}분 · 체력 -{_config.V2.WashHandsStaminaCost:0}";
             // 할머니 찬스는 런당 한 번뿐인 큰 카드다. 무엇이 얼마나 바뀌는지 모르면
             // 아낄지 쓸지 판단할 수 없으므로 아기 상태 변화를 그대로 적는다.
+            // 얻는 것을 먼저 적는다. 시간부터 나오면 "쓰면 손해"로 읽혀 카드의 성격이 뒤집힌다.
+            // 대신 값은 반드시 함께 적는다. 이 카드는 MemoryConsolidator에서 HeldDep을 올려
+            // 백일밤에 안아재우기 습관으로 돌아오는데, 그 사실을 감추면 공짜 궁으로 보인다.
             if (action == V2ActionId.Grandma)
-                return $"{_config.V2.DefaultActionMinutes}분 · 체력 +35 · 진정 95 · 울음 0 · " +
-                       "각성 원인 해결 · 바로 잠듦 · 런당 1회";
+                return "체력 +35 · 울음 0 · 진정 95 · 바로 잠듦 · 깬 원인 해결 · " +
+                       $"{_config.V2.DefaultActionMinutes}분 · 런당 1회 · 안아재우기 습관";
             if (action == V2ActionId.Pacifier)
                 return $"{_config.V2.DefaultActionMinutes}분 · 체력 -1 · 진정 +" +
                        $"{(Night.V2.Profile.PacifierAffinity == PacifierAffinity.Loves ? _config.V2.PacifierLovesCalmGain : _config.V2.PacifierNeutralCalmGain):0}" +
@@ -775,7 +781,7 @@ namespace NotANap.Presentation
         private static string BuildHabitReflection(NarrativeFacts facts)
         {
             if (facts.Rhythms.Count == 0 || facts.Rhythms[0].Id == RhythmId.Neutral)
-                return "아직 굳어진 습관은 없다. 오늘 반복한 행동이 다음 밤의 규칙이 된다.";
+                return "아직 굳어진 습관은 없다. 오늘 반복한 손이 내일 밤의 규칙이 된다.";
             var card = PresentationCopyMapper.RhythmCard(facts.Rhythms[0]);
             return $"{card.Help} {card.Burden}";
         }
@@ -783,35 +789,35 @@ namespace NotANap.Presentation
         private static string BuildFamilyUnderstanding(NarrativeFacts facts)
         {
             if (facts.FeedingPreparationIncident)
-                return "소독 젖병이 비자 엄마의 밤 준비가 보였다.";
+                return "소독된 젖병이 하나도 없었다. 엄마가 매일 밤 뭘 해뒀던 건지 그제야 알았다.";
             if (facts.LongestPreparationStep.HasValue)
-                return $"{PresentationCopyMapper.FeedingStepLabel(facts.LongestPreparationStep.Value)}를 하며 엄마의 준비를 이해했다.";
-            return "아기를 기다리며 엄마가 채운 밤의 시간이 보였다.";
+                return $"{PresentationCopyMapper.FeedingStepLabel(facts.LongestPreparationStep.Value)}. 엄마가 늘 미리 해두던 일이었다.";
+            return "아기를 기다리며 엄마가 채워 온 밤의 시간이 그제야 눈에 들어왔다.";
         }
 
         private static string BuildActionLearning(NarrativeFacts facts)
         {
             if (facts.RejectedAction.HasValue && facts.FollowupAction.HasValue)
                 return $"{PresentationCopyMapper.V2ActionLabel(facts.RejectedAction.Value)} 대신 " +
-                    $"{PresentationCopyMapper.V2ActionLabel(facts.FollowupAction.Value)}을 택했다.";
+                    $"{PresentationCopyMapper.V2ActionLabel(facts.FollowupAction.Value)}. 그게 오늘의 답이었다.";
             if (facts.MostRepeatedAction.HasValue)
-                return $"가장 많이 한 행동 · {PresentationCopyMapper.V2ActionLabel(facts.MostRepeatedAction.Value)}";
+                return $"오늘 가장 많이 한 것 · {PresentationCopyMapper.V2ActionLabel(facts.MostRepeatedAction.Value)}";
             if (facts.SleepIntervalChoice == SleepIntervalChoice.PrepareNextFeed)
-                return "아기가 잠든 사이 다음 수유를 준비해, 깨어난 뒤의 서두름을 줄였다.";
-            return "신호를 보고 행동을 바꿨다. 울음이 커지기 전에 움직였다.";
+                return "잠든 사이 다음 수유를 미리 준비해 뒀다. 깨어났을 때 허둥대지 않았다.";
+            return "신호를 보고 손을 바꿨다. 울음이 커지기 전에 움직였다.";
         }
 
         private static string BuildCaregiverFactReflection(NarrativeFacts facts)
         {
             if (facts.UsedCatchBreath)
-                return $"{facts.WakeCount}번 깨어나도 숨을 골랐다. 남은 체력 {facts.ParentStamina:0}.";
+                return $"{facts.WakeCount}번을 깨고도 사이사이 숨을 골랐다. 남은 체력 {facts.ParentStamina:0}.";
             if (facts.BareHandsLaydownAttempts > 0)
                 return facts.BareHandsLaydownSucceeded
-                    ? "도구 없이 품에서 침대로 옮기는 시도를 끝내 이어 냈다."
-                    : "실패 뒤 더 깊은 잠 신호를 기다렸다.";
+                    ? "도구 하나 없이, 품에서 침대까지 끝내 옮겼다."
+                    : "한 번 실패하고 나서는, 더 깊은 숨을 기다릴 줄 알게 됐다.";
             if (facts.LongestMovementDestination.HasValue)
-                return $"{PresentationCopyMapper.HomeLocationLabel(facts.LongestMovementDestination.Value)}까지 움직여 직접 준비했다.";
-            return $"{facts.WakeCount}번 깨어난 뒤에도 체력 {facts.ParentStamina:0}을 남겼다.";
+                return $"{PresentationCopyMapper.HomeLocationLabel(facts.LongestMovementDestination.Value)}까지 안고 가서 직접 준비했다.";
+            return $"{facts.WakeCount}번 깨어난 밤인데도 체력 {facts.ParentStamina:0}을 남겼다.";
         }
 
         private static string BuildBabyResponseReflection(NarrativeFacts facts)
@@ -934,15 +940,15 @@ namespace NotANap.Presentation
             var v2 = night.V2;
             if (night.NightId == NightId.FirstNight)
                 return v2.VisibleSignals.Count > 0
-                    ? $"보호자는 울기 전 신호 {v2.VisibleSignals.Count}가지를 먼저 봤다."
-                    : "보호자는 답을 서두르지 않고 다음 움직임을 기다렸다.";
+                    ? $"오늘 밤 나는 네가 울기 전에 보낸 신호 {v2.VisibleSignals.Count}가지를 먼저 봤다."
+                    : "오늘 밤 나는 서두르지 않고 네 다음 움직임을 기다렸다.";
             if (night.NightId == NightId.SecondNight)
                 return v2.Feeding.SanitationIncident
-                    ? "보호자는 서두르지 않고 수유 순서를 다시 세웠다."
-                    : $"보호자는 깨어남 {v2.Metrics.WakeCount}번에도 다른 방법을 시험했다.";
+                    ? "오늘 밤 나는 허둥대는 대신 수유 순서를 처음부터 다시 세웠다."
+                    : $"오늘 밤 {v2.Metrics.WakeCount}번을 깨고도, 나는 매번 다른 손을 시험했다.";
             return night.FiredEventIds.Count > 0
-                ? $"보호자는 돌아온 습관 {night.FiredEventIds.Count}번을 새 돌봄으로 바꿨다."
-                : "보호자는 백일의 습관을 가족이 버틸 리듬으로 바꿨다.";
+                ? $"돌아온 습관 {night.FiredEventIds.Count}번을, 오늘 밤 나는 새로운 손으로 받아 냈다."
+                : "백일 동안 밴 습관을, 오늘 밤 우리 가족이 버틸 리듬으로 바꿨다.";
         }
 
         private static BabyProfile DefaultProfileFor(Temperament temperament)

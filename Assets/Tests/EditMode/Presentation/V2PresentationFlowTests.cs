@@ -251,6 +251,52 @@ namespace NotANap.Presentation.Tests
         }
 
         [Test]
+        public void GrandmaCardStatesItsGainsSoThePlayerCanJudgeWhetherToSpendIt()
+        {
+            var flow = StartV2();
+            var grandma = flow.BuildV2Play().Actions
+                .First(a => a.Action == V2ActionId.Grandma);
+
+            // 런당 한 번뿐인 카드다. 체력이 오히려 회복된다는 사실과 한도를
+            // 눌러 보기 전에 읽을 수 없으면 아낄지 쓸지 판단할 수 없다.
+            Assert.IsNotNull(grandma.CostLabel);
+            StringAssert.Contains("체력 +35", grandma.CostLabel);
+            StringAssert.Contains("울음 0", grandma.CostLabel);
+            StringAssert.Contains("런당 1회", grandma.CostLabel);
+            // 습관이 붙는다는 뒷값까지 적혀야 "공짜 궁"으로 읽히지 않는다.
+            StringAssert.Contains("안아재우기 습관", grandma.CostLabel);
+        }
+
+        [Test]
+        public void CryIntensityReadsAsAStageNotABareNumber()
+        {
+            Assert.AreEqual("조용함", PresentationCopyMapper.CryStageLabel(0));
+            Assert.AreEqual("칭얼거림", PresentationCopyMapper.CryStageLabel(14));
+            Assert.AreEqual("우는 중", PresentationCopyMapper.CryStageLabel(15));
+            // 35는 판정이 이미 경고 색을 켜는 경계다. 라벨도 같은 지점에서 넘어가야 한다.
+            Assert.AreEqual("크게 움", PresentationCopyMapper.CryStageLabel(35));
+            Assert.AreEqual("자지러짐", PresentationCopyMapper.CryStageLabel(60));
+        }
+
+        [Test]
+        public void GaugeRowsCarryTheThresholdsTheJudgementActuallyUses()
+        {
+            var vm = StartV2().BuildV2Play();
+            var config = new GameBalanceConfig();
+
+            // 게이지 눈금은 화면이 지어낸 값이 아니라 판정 경계여야 한다.
+            // 어긋나면 "넘으면 늦은 지점"이 막대와 다른 곳에 찍힌다.
+            Assert.AreEqual(config.V2.HungerActiveThreshold, vm.HungerActiveThreshold);
+            Assert.AreEqual(config.V2.HungerLateThreshold, vm.HungerLateThreshold);
+            Assert.AreEqual(config.V2.CryWarningThreshold, vm.CryWarningThreshold);
+
+            // CryStageLabel은 설정을 읽지 않고 35에서 단계를 넘긴다. 경고 눈금을
+            // 튜닝하면 막대와 라벨이 다른 말을 하므로 여기서 잡는다.
+            Assert.AreEqual(35d, config.V2.CryWarningThreshold,
+                "CryWarningThreshold를 바꿨다면 PresentationCopyMapper.CryStageLabel의 경계도 함께 옮겨야 한다.");
+        }
+
+        [Test]
         public void FirstNightSetup_ConfiguresCaregiverAndBabyWithoutACompatibilityScore()
         {
             var flow = new GameFlowController(new SystemRandomSource(1));
@@ -279,7 +325,8 @@ namespace NotANap.Presentation.Tests
             var diary = flow.BuildV2Diary();
 
             StringAssert.Contains("신호", diary.LearnedSignal);
-            StringAssert.Contains("보호자", diary.CaregiverGrowth);
+            // 보호자 서술은 1인칭으로 쓴다. "오늘 밤"이 빠지면 그 밤의 회고가 아니게 된다.
+            StringAssert.Contains("오늘 밤", diary.CaregiverGrowth);
             StringAssert.Contains("엄마", diary.MotherInsight);
             StringAssert.Contains("완료", diary.CompanionMessage);
             StringAssert.Contains("최장 수면", diary.ShareCardText);

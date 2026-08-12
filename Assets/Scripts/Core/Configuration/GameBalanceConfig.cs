@@ -135,6 +135,8 @@ namespace NotANap.Core
         public double HungerEarlyThreshold = 35;
         public double HungerActiveThreshold = 60;
         public double HungerLateThreshold = 82;
+        // 이 위로는 자극을 줄여야 하는 울음 구간. 화면 게이지의 경고 눈금도 이 값을 쓴다.
+        public double CryWarningThreshold = 35;
         public double SleepMinuteGain = 1;
         public double DrowsyCalmThreshold = 65;
         public double SleepStartCalmThreshold = 78;

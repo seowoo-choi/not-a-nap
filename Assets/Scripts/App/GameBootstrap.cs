@@ -2133,15 +2133,23 @@ namespace NotANap.App
                     OverlayLabelStyle(27, FontStyle.Normal, new Color(.9f, .92f, .94f),
                         TextAnchor.MiddleLeft));
                 // 밤 돌봄의 판단 근거는 절대 수치보다 "얼마나 지났는지"다.
-                // 행동 목록을 아래로 밀지 않도록 두 줄로 압축해 넣는다.
-                GUI.Label(new Rect(104f, 908f, 872f, 30f),
-                    FatigueSheetLine(vm) +
-                    $"    배고픔 {vm.HungerLabel} {vm.Hunger:0}    울음 {vm.CryIntensity:0}",
-                    OverlayLabelStyle(23, FontStyle.Bold,
-                        vm.FatigueStage == FatigueSignalStage.Overtired ||
-                        vm.HungerStage == HungerSignalStage.Late
-                            ? new Color(.96f, .72f, .5f) : new Color(.74f, .82f, .88f),
-                        TextAnchor.MiddleLeft));
+                // 졸림은 경과 시간이라 채울 최대치가 없어 글자로 두고, 0~100 척도인
+                // 배고픔·울음만 단계 이름 옆에 막대를 붙인다. 행동 목록을 아래로
+                // 밀지 않도록 막대는 같은 줄 안에 넣는다.
+                var sheetTone = vm.FatigueStage == FatigueSignalStage.Overtired ||
+                    vm.HungerStage == HungerSignalStage.Late
+                        ? new Color(.96f, .72f, .5f) : new Color(.74f, .82f, .88f);
+                GUI.Label(new Rect(104f, 908f, 330f, 30f), FatigueSheetLine(vm),
+                    OverlayLabelStyle(23, FontStyle.Bold, sheetTone, TextAnchor.MiddleLeft));
+                GUI.Label(new Rect(448f, 908f, 160f, 30f), $"배고픔 {vm.HungerLabel}",
+                    OverlayLabelStyle(23, FontStyle.Bold, HungerRowColor(vm), TextAnchor.MiddleLeft));
+                DrawInlineGauge(new Rect(612f, 920f, 84f, 6f), vm.Hunger, HungerRowColor(vm),
+                    vm.HungerActiveThreshold, vm.HungerLateThreshold);
+                GUI.Label(new Rect(712f, 908f, 140f, 30f),
+                    $"울음 {PresentationCopyMapper.CryStageLabel(vm.CryIntensity)}",
+                    OverlayLabelStyle(23, FontStyle.Bold, CryRowColor(vm), TextAnchor.MiddleLeft));
+                DrawInlineGauge(new Rect(856f, 920f, 84f, 6f), vm.CryIntensity, CryRowColor(vm),
+                    vm.CryWarningThreshold, 0);
                 GUI.Label(new Rect(104f, 938f, 872f, 30f),
                     $"마지막 수유 {FormatDuration(vm.MinutesSinceFeed)} 전" +
                     $"    마지막 기저귀 {FormatDuration(vm.MinutesSinceDiaperChange)} 전",
@@ -2716,8 +2724,10 @@ namespace NotANap.App
                             DrawRoomObject(vm, V2ActionId.ToggleCarrier,
                                 new Rect(1280, 515, 105, 175), "아기띠", ItemId.Carrier, false);
                     }
+                    // 이득 문구가 카드 아래로 붙으므로 세로에서는 시작점을 올려 둔다.
+                    // 그대로 두면 패널 하단이 y=650의 가습기 핫스팟을 덮어 클릭을 가로챈다.
                     DrawGrandmaCall(vm,
-                        portrait ? new Rect(825, 350, 180, 190) : new Rect(1510, 150, 180, 180),
+                        portrait ? new Rect(768, 310, 282, 176) : new Rect(1452, 150, 300, 180),
                         portrait);
                     break;
             }
@@ -2729,8 +2739,19 @@ namespace NotANap.App
         {
             var action = DirectAction(vm, V2ActionId.Grandma);
             if (action == null) return;
-            DrawGlassPanel(rect, .86f, true);
-            Fill(new Rect(rect.x, rect.y, portrait ? 7f : 5f, rect.height),
+
+            // 런당 한 번뿐인 카드다. 무엇이 얼마나 바뀌는지 눌러 보기 전에 알아야 한다.
+            // 예전에는 이 설명을 마우스 호버에만 띄웠는데, WebGL 터치 환경에는 호버가
+            // 없어 이득이 아예 보이지 않았다. 그래서 카드에 붙박이로 적는다.
+            string benefit = GrandmaBenefitText(action.CostLabel);
+            float lineHeight = portrait ? 30f : 24f;
+            float benefitHeight = string.IsNullOrEmpty(benefit)
+                ? 0f
+                : lineHeight * (CountLines(benefit) + 0.4f);
+            var panel = new Rect(rect.x, rect.y, rect.width, rect.height + benefitHeight);
+
+            DrawGlassPanel(panel, .86f, true);
+            Fill(new Rect(panel.x, panel.y, portrait ? 7f : 5f, panel.height),
                 new Color(1f, .7f, .3f));
             GUI.Label(new Rect(rect.x + 12f, rect.y + (portrait ? 12f : 8f),
                     rect.width - 24f, portrait ? 78f : 70f), "☎",
@@ -2741,26 +2762,48 @@ namespace NotANap.App
                 "할머니에게\n전화하기",
                 OverlayLabelStyle(portrait ? 22 : 18, FontStyle.Bold,
                     Color.white, TextAnchor.MiddleCenter, true));
-            // 런당 한 번뿐인 카드다. 무엇이 얼마나 바뀌는지 눌러 보기 전에 알아야 한다.
-            if (!string.IsNullOrEmpty(action.CostLabel) &&
-                rect.Contains(Event.current.mousePosition))
+            if (benefitHeight > 0f)
             {
-                float width = portrait ? 470f : 400f;
-                var tip = new Rect(Mathf.Min(rect.xMax + 12f,
-                        (portrait ? PortraitWidth : LandscapeWidth) - width - 20f),
-                    rect.y, width, portrait ? 132f : 108f);
-                Fill(tip, new Color(0.02f, 0.03f, 0.05f, 0.72f));
-                Fill(new Rect(tip.x, tip.y, 4f, tip.height), new Color(1f, .72f, .3f, .9f));
-                GUI.Label(new Rect(tip.x + 14f, tip.y + 8f, tip.width - 28f, tip.height - 16f),
-                    "아기 상태가 이렇게 바뀝니다\n" + action.CostLabel.Replace(" · ", "\n· "),
-                    OverlayLabelStyle(portrait ? 22 : 17, FontStyle.Bold,
-                        new Color(1f, .92f, .76f), TextAnchor.UpperLeft, true));
+                var strip = new Rect(panel.x + (portrait ? 9f : 7f), rect.yMax,
+                    panel.width - (portrait ? 21f : 17f), benefitHeight);
+                Fill(strip, new Color(1f, .72f, .3f, .12f));
+                GUI.Label(new Rect(strip.x + 10f, strip.y + lineHeight * .2f,
+                        strip.width - 20f, strip.height - lineHeight * .3f),
+                    benefit,
+                    OverlayLabelStyle(portrait ? 21 : 17, FontStyle.Bold,
+                        new Color(1f, .92f, .76f), TextAnchor.UpperCenter, true));
             }
-            if (GUI.Button(rect, GUIContent.none, GUIStyle.none))
+            if (GUI.Button(panel, GUIContent.none, GUIStyle.none))
             {
                 PerformV2Action(V2ActionId.Grandma);
                 _audio.PlayUi();
             }
+        }
+
+        /// <summary>
+        /// 행동 비용 라벨(원본은 프레젠터)을 카드 폭에 맞게 두 항목씩 접는다.
+        /// 문구를 여기서 다시 쓰지 않아야 판정과 표시가 어긋나지 않는다.
+        /// </summary>
+        private static string GrandmaBenefitText(string costLabel)
+        {
+            if (string.IsNullOrEmpty(costLabel)) return null;
+            var parts = costLabel.Split(new[] { " · " }, StringSplitOptions.RemoveEmptyEntries);
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < parts.Length; i += 2)
+            {
+                if (sb.Length > 0) sb.Append('\n');
+                sb.Append(parts[i].Trim());
+                if (i + 1 < parts.Length) sb.Append(" · ").Append(parts[i + 1].Trim());
+            }
+            return sb.ToString();
+        }
+
+        private static int CountLines(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return 0;
+            int lines = 1;
+            foreach (char c in text) if (c == '\n') lines++;
+            return lines;
         }
 
         private void DrawBathroomGuidance(V2PlayViewModel vm, bool portrait)
@@ -3316,7 +3359,9 @@ namespace NotANap.App
                 Mathf.Clamp01((float)vm.ParentStamina / 100f),
                 vm.ParentStamina >= 30 ? new Color(0.49f, 0.84f, 0.61f) : new Color(0.94f, 0.39f, 0.34f), false);
             DrawMoodOrnament(new Rect(38, 412, 286, 82), vm, false);
-            DrawBabyStackPanel(vm, new Rect(38, 508, 286, 236), false);
+            // 배고픔·울음이 게이지 행(50px)이 되면서 236으로는 마지막 기저귀 행이 잘린다.
+            // 아래 준비물 패널이 y=780에서 시작하므로 770까지만 늘린다.
+            DrawBabyStackPanel(vm, new Rect(38, 508, 286, 262), false);
             DrawPreparedItems(new Rect(44, 780, 270, 58), true, vm);
             DrawCaregiverBreathHotspot(vm, new Rect(38, 316, 286, 82), false);
         }
@@ -3360,7 +3405,10 @@ namespace NotANap.App
                 return;
             }
 
+            // 졸림·마지막 수유·기저귀는 "얼마나 지났나"라서 채울 최대치가 없다.
+            // 게이지는 0~100 척도인 배고픔·울음에만 붙인다.
             float rowHeight = portrait ? 46f : 36f;
+            float gaugeRowHeight = portrait ? 62f : 50f;
             float y = rect.y + (portrait ? 50f : 40f);
             DrawStackRow(rect, y, inset, portrait, FatigueRowLabel(vm),
                 FatigueRowValue(vm),
@@ -3368,20 +3416,31 @@ namespace NotANap.App
                     ? new Color(.94f, .39f, .34f)
                     : vm.FatigueStage >= FatigueSignalStage.Active
                         ? new Color(.95f, .79f, .39f) : new Color(.62f, .9f, .78f));
-            DrawStackRow(rect, y + rowHeight, inset, portrait, "배고픔",
-                $"{vm.HungerLabel} · {vm.Hunger:0}",
-                vm.HungerStage == HungerSignalStage.Late
-                    ? new Color(.94f, .39f, .34f)
-                    : vm.HungerStage == HungerSignalStage.Active
-                        ? new Color(.95f, .79f, .39f) : new Color(.62f, .9f, .78f));
-            DrawStackRow(rect, y + rowHeight * 2f, inset, portrait, "울음",
-                $"{vm.CryIntensity:0}",
-                vm.CryIntensity > 35 ? new Color(.94f, .39f, .34f) : new Color(.78f, .82f, .86f));
-            DrawStackRow(rect, y + rowHeight * 3f, inset, portrait, "마지막 수유",
+            y += rowHeight;
+            DrawStackGaugeRow(rect, y, inset, portrait, "배고픔", vm.HungerLabel,
+                vm.Hunger, HungerRowColor(vm),
+                vm.HungerActiveThreshold, vm.HungerLateThreshold);
+            y += gaugeRowHeight;
+            DrawStackGaugeRow(rect, y, inset, portrait, "울음",
+                PresentationCopyMapper.CryStageLabel(vm.CryIntensity),
+                vm.CryIntensity, CryRowColor(vm), vm.CryWarningThreshold, 0);
+            y += gaugeRowHeight;
+            DrawStackRow(rect, y, inset, portrait, "마지막 수유",
                 $"{FormatDuration(vm.MinutesSinceFeed)} 전", new Color(.78f, .82f, .86f));
-            DrawStackRow(rect, y + rowHeight * 4f, inset, portrait, "마지막 기저귀",
+            DrawStackRow(rect, y + rowHeight, inset, portrait, "마지막 기저귀",
                 $"{FormatDuration(vm.MinutesSinceDiaperChange)} 전", new Color(.78f, .82f, .86f));
         }
+
+        private static Color HungerRowColor(V2PlayViewModel vm)
+            => vm.HungerStage == HungerSignalStage.Late
+                ? new Color(.94f, .39f, .34f)
+                : vm.HungerStage == HungerSignalStage.Active
+                    ? new Color(.95f, .79f, .39f) : new Color(.62f, .9f, .78f);
+
+        private static Color CryRowColor(V2PlayViewModel vm)
+            => vm.CryIntensity > vm.CryWarningThreshold
+                ? new Color(.94f, .39f, .34f)
+                : vm.CryIntensity > 0 ? new Color(.95f, .79f, .39f) : new Color(.62f, .9f, .78f);
 
         /// <summary>왼쪽 항목명, 오른쪽 값. 한 줄짜리 상태 행.</summary>
         private void DrawStackRow(Rect panel, float y, float inset, bool portrait,
@@ -3395,6 +3454,41 @@ namespace NotANap.App
             GUI.Label(new Rect(panel.x + inset + width * .44f, y, width * .56f, height), value,
                 OverlayLabelStyle(portrait ? 24 : 17, FontStyle.Bold, valueColor,
                     TextAnchor.MiddleRight));
+        }
+
+        /// <summary>
+        /// 0~100 척도 상태 행. 생 숫자는 "42가 큰 값인가"를 답해 주지 못하므로
+        /// 단계 이름 + 막대로 바꾸고, 판정이 쓰는 경계를 눈금으로 찍는다.
+        /// 눈금이 있어야 "울면 이미 늦었다"가 수치를 외우지 않고도 읽힌다.
+        /// </summary>
+        private void DrawStackGaugeRow(Rect panel, float y, float inset, bool portrait,
+            string label, string stageLabel, double value, Color color,
+            double warnThreshold, double lateThreshold)
+        {
+            DrawStackRow(panel, y, inset, portrait, label, stageLabel, color);
+            float width = panel.width - inset * 2f;
+            float barHeight = portrait ? 8f : 6f;
+            DrawInlineGauge(new Rect(panel.x + inset, y + (portrait ? 42f : 34f), width, barHeight),
+                value, color, warnThreshold, lateThreshold);
+        }
+
+        /// <summary>
+        /// 0~100 막대 하나. 경계 눈금은 판정이 쓰는 값을 그대로 받아 찍는다.
+        /// 0이나 100을 넘기면 눈금을 생략한다(해당 단계가 없는 지표).
+        /// </summary>
+        private static void DrawInlineGauge(Rect bar, double value, Color color,
+            double warnThreshold, double lateThreshold)
+        {
+            DrawProgress(bar, Mathf.Clamp01((float)value / 100f), color);
+            DrawGaugeTick(bar, warnThreshold, new Color(.95f, .79f, .39f, .85f));
+            DrawGaugeTick(bar, lateThreshold, new Color(.94f, .39f, .34f, .9f));
+        }
+
+        private static void DrawGaugeTick(Rect bar, double threshold, Color color)
+        {
+            if (threshold <= 0 || threshold >= 100) return;
+            float x = bar.x + bar.width * (float)(threshold / 100.0);
+            Fill(new Rect(x - 1f, bar.y - 2f, 2f, bar.height + 4f), color);
         }
 
         private void DrawCaregiverBreathHotspot(V2PlayViewModel vm, Rect rect, bool portrait)
