@@ -52,7 +52,7 @@ namespace NotANap.Core
             if (b.Hunger > 78 && !b.Crying)
             {
                 night.AddEvent(GameEventId.HungerCueAppeared);
-                WakeBaby(run, night, "배꼽시계 발동", rng);
+                WakeBaby(run, night, "배꼽시계", rng);
             }
 
             // 진정도 자연 감소 (깊은 잠 제외)
@@ -124,7 +124,7 @@ namespace NotANap.Core
             if (wasAsleep) night.Stats.Wakes++;
             if (wasAsleep) night.AddEvent(GameEventId.BabyFullyWoke);
             night.AddLog(
-                wasAsleep ? $"😱 {reason} — 아기가 깼다!" : $"😖 {reason} — 아기가 자지러지게 운다!",
+                wasAsleep ? $"{reason} — 깼다." : $"{reason} — 자지러지게 운다.",
                 LogClass.Warn);
             if (wasAsleep) FinalNightResolver.TrySelfSootheResettle(run, night, rng);
         }

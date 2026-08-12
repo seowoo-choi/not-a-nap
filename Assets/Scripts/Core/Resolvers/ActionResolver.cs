@@ -43,12 +43,12 @@ namespace NotANap.Core
             {
                 case GameAction.Hold:
                 {
-                    if (night.Wearing.Carrier) { Reject("이미 아기띠로 안고 있다."); break; }
+                    if (night.Wearing.Carrier) { Reject("이미 아기띠에 안겨 있다."); break; }
                     b.Held = true;
                     night.Stats.Holds++;
                     b.Calm = CoreMath.Clamp(b.Calm + (16 + t.HoldNeed * 12) * weak, 0, 100);
                     p.Stamina = CoreMath.Clamp(p.Stamina - 10, 0, 100);
-                    Log(b.Crying ? "품에 안자 울음이 조금씩 잦아든다." : "품에 안았다. 아기가 파고든다.");
+                    Log(b.Crying ? "품에 안자 울음이 조금씩 잦아든다." : "품에 안았다. 가슴팍으로 파고든다.");
                     if (b.Crying && b.Calm > 45) b.Crying = false;
                     break;
                 }
@@ -60,9 +60,9 @@ namespace NotANap.Core
                     if (b.Crying && b.Calm > 50)
                     {
                         b.Crying = false;
-                        Log("토닥토닥… 울음이 멎었다.", LogClass.Good);
+                        Log("토닥, 토닥… 울음이 멎었다.", LogClass.Good);
                     }
-                    else Log("등을 토닥여 주었다.");
+                    else Log("등에 손바닥을 얹고 같은 박자로 토닥인다.");
                     break;
                 }
                 case GameAction.Feed:
@@ -74,13 +74,13 @@ namespace NotANap.Core
                         b.Calm = CoreMath.Clamp(b.Calm + (20 + t.FeedBonus) * weak, 0, 100);
                         b.Crying = false;
                         night.Stats.Feeds++;
-                        Log("🍼 꿀꺽꿀꺽. 세상 행복한 표정이다.", LogClass.Good);
+                        Log("꿀꺽, 꿀꺽. 이만한 표정이 없다.", LogClass.Good);
                     }
                     else
                     {
                         b.Calm = CoreMath.Clamp(b.Calm - 6, 0, 100);
                         night.Stats.Refusals++;
-                        Log("고개를 홱 돌린다. 지금은 배가 고픈 게 아닌가 보다.", LogClass.Warn);
+                        Log("고개를 홱 돌린다. 배가 고픈 건 아니었나 보다.", LogClass.Warn);
                     }
                     break;
                 }
@@ -101,7 +101,7 @@ namespace NotANap.Core
                         night.Stats.LaydownOk++;
                         outcome.LaydownSucceeded = true;
                         night.AddEvent(GameEventId.LaydownSucceeded);
-                        Log("🛏️ 숨을 죽이고… 성공. 아기가 침대에서 계속 잔다.", LogClass.Good);
+                        Log("숨까지 죽이고 손을 뺐다. 그대로 잔다.", LogClass.Good);
                         if (bareHands)
                         {
                             night.Stats.BareHandsLaydownSucceeded = true;
@@ -113,9 +113,9 @@ namespace NotANap.Core
                         night.AddEvent(GameEventId.LaydownFailed);
                         b.Held = false;
                         night.Stats.LaydownFail++;
-                        TurnResolver.WakeBaby(run, night, "등이 침대에 닿는 순간 센서 발동", rng);
+                        TurnResolver.WakeBaby(run, night, "등센서 작동 — 닿자마자 눈이 떠졌다", rng);
                         if (run.Memory.Carrier > 0.3 || run.Memory.HeldDep > 0.3)
-                            Log("※ 안겨 자는 습관 때문에 눕히기가 더 어려워졌다.", LogClass.Warn);
+                            Log("안겨서 자는 게 익숙해진 탓이다. 내려놓기가 점점 어려워진다.", LogClass.Warn);
                     }
                     break;
                 }
@@ -127,17 +127,17 @@ namespace NotANap.Core
                     {
                         b.Calm = CoreMath.Clamp(b.Calm + 7, 0, 100);
                         night.Stats.WatchOk++;
-                        Log("아기가 혼자 꼼지락거리다 스스로 진정했다.", LogClass.Good);
+                        Log("혼자 꼼지락거리더니, 스스로 가라앉았다.", LogClass.Good);
                     }
                     else if (b.Crying)
                     {
                         b.Calm = CoreMath.Clamp(b.Calm - 9, 0, 100);
-                        Log("기다리는 사이 울음이 더 커진다.", LogClass.Warn);
+                        Log("기다리는 사이 울음만 더 커졌다.", LogClass.Warn);
                     }
                     else
                     {
                         b.Calm = CoreMath.Clamp(b.Calm - 5, 0, 100);
-                        Log("아기가 심심한지 칭얼거리기 시작한다.");
+                        Log("심심한지 슬슬 칭얼거리기 시작한다.");
                     }
                     break;
                 }
@@ -145,10 +145,10 @@ namespace NotANap.Core
                 {
                     if (run.IsFinalNight)
                     {
-                        Reject("오늘 밤은 가족 없이 버텨야 한다. 할머니 찬스를 쓸 수 없다.", LogClass.Warn);
+                        Reject("오늘 밤은 혼자 건너야 한다. 할머니를 부를 수 없다.", LogClass.Warn);
                         break;
                     }
-                    if (run.GrandmaUsed) { Reject("할머니 찬스는 이미 사용했다."); break; }
+                    if (run.GrandmaUsed) { Reject("할머니는 이미 한 번 오셨다."); break; }
                     run.GrandmaUsed = true;
                     night.Stats.Grandma = true;
                     b.Calm = 95;
@@ -156,27 +156,27 @@ namespace NotANap.Core
                     b.Crying = false;
                     b.Held = true;
                     p.Stamina = CoreMath.Clamp(p.Stamina + 35, 0, 100);
-                    Log("👵 \"애는 원래 안아서 재워야 해.\" 할머니의 품에서 아기가 순식간에 잠든다.", LogClass.Good);
-                    Log("…하지만 아기는 이 품도 기억할 것이다.", LogClass.Warn);
+                    Log("\"애는 원래 안아서 재우는 거야.\" 그 품에서 순식간에 잠든다.", LogClass.Good);
+                    Log("…이 품도 기억할 것이다.", LogClass.Warn);
                     break;
                 }
                 case GameAction.Pacifier: // 시간 소모 없음
                 {
                     outcome.ConsumedTurn = false;
                     if (!night.HasItem(ItemId.Pacifier)) { Reject("쪽쪽이를 가져오지 않았다."); break; }
-                    if (night.PacifierLeft <= 0) { Reject("쪽쪽이를 다 썼다."); break; }
+                    if (night.PacifierLeft <= 0) { Reject("오늘 쪽쪽이는 다 썼다."); break; }
                     night.PacifierLeft--;
                     if (rng.NextDouble() < 0.15)
                     {
                         b.Calm = CoreMath.Clamp(b.Calm - 8, 0, 100);
-                        Log("퉤. 쪽쪽이를 뱉어버렸다.", LogClass.Warn);
+                        Log("퉤. 보란 듯이 뱉어 버렸다.", LogClass.Warn);
                     }
                     else
                     {
                         b.Calm = CoreMath.Clamp(b.Calm + 18, 0, 100);
                         night.PacifierInUse = true;
                         if (b.Crying && b.Calm > 45) b.Crying = false;
-                        Log("🍭 쪽쪽이를 물자 순식간에 조용해졌다.", LogClass.Good);
+                        Log("물리자마자 조용해졌다. 이렇게 쉬울 리가 없는데.", LogClass.Good);
                     }
                     break;
                 }
@@ -193,9 +193,9 @@ namespace NotANap.Core
                     if (night.Wearing.Carrier)
                     {
                         b.Held = true;
-                        Log("🎒 아기띠를 착용했다. 두 손이 자유롭다.");
+                        Log("아기띠를 맸다. 이제 두 손이 빈다.");
                     }
-                    else Log("아기띠를 벗었다. (아기는 아직 품 안)");
+                    else Log("아기띠를 풀었다. 아기는 아직 품 안에 있다.");
                     break;
                 }
                 case GameAction.ToggleNoise:
@@ -208,7 +208,7 @@ namespace NotANap.Core
                         break;
                     }
                     night.Wearing.Noise = !night.Wearing.Noise;
-                    Log(night.Wearing.Noise ? "🔊 백색소음기 작동. 쏴아아—" : "백색소음기를 껐다.");
+                    Log(night.Wearing.Noise ? "쏴아아—. 방이 소리로 덮인다." : "백색소음기를 껐다.");
                     break;
                 }
                 case GameAction.ToggleBouncer:
@@ -218,11 +218,11 @@ namespace NotANap.Core
                     if (b.Held || night.Wearing.Carrier)
                     {
                         night.Wearing.Bouncer = false;
-                        Reject("안고 있는 상태에선 바운서를 쓸 수 없다. 먼저 눕히세요.");
+                        Reject("안고 있으면 바운서에 태울 수 없다. 먼저 내려놓아야 한다.");
                         break;
                     }
                     night.Wearing.Bouncer = !night.Wearing.Bouncer;
-                    Log(night.Wearing.Bouncer ? "🪑 아기를 바운서에 태웠다." : "바운서에서 내렸다.");
+                    Log(night.Wearing.Bouncer ? "바운서에 태웠다." : "바운서에서 내렸다.");
                     break;
                 }
             }
